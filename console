@@ -1,5 +1,7 @@
 #!/bin/bash
 
+CALLING_DIR=$(pwd)
+
 function help {
 	echo "Remote Environment client."
 	echo
@@ -19,13 +21,25 @@ command_exists () {
     type "$1" &> /dev/null ;
 }
 
-function get_current_namespace() {
-    local  myresult='some value'
-    echo "$myresult"
+#Can probably just get rid of this now
+function dir {
+    echo $CALLING_DIR
 }
 
-function dir {
-    echo "$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+function remote_name {
+    sed '3q;d' $(dir)/.remote
+}
+
+function remote_branch {
+    sed '2q;d' $(dir)/.remote
+}
+
+function namespace {
+    sed '1q;d' $(dir)/.remote
+}
+
+function pod {
+    echo `kubectl --namespace=$(namespace) get pods | grep $1 | awk '{print $1}'`
 }
 
 function setup {
@@ -64,20 +78,20 @@ function setup {
     DIR=$(dir)
 
     read -p "What is the namespace you are using? " NAMESPACE_NAME
-    echo -n $NAMESPACE_NAME > $DIR/.namespace
+    echo $NAMESPACE_NAME > $DIR/.remote
 
     read -p "What is your remote environment branch you are using? " REMOTE_BRANCH
-    echo -n $REMOTE_BRANCH > $DIR/.branch
+    echo $REMOTE_BRANCH >> $DIR/.remote
 
     read -p "What is your github remote name? " REMOTE_NAME
-    echo -n $REMOTE_NAME > $DIR/.remote
+    echo $REMOTE_NAME >> $DIR/.remote
 }
 
 function create {
 
-    DIR=$(dir)
-    REMOTE_NAME=`cat $DIR/.remote`
-    REMOTE_BRANCH=`cat $DIR/.branch`
+    REMOTE_NAME=$(remote_name)
+    REMOTE_BRANCH=$(remote_branch)
+
     LOCAL_BRANCH=`git rev-parse --abbrev-ref HEAD`
 
     echo "Pushing to remote"
@@ -90,8 +104,8 @@ function create {
 function build {
 
     DIR=$(dir)
-    REMOTE_NAME=`cat $DIR/.remote`
-    REMOTE_BRANCH=`cat $DIR/.branch`
+    REMOTE_NAME=$(remote_name)
+    REMOTE_BRANCH=$(remote_branch)
     LOCAL_BRANCH=`git rev-parse --abbrev-ref HEAD`
 
     git diff --exit-code --quiet $LOCAL_BRANCH $REMOTE_NAME/$REMOTE_BRANCH
@@ -109,10 +123,7 @@ function build {
 }
 
 function ssh {
-    NAMESPACE=`cat $(dir)/.namespace`
-    POD=`kubectl --namespace=$NAMESPACE get pods | grep $1 | awk '{print $1}'`
-
-    cmd="kubectl --namespace=$NAMESPACE exec -it $POD -- /bin/bash"
+    cmd="kubectl --namespace=$(namespace) exec -it $(pod) -- /bin/bash"
     echo "Running: '${cmd}'."
     eval ${cmd}
 }
@@ -123,8 +134,6 @@ function watch {
 
     PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
     PROJECT_DIR_WITH_DOT="$PROJECT_DIR/."
-    NAMESPACE=`cat $(dir)/.namespace`
-    POD=`kubectl --namespace=$NAMESPACE get pods | grep web | awk '{print $1}'`
 
     # Watch for changes and sync (exclude hidden files)
     echo    "Watching for changes. Quit anytime with Ctrl-C."
@@ -135,7 +144,7 @@ function watch {
         file="${event/$PROJECT_DIR/$PROJECT_DIR_WITH_DOT}"
         echo $result_string
 
-        rsync --relative -rlptDv -e 'kubectl --namespace='$NAMESPACE' exec -i '$POD -- $file --:/app
+        rsync --relative -rlptDv -e 'kubectl --namespace='$(namespace)' exec -i '$(pod) -- $file --:/app
         echo "done."
       done
 }
