@@ -126,9 +126,17 @@ function ensure_new_commit {
 
 function push_to_remote {
     echo "Pushing to remote"
-    git push --force $(remote_name) $(local_branch):$(remote_name)
+    git push --force $(remote_name) $(local_branch):$(remote_branch)
 
     echo "Continuous Pipe will now build your developer environment"
+}
+
+function delete_remote {
+    echo "Destroying remote environment"
+    echo "Deleting remote branch"
+    git push $(remote_name) --delete $(remote_branch)
+
+    echo "Continuous Pipe will now destroy the remote environment"
 }
 
 function ssh {
@@ -161,7 +169,7 @@ case $1 in
     help
     exit 0
     ;;
-    setup|setup:client|setup:remote|create|build|watch|ssh)
+    setup|setup:client|setup:remote|create|build|watch|ssh|destroy)
     COMMAND=$1
     ;;
     *)
@@ -195,6 +203,9 @@ case $COMMAND in
         ;;
     ssh)
         ssh $2
+        ;;
+    destroy)
+        delete_remote
         ;;
 	*)
 		echo "Command not found: "$COMMAND
