@@ -136,7 +136,9 @@ function watch {
     # Sync latency / speed in seconds
     LATENCY="1"
     PROJECT_DIR_WITH_DOT="$(dir)/."
+    POD=$(pod $1)
 
+    echo "The watch command will need to be restarted after rebuilding the remote environment"
     # Watch for changes and sync (exclude hidden files)
     echo    "Watching for changes. Quit anytime with Ctrl-C."
     fswatch -0 -r -l $LATENCY .. --exclude="/\.[^/]*$" --exclude="\.idea" --exclude="\.git" --exclude="___jb_old___" --exclude="___jb_tmp___" \
@@ -146,7 +148,7 @@ function watch {
         file="${event/$(dir)/$PROJECT_DIR_WITH_DOT}"
         echo $result_string
 
-        rsync --relative -rlptDv -e 'kubectl --context=$(namespace) --namespace='$(namespace)' exec -i '$(pod $1) -- $file --:/app
+        rsync --relative -rlptDv -e 'kubectl --context=$(namespace) --namespace='$(namespace)' exec -i '$POD -- $file --:/app
         echo "done."
       done
 }
