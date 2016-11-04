@@ -39,7 +39,7 @@ function namespace {
 
 function pod {
     CONTAINER=$1
-    echo `kubectl --namespace=$(namespace) get pods | grep $CONTAINER | awk '{print $1}'`
+    echo `kubectl --context=$(namespace) --namespace=$(namespace) get pods | grep $CONTAINER | awk '{print $1}'`
 }
 
 function local_branch {
@@ -90,11 +90,10 @@ function setup {
     kubectl config set-credentials $NAMESPACE-$USERNAME --username=$USERNAME --password=$PASSWORD
     kubectl config set-cluster $NAMESPACE --server=https://$CLUSTER_IP --insecure-skip-tls-verify=true
     kubectl config set-context $NAMESPACE --cluster=$NAMESPACE --user=$NAMESPACE-$USERNAME
-    kubectl config use-context $NAMESPACE
 
     echo "Created the context " $NAMESPACE
     echo
-    echo "Run 'kubectl cluster-info' to verify the connectivity."
+    echo "Run 'kubectl --context=$(namespace) cluster-info' to verify the connectivity."
     echo
 }
 
@@ -128,7 +127,7 @@ function delete_remote {
 }
 
 function ssh {
-    cmd="kubectl --namespace=$(namespace) exec -it $(pod $1) -- /bin/bash"
+    cmd="kubectl --context=$(namespace) --namespace=$(namespace) exec -it $(pod $1) -- /bin/bash"
     echo "Running: '${cmd}'."
     eval ${cmd}
 }
@@ -147,7 +146,7 @@ function watch {
         file="${event/$(dir)/$PROJECT_DIR_WITH_DOT}"
         echo $result_string
 
-        rsync --relative -rlptDv -e 'kubectl --namespace='$(namespace)' exec -i '$(pod $1) -- $file --:/app
+        rsync --relative -rlptDv -e 'kubectl --context=$(namespace) --namespace='$(namespace)' exec -i '$(pod $1) -- $file --:/app
         echo "done."
       done
 }
