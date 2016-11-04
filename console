@@ -9,7 +9,9 @@ function help {
 	echo "  "$0" command"
 	echo 
 	echo "Available commands:"
-	echo "   setup             Setup the remote environment client"
+	echo "   setup             Setup the remote environment client and settings"
+	echo "   setup:client      Setup the remote environment client"
+	echo "   setup:remote      Set the remote settings"
 	echo "   create            Create the remote environment"
 	echo "   watch             Watch local changes and synchronize with the remote environment"
 	echo "   ssh               SSH into the remote environment container"
@@ -21,28 +23,40 @@ command_exists () {
     type "$1" &> /dev/null ;
 }
 
-#Can probably just get rid of this now
 function dir {
     echo $CALLING_DIR
 }
 
 function remote_name {
-    sed '3q;d' $(dir)/.remote
+    echo $(read_setting 3)
 }
 
 function remote_branch {
-    sed '2q;d' $(dir)/.remote
+    echo $(read_setting 2)
 }
 
 function namespace {
-    sed '1q;d' $(dir)/.remote
+    echo $(read_setting 1)
 }
 
 function pod {
     echo `kubectl --namespace=$(namespace) get pods | grep $1 | awk '{print $1}'`
 }
 
-function setup {
+function local_branch {
+    echo `git rev-parse --abbrev-ref HEAD`
+}
+
+function read_setting {
+    SETTING=`sed "$1q;d" $(dir)/.remote`
+    if [ -z "$SETTING" ]; then
+        echo "The remote settings are missing, please run the setup command"
+        exit;
+    fi
+    echo $SETTING
+}
+
+function setup_kubectl {
 	if ! command_exists kubectl ; then
 		echo "[INSTALL] kubectl is being installed"
 
@@ -59,67 +73,62 @@ function setup {
 		echo "[OK] kubectl found"
 	fi
 
-    #read -p "What is the name of the context? " CONTEXT_NAME
-    ##read -p "What is the IP of the cluster? " CLUSTER_IP
-    #read -p "What is the username? " USERNAME
-    #read -p "What is the password? " PASSWORD
-    #read -p "What is the default namespace you want to use? " NAMESPACE
+    read -p "What is the name of the context? " CONTEXT_NAME
+    read -p "What is the IP of the cluster? " CLUSTER_IP
+    read -p "What is the username? " USERNAME
+    read -p "What is the password? " PASSWORD
+    read -p "What is the default namespace you want to use? " NAMESPACE
 
-    #kubectl config set-credentials $CONTEXT_NAME-$USERNAME --username=$USERNAME --password=$PASSWORD
-    #kubectl config set-cluster $CONTEXT_NAME --server=https://$CLUSTER_IP --insecure-skip-tls-verify=true
-    #kubectl config set-context $CONTEXT_NAME --cluster=$CONTEXT_NAME --user=$CONTEXT_NAME-$USERNAME
-    #kubectl config use-context $CONTEXT_NAME
+    kubectl config set-credentials $CONTEXT_NAME-$USERNAME --username=$USERNAME --password=$PASSWORD
+    kubectl config set-cluster $CONTEXT_NAME --server=https://$CLUSTER_IP --insecure-skip-tls-verify=true
+    kubectl config set-context $CONTEXT_NAME --cluster=$CONTEXT_NAME --user=$CONTEXT_NAME-$USERNAME
+    kubectl config use-context $CONTEXT_NAME
 
     echo "Created the context " $CONTEXT_NAME
     echo
     echo "Run 'kubectl cluster-info' to verify the connectivity."
     echo
-
-    DIR=$(dir)
-
-    read -p "What is the namespace you are using? " NAMESPACE_NAME
-    echo $NAMESPACE_NAME > $DIR/.remote
-
-    read -p "What is your remote environment branch you are using? " REMOTE_BRANCH
-    echo $REMOTE_BRANCH >> $DIR/.remote
-
-    read -p "What is your github remote name? " REMOTE_NAME
-    echo $REMOTE_NAME >> $DIR/.remote
 }
 
-function create {
+function setup_remote {
+    REMOTE_DIR="$(dir)/.remote"
 
-    REMOTE_NAME=$(remote_name)
-    REMOTE_BRANCH=$(remote_branch)
+    read -p "What is the namespace you are using? " NAMESPACE_NAME
+    echo $NAMESPACE_NAME > $REMOTE_DIR
 
-    LOCAL_BRANCH=`git rev-parse --abbrev-ref HEAD`
+    read -p "What is your remote environment branch you are using? " REMOTE_BRANCH
+    echo $REMOTE_BRANCH >> $REMOTE_DIR
 
-    echo "Pushing to remote"
-    git push --force $REMOTE_NAME $LOCAL_BRANCH:$REMOTE_BRANCH
+    read -p "What is your github remote name? " REMOTE_NAME
+    echo $REMOTE_NAME >> $REMOTE_DIR
 
-    echo "Continous Pipe will now build your developer environment"
+    echo "Remote settings written to $REMOTE_DIR"
+}
 
+function setup {
+    setup_kubectl
+    setup_remote
 }
 
 function build {
+    ensure_new_commit
+    push_to_remote
+}
 
-    DIR=$(dir)
-    REMOTE_NAME=$(remote_name)
-    REMOTE_BRANCH=$(remote_branch)
-    LOCAL_BRANCH=`git rev-parse --abbrev-ref HEAD`
-
-    git diff --exit-code --quiet $LOCAL_BRANCH $REMOTE_NAME/$REMOTE_BRANCH
+function ensure_new_commit {
+    git diff --exit-code --quiet $(local_branch) $(remote_name)/$(remote_branch)
     rc=$?; if [[ $rc = 0 ]]; then
         echo "No changes so making timestamp update only commit to force rebuild";
-        gdate +%s > $DIR/../timestamp
-        git commit $DIR/../timestamp -m "Update timestamp to force rebuild on continuous pipe"
+        #gdate +%s > $DIR/../timestamp
+        #git commit $DIR/../timestamp -m "Update timestamp to force rebuild on continuous pipe"
     fi
+}
 
+function push_to_remote {
     echo "Pushing to remote"
-    git push --force $REMOTE_NAME $LOCAL_BRANCH:$REMOTE_BRANCH
+    #git push --force $(remote_name) $(local_branch)):$(remote_name)
 
-    echo "Continous Pipe will now build your developer environment"
-
+    echo "Continuous Pipe will now build your developer environment"
 }
 
 function ssh {
@@ -155,7 +164,7 @@ function watch {
 	    help
 	    exit 0
 	    ;;
-	    setup|create|build|watch|ssh)
+	    setup|setup:client|setup:remote|create|build|watch|ssh)
 	    COMMAND=$1
 	    ;;
 	    *)
@@ -175,8 +184,14 @@ case $COMMAND in
 	setup)
 		setup
 		;;
+	setup:client)
+        setup_kubectl
+        ;;
+    setup:remote)
+        setup_remote
+        ;;
 	create)
-    	create
+    	push_to_remote
     	;;
     watch)
         watch
