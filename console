@@ -119,14 +119,14 @@ function ensure_new_commit {
     git diff --exit-code --quiet $(local_branch) $(remote_name)/$(remote_branch)
     rc=$?; if [[ $rc = 0 ]]; then
         echo "No changes so making timestamp update only commit to force rebuild";
-        #gdate +%s > $DIR/../timestamp
-        #git commit $DIR/../timestamp -m "Update timestamp to force rebuild on continuous pipe"
+        gdate +%s > $DIR/../timestamp
+        git commit $DIR/../timestamp -m "Update timestamp to force rebuild on continuous pipe"
     fi
 }
 
 function push_to_remote {
     echo "Pushing to remote"
-    #git push --force $(remote_name) $(local_branch)):$(remote_name)
+    git push --force $(remote_name) $(local_branch):$(remote_name)
 
     echo "Continuous Pipe will now build your developer environment"
 }
@@ -140,9 +140,7 @@ function ssh {
 function watch {
     # Sync latency / speed in seconds
     LATENCY="1"
-
-    PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
-    PROJECT_DIR_WITH_DOT="$PROJECT_DIR/."
+    PROJECT_DIR_WITH_DOT="$(dir)/."
 
     # Watch for changes and sync (exclude hidden files)
     echo    "Watching for changes. Quit anytime with Ctrl-C."
@@ -150,7 +148,7 @@ function watch {
     | while read -d "" event
       do
         echo `date` "\"$event\" changed. Synchronizing... "
-        file="${event/$PROJECT_DIR/$PROJECT_DIR_WITH_DOT}"
+        file="${event/$(dir)/$PROJECT_DIR_WITH_DOT}"
         echo $result_string
 
         rsync --relative -rlptDv -e 'kubectl --namespace='$(namespace)' exec -i '$(pod) -- $file --:/app
@@ -158,24 +156,20 @@ function watch {
       done
 }
 
-#while [[ $# -gt 0 ]]; do
-	case $1 in
-	    -h|--help|help)
-	    help
-	    exit 0
-	    ;;
-	    setup|setup:client|setup:remote|create|build|watch|ssh)
-	    COMMAND=$1
-	    ;;
-	    *)
-	        echo "Unknown option: "$1
-	    ;;
-	esac
+case $1 in
+    -h|--help|help)
+    help
+    exit 0
+    ;;
+    setup|setup:client|setup:remote|create|build|watch|ssh)
+    COMMAND=$1
+    ;;
+    *)
+        echo "Unknown option: "$1
+    ;;
+esac
 
-#	shift
-#done
-
-if [ -z ${COMMAND+x} ]; then 
+if [ -z ${COMMAND+x} ]; then
 	help
 	exit 0
 fi
