@@ -1,5 +1,7 @@
 #!/bin/bash
 
+CALLING_DIR=$(pwd)
+
 function help {
 	echo "Remote Environment client."
 	echo
@@ -7,22 +9,67 @@ function help {
 	echo "  "$0" command"
 	echo 
 	echo "Available commands:"
-	echo "   setup             Setup the remote environment client"
+	echo "   setup             Setup the remote environment client and settings"
 	echo "   create            Create the remote environment"
 	echo "   watch             Watch local changes and synchronize with the remote environment"
 	echo "   ssh               SSH into the remote environment container"
-	echo "   build             Update the remove environment with local changes"
+	echo "   build             Update the remote environment with local changes"
+	echo "   resync            Sync remote changes to and from the local filesystem"
 	echo "   destroy           Destroy the remote environment"
+}
+
+function container_specified {
+   if [ -z "$1" ]; then
+       echo "You need to specify the container to use with this command"
+       exit;
+   fi
 }
 
 command_exists () {
     type "$1" &> /dev/null ;
 }
 
-function get_current_namespace()
-{
-    local  myresult='some value'
-    echo "$myresult"
+function dir {
+    echo $CALLING_DIR
+}
+
+function remote_name {
+    echo $(read_setting 3)
+}
+
+function remote_branch {
+    echo $(read_setting 2)
+}
+
+function namespace {
+    echo $(read_setting 1)
+}
+
+function pod {
+    CONTAINER=$1
+    echo `kubectl --context=$(namespace) --namespace=$(namespace) get pods | grep $CONTAINER | awk '{print $1}'`
+}
+
+function pod_found {
+    if [ -z "$1" ]; then
+        echo
+        echo "The pod could not be found, is your configuration correct and is the specified container name correct?"
+        echo
+        exit;
+    fi
+}
+
+function local_branch {
+    echo `git rev-parse --abbrev-ref HEAD`
+}
+
+function read_setting {
+    SETTING=`sed "$1q;d" $(dir)/.remote`
+    if [ -z "$SETTING" ]; then
+        echo "The remote settings are missing, please run the setup command"
+        exit;
+    fi
+    echo $SETTING
 }
 
 function setup {
@@ -41,28 +88,120 @@ function setup {
 	else
 		echo "[OK] kubectl found"
 	fi
+	
+	REMOTE_DIR="$(dir)/.remote"
+    
+    read -p "What is your remove development namespace? " NAMESPACE
+    read -p "What is the name of the Git branch you are using for your remote environment? " REMOTE_BRANCH
+    read -p "What is your github remote name? (origin) " REMOTE_NAME
+    read -p "What is the IP of the cluster? " CLUSTER_IP
+    read -p "What is the username? " USERNAME
+    read -p "What is the password? " PASSWORD
 
+    REMOTE_NAME=${REMOTE_NAME:-origin}
+    echo $NAMESPACE > $REMOTE_DIR
+    echo $REMOTE_BRANCH >> $REMOTE_DIR
+    echo $REMOTE_NAME >> $REMOTE_DIR
+    echo "Remote settings written to $REMOTE_DIR"
 
+    kubectl config set-credentials $NAMESPACE-$USERNAME --username=$USERNAME --password=$PASSWORD
+    kubectl config set-cluster $NAMESPACE --server=https://$CLUSTER_IP --insecure-skip-tls-verify=true
+    kubectl config set-context $NAMESPACE --cluster=$NAMESPACE --user=$NAMESPACE-$USERNAME
+
+    echo "Created the context " $NAMESPACE
+    echo
+    echo "Run 'kubectl --context=$(namespace) cluster-info' to verify the connectivity."
+    echo
 }
 
-while [[ $# -gt 0 ]]; do
-	case $1 in
-	    -h|--help|help)
-	    help
-	    exit 0
-	    ;;
-	    setup)
-	    COMMAND=$1
-	    ;;
-	    *)
-	        echo "Unknown option: "$1
-	    ;;
-	esac
+function build {
+    ensure_new_commit
+    push_to_remote
+}
 
-	shift
-done
+function ensure_new_commit {
+    git diff --exit-code --quiet $(local_branch) $(remote_name)/$(remote_branch)
+    rc=$?; if [[ $rc = 0 ]]; then
+        echo "No changes so making timestamp update only commit to force rebuild";
+        gdate +%s > $DIR/../timestamp
+        git commit $DIR/../timestamp -m "Update timestamp to force rebuild on continuous pipe"
+    fi
+}
 
-if [ -z ${COMMAND+x} ]; then 
+function push_to_remote {
+    echo "Pushing to remote"
+    git push --force $(remote_name) $(local_branch):$(remote_branch)
+
+    echo "Continuous Pipe will now build your developer environment"
+}
+
+function delete_remote {
+    echo "Destroying remote environment"
+    echo "Deleting remote branch"
+    git push $(remote_name) --delete $(remote_branch)
+
+    echo "Continuous Pipe will now destroy the remote environment"
+}
+
+function ssh {
+    POD=$(pod $1)
+    pod_found $POD
+    cmd="kubectl --context=$(namespace) --namespace=$(namespace) exec -it $POD -- /bin/bash"
+    echo "Running: '${cmd}'."
+    eval ${cmd}
+}
+
+function watch {
+    # Sync latency / speed in seconds
+    LATENCY="1"
+    PROJECT_DIR_WITH_DOT="$(dir)/."
+    POD=$(pod $1)
+    pod_found $POD
+
+    echo "The watch command will need to be restarted after rebuilding the remote environment"
+    # Watch for changes and sync (exclude hidden files)
+    echo    "Watching for changes. Quit anytime with Ctrl-C."
+    fswatch -0 -r -l $LATENCY .. --exclude="/\.[^/]*$" --exclude="\.idea" --exclude="\.git" --exclude="___jb_old___" --exclude="___jb_tmp___" \
+    | while read -d "" event
+      do
+        echo `date` "\"$event\" changed. Synchronizing... "
+        file="${event/$(dir)/$PROJECT_DIR_WITH_DOT}"
+        echo $result_string
+
+        rsync --relative -rlptDv -e 'kubectl --context='$(namespace)' --namespace='$(namespace)' exec -i '$POD -- $file --:/app
+        echo "done."
+      done
+}
+
+function resync {
+    POD=$(pod $1)
+    pod_found $POD
+
+    git stash save -q --keep-index
+
+    rsync -zrlptDv --blocking-io  --force --exclude=".*" \
+        -e 'kubectl --context='$(namespace)' --namespace='$(namespace)' exec -i '$POD -- --:/app/ $(dir)
+
+    git reset --hard -q && git stash apply --index -q && git stash drop -q
+
+    rsync -zrlptDv --blocking-io  --force --exclude=".*" \
+        -e 'kubectl  --context='$(namespace)' --namespace='$(namespace)' exec -i '$POD -- $(dir)/. --:/app
+}
+
+case $1 in
+    -h|--help|help)
+    help
+    exit 0
+    ;;
+    setup|create|build|watch|ssh|destroy|resync)
+    COMMAND=$1
+    ;;
+    *)
+        echo "Unknown option: "$1
+    ;;
+esac
+
+if [ -z ${COMMAND+x} ]; then
 	help
 	exit 0
 fi
@@ -71,6 +210,27 @@ case $COMMAND in
 	setup)
 		setup
 		;;
+	create)
+    	push_to_remote
+    	;;
+    watch)
+        container_specified $2
+        watch $2
+        ;;
+    build)
+        build
+        ;;
+    ssh)
+        container_specified $2
+        ssh $2
+        ;;
+    destroy)
+        delete_remote
+        ;;
+    resync)
+        container_specified $2
+        resync $2
+        ;;
 	*)
 		echo "Command not found: "$COMMAND
 		echo
