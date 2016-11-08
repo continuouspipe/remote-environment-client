@@ -7,6 +7,10 @@ in sync with the local filesystem.
 
 ## Installation
 
+```
+sudo curl https://continuouspipe.github.io/remote-environment-client/downloads/cp-remote-latest > /usr/local/bin/cp-remote
+chmod +x /usr/local/bin/cp-remote
+```
 
 ## Setup
 

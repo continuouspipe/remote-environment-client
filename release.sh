@@ -34,7 +34,7 @@ SHA1=$(openssl sha1 downloads/$FILE_NAME-$TAG | awk '{print $2}')
 
 JSON='name:"'$FILE_NAME'"'
 JSON="${JSON},sha1:\"${SHA1}\""
-JSON="${JSON},url:\"${MANIFEST_BASE_URL}/downloads/${FILE_NAME}-${TAG}.phar\""
+JSON="${JSON},url:\"${MANIFEST_BASE_URL}/downloads/${FILE_NAME}-${TAG}\""
 JSON="${JSON},version:\"${TAG}\""
 
 #
