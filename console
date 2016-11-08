@@ -179,6 +179,11 @@ function resync {
 
     git stash save -q --keep-index
 
+    rc=$?; if [[ $rc != 0 ]]; then
+        echo "Stashing your existing local changes failed so the resync was cancelled."
+        exit
+    fi
+
     rsync -zrlptDv --blocking-io  --force --exclude=".*" \
         -e 'kubectl --context='"$(namespace)"' --namespace='"$(namespace)"' exec -i '"$POD" -- --:/app/ "$(dir)"
 
