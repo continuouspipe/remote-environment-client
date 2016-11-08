@@ -17,10 +17,9 @@ TAG=$1
 #
 git checkout master
 git tag ${TAG}
-cp $FILE_NAME $FILE_NAME.build
 
 # Add the build details
-cat $FILE_NAME.build | awk 'NR==2 {print "# Version: '$TAG'"} 1' > $FILE_NAME.build
+cat $FILE_NAME | awk 'NR==2 {print "\# Version: '$TAG'"} 1' > $FILE_NAME.build
 
 #
 # Copy executable file into GH pages
