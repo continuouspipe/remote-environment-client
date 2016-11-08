@@ -10,25 +10,37 @@ in sync with the local filesystem.
 
 ## Setup
 
+```
+cp-remote setup
+```
+
 To start using this tool for a project, run the `setup` command from the project root.
  This will install kubectl if you do not have it installed already. It will then 
  ask a series of questions to get the details for the project set up. 
  
 ## Create
 
+```
+cp-remote create
+```
+
 The `create` command will push changes the branch you have checked out locally to your remote 
  environment branch. Continuous Pipe will then build the environment. YOu can use the [Continuous Pipe admin
- site](http://ui.continuouspipe.io/) to see when the environment has finished building and 
+ site](https://ui.continuouspipe.io/) to see when the environment has finished building and 
  to find its IP address.
  
 ## Watch
  
+ ```
+ cp-remote watch container-name
+ ```
+   
  The `watch` command will sync changes you make locally to a container that's part of the remote environment.
  You need to specify which container to sync with using the docker composer service name. 
  This will usually be the main application container. For example, if the service you want to sync to is web:
   
   ```
-  console watch web
+  cp-remote watch web
   ```
 The watch command should be left running, it will however need restarting whenever the remote environment
 is rebuilt. 
@@ -36,14 +48,22 @@ is rebuilt.
 
 ## ssh 
 
+ ```
+ cp-remote ssh container-name
+ ```
+ 
 You can ssh onto a running container with the `ssh` command by specifying the container name.
  For example, if the service you want to ssh on to is web:
  
  ```
- console ssh web
+ cp-remote ssh web
  ```
  
 ## Build
+ 
+ ```
+ cp-remote build
+ ```
  
 To rebuild your remote environment to use the current branch you have checked out you can use the 
  `build` command. This will force push the current branch which will make Continuous Pipe rebuild the
@@ -51,6 +71,10 @@ To rebuild your remote environment to use the current branch you have checked ou
  to force the rebuild a commit is automatically made updating a timestamp file.
  
 ## Resync
+
+```
+  cp-remote resync container-name
+  ```
  
 When the remote environment is rebuilt it may container changes that you do not have on the local filesystem. 
   For example, for a PHP project part of building the remote environment could be installing the vendors using composer.
@@ -59,7 +83,7 @@ When the remote environment is rebuilt it may container changes that you do not 
   filesystem. You will need to specify the container service name, for example:
   
   ```
-  console resync web
+  cp-remote resync web
   ```
   
   To ensure your local changes are kept, the resync command first stashes your changes, syncs from the remote to local,
@@ -67,6 +91,10 @@ When the remote environment is rebuilt it may container changes that you do not 
   
 ## Destroy
 
+ ```
+ cp-remote destroy
+ ```
+ 
 The `destroy` command will delete the remote branch used for your remote environment, Continuous Pipe will
 then remove the environment.
 
