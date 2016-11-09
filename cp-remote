@@ -123,8 +123,8 @@ function ensure_new_commit {
     git diff --exit-code --quiet "$(local_branch)" "$(remote_name)/$(remote_branch)"
     rc=$?; if [[ $rc = 0 ]]; then
         echo "No changes so making timestamp update only commit to force rebuild";
-        date +%s > "$DIR/../timestamp"
-        git commit "$DIR/../timestamp" -m "Update timestamp to force rebuild on continuous pipe"
+        date +%s > "$(dir)/timestamp"
+        git commit "$(dir)/timestamp" -m "Update timestamp to force rebuild on continuous pipe"
     fi
 }
 
