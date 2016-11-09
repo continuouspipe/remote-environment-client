@@ -99,4 +99,10 @@ When the remote environment is rebuilt it may container changes that you do not 
 The `destroy` command will delete the remote branch used for your remote environment, Continuous Pipe will
 then remove the environment.
 
+## Usage Logging
+
+Usage stats for the longer running commands (build and resync) can be logged to keen.io by providing a 
+ write key, project id and event collection name when running the setup command. No stats will be logged
+ if these are not provided.
+
 
