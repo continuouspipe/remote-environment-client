@@ -32,6 +32,10 @@ function dir {
     echo "$CALLING_DIR"
 }
 
+function settings_file {
+    echo "$(dir)/.remote"
+}
+
 function project_key {
     read_setting 4
 }
@@ -49,15 +53,15 @@ function namespace {
 }
 
 function keen_write_key {
-    read_optional_setting 5
+    read_setting 5
 }
 
 function keen_project_id {
-    read_optional_setting 6
+    read_setting 6
 }
 
 function keen_event_collection {
-    read_optional_setting 7
+    read_setting 7
 }
 
 function pod {
@@ -79,16 +83,22 @@ function local_branch {
 }
 
 function read_setting {
-    SETTING="$(read_optional_setting "$1")"
-    if [ -z "$SETTING" ]; then
-        echo "The remote settings are missing, please run the setup command"
-        exit;
-    fi
-    echo "$SETTING"
+    sed "$1q;d" "$(dir)/.remote"
 }
 
-function read_optional_setting {
-    sed "$1q;d" "$(dir)/.remote"
+function validate_settings {
+    NUMBER_OF_REQUIRED_SETTINGS=4
+
+    if [ ! -f "$(settings_file)" ]; then
+         echo "The remote settings file is missing, please run the setup command"
+         exit;
+    fi
+
+    NUM_SETTINGS=$(wc -l "$(settings_file)" | awk '{print $1}')
+    if [ "$NUM_SETTINGS" -lt "$NUMBER_OF_REQUIRED_SETTINGS" ]; then
+         echo "The remote settings file does not have all the required settings, please run the setup command"
+         exit;
+    fi
 }
 
 function setup {
@@ -271,20 +281,25 @@ case $COMMAND in
 		;;
     watch)
         container_specified "$2"
+        validate_settings
         watch "$2"
         ;;
     build)
+        validate_settings
         build
         ;;
     ssh)
         container_specified "$2"
+        validate_settings
         ssh "$2"
         ;;
     destroy)
+        validate_settings
         delete_remote
         ;;
     resync)
         container_specified "$2"
+        validate_settings
         resync "$2"
         ;;
 	*)
