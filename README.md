@@ -22,16 +22,25 @@ To start using this tool for a project, run the `setup` command from the project
  This will install kubectl if you do not have it installed already. It will then 
  ask a series of questions to get the details for the project set up. 
  
-## Create
+## Creating amd building remote environment
 
 ```
-cp-remote create
+cp-remote build
 ```
 
-The `create` command will push changes the branch you have checked out locally to your remote 
- environment branch. Continuous Pipe will then build the environment. YOu can use the [Continuous Pipe admin
+### Creating a new remote environments
+
+The `build` command will push changes the branch you have checked out locally to your remote 
+ environment branch. Continuous Pipe will then build the environment. You can use the [Continuous Pipe admin
  site](https://ui.continuouspipe.io/) to see when the environment has finished building and 
  to find its IP address.
+ 
+### Rebuilding the remote environment 
+ 
+ To rebuild your remote environment to use the current branch you have checked out you can use the 
+  `build` command. This will force push the current branch which will make Continuous Pipe rebuild the
+  environment. If the remote environment has the latest commit then it would not be rebuilt, in order
+  to force the rebuild a commit is automatically made updating a timestamp file.
  
 ## Watch
  
@@ -49,7 +58,6 @@ The `create` command will push changes the branch you have checked out locally t
 The watch command should be left running, it will however need restarting whenever the remote environment
 is rebuilt. 
 
-
 ## ssh 
 
  ```
@@ -62,17 +70,6 @@ You can ssh onto a running container with the `ssh` command by specifying the co
  ```
  cp-remote ssh web
  ```
- 
-## Build
- 
- ```
- cp-remote build
- ```
- 
-To rebuild your remote environment to use the current branch you have checked out you can use the 
- `build` command. This will force push the current branch which will make Continuous Pipe rebuild the
- environment. If the remote environment has the latest commit then it would not be rebuilt, in order
- to force the rebuild a commit is automatically made updating a timestamp file.
  
 ## Resync
 
