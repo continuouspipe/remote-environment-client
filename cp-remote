@@ -50,11 +50,11 @@ function remote_branch {
 }
 
 function namespace {
-    if [ -z "$CUSTOM_NAMESPACE" ]; then
-        echo "$NAMESPACE"
+    if [ -n "$CUSTOM_NAMESPACE" ]; then
+        echo "$CUSTOM_NAMESPACE"
         return
     else
-        echo "$CUSTOM_NAMESPACE"
+        echo "$NAMESPACE"
     fi
 }
 
@@ -90,10 +90,6 @@ function pod_found {
 
 function local_branch {
     git rev-parse --abbrev-ref HEAD
-}
-
-function read_setting {
-    sed "$1q;d" "$(dir)/.remote"
 }
 
 function validate_settings {
