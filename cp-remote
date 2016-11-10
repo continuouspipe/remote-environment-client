@@ -50,7 +50,7 @@ function remote_branch {
 }
 
 function namespace {
-    if [ -z $CUSTOM_NAMESPACE ]; then
+    if [ -z "$CUSTOM_NAMESPACE" ]; then
         read_setting 1
         return
     else
@@ -215,8 +215,6 @@ function delete_remote {
 }
 
 function ssh {
-    echo $(namespace)
-    exit
     POD="$(pod "$1")"
     pod_found "$POD"
     cmd="kubectl --context=\"$(context)\" --namespace=\"$(namespace)\" exec -it $POD -- /bin/bash"
