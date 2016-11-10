@@ -276,7 +276,7 @@ function port_forward {
         REMOTE_PORT="$3"
     fi
 
-    kubectl --context="$(namespace)" --namespace="$(namespace)" port-forward "$POD" $LOCAL_PORT:$REMOTE_PORT
+    kubectl --context="$(namespace)" --namespace="$(namespace)" port-forward "$POD" "$LOCAL_PORT":"$REMOTE_PORT"
 }
 
 case $1 in
