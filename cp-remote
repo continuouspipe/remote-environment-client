@@ -32,6 +32,14 @@ function dir {
     echo "$CALLING_DIR"
 }
 
+function settings_file {
+    echo "$(dir)/.remote"
+}
+
+function project_key {
+    read_setting 4
+}
+
 function remote_name {
     read_setting 3
 }
@@ -42,6 +50,18 @@ function remote_branch {
 
 function namespace {
     read_setting 1
+}
+
+function keen_write_key {
+    read_setting 5
+}
+
+function keen_project_id {
+    read_setting 6
+}
+
+function keen_event_collection {
+    read_setting 7
 }
 
 function pod {
@@ -63,12 +83,22 @@ function local_branch {
 }
 
 function read_setting {
-    SETTING="$(sed "$1q;d" "$(dir)/.remote")"
-    if [ -z "$SETTING" ]; then
-        echo "The remote settings are missing, please run the setup command"
-        exit;
+    sed "$1q;d" "$(dir)/.remote"
+}
+
+function validate_settings {
+    NUMBER_OF_REQUIRED_SETTINGS=4
+
+    if [ ! -f "$(settings_file)" ]; then
+         echo "The remote settings file is missing, please run the setup command"
+         exit;
     fi
-    echo "$SETTING"
+
+    NUM_SETTINGS=$(wc -l "$(settings_file)" | awk '{print $1}')
+    if [ "$NUM_SETTINGS" -lt "$NUMBER_OF_REQUIRED_SETTINGS" ]; then
+         echo "The remote settings file does not have all the required settings, please run the setup command"
+         exit;
+    fi
 }
 
 function setup {
@@ -90,17 +120,25 @@ function setup {
 	
 	REMOTE_DIR="$(dir)/.remote"
     
+    read -r -p "What is your project key? " PROJECT_KEY
     read -r -p "What is your remote development namespace? " NAMESPACE
     read -r -p "What is the name of the Git branch you are using for your remote environment? " REMOTE_BRANCH
     read -r -p "What is your github remote name? (origin) " REMOTE_NAME
     read -r -p "What is the IP of the cluster? " CLUSTER_IP
     read -r -p "What is the username? " USERNAME
     read -r -p "What is the password? " PASSWORD
+    read -r -p "What is your keen.io write key? (Optional, only needed if you want to record usage stats) " KEEN_WRITE_KEY
+    read -r -p "What is your keen.io project id? (Optional, only needed if you want to record usage stats) " KEEN_PROJECT_ID
+    read -r -p "What is your keen.io event collection?  (Optional, only needed if you want to record usage stats) " KEEN_EVENT_COLLECTION
 
     REMOTE_NAME="${REMOTE_NAME:-origin}"
     echo "$NAMESPACE" > "$REMOTE_DIR"
     echo "$REMOTE_BRANCH" >> "$REMOTE_DIR"
     echo "$REMOTE_NAME" >> "$REMOTE_DIR"
+    echo "$PROJECT_KEY" >> "$REMOTE_DIR"
+    echo "$KEEN_WRITE_KEY" >> "$REMOTE_DIR"
+    echo "$KEEN_PROJECT_ID" >> "$REMOTE_DIR"
+    echo "$KEEN_EVENT_COLLECTION" >> "$REMOTE_DIR"
     echo "Remote settings written to $REMOTE_DIR"
 
     kubectl config set-credentials "$NAMESPACE-$USERNAME" --username="$USERNAME" --password="$PASSWORD"
@@ -113,9 +151,28 @@ function setup {
     echo
 }
 
+function log {
+    PROJECT_ID="$(keen_project_id)"
+    WRITE_KEY="$(keen_write_key)"
+    EVENT_COLLECTION="$(keen_event_collection)"
+
+    if [ -z "$PROJECT_ID" ] || [ -z "$WRITE_KEY" ] || [ -z "$EVENT_COLLECTION" ]; then
+    	echo "Not logging usage stats as keen.io details not set"
+    	exit 0
+    else
+    	echo "Logging usage stats to keen.io"
+    fi
+
+    END_TIME="$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")"
+    PAYLOAD='{"project": "'"$(project_key)"'" ,"namespace": "'"$(namespace)"'","command": "'"$1"'","start-time": '$2',"end-time": '$END_TIME'}'
+    curl -s "https://api.keen.io/3.0/projects/$PROJECT_ID/events/$EVENT_COLLECTION?api_key=$WRITE_KEY" -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null
+}
+
 function build {
+    START_TIME="$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")"
     ensure_new_commit
     push_to_remote
+    log "build" "$START_TIME"
 }
 
 function ensure_new_commit {
@@ -178,6 +235,7 @@ function watch {
 }
 
 function resync {
+    START_TIME="$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")"
     POD=$(pod "$1")
     pod_found "$POD"
 
@@ -195,6 +253,8 @@ function resync {
 
     rsync -zrlptDv --blocking-io  --force --exclude=".*" \
         -e 'kubectl  --context='"$(namespace)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$(dir)/." --:/app
+
+    log "resync" "$START_TIME"
 }
 
 case $1 in
@@ -221,20 +281,25 @@ case $COMMAND in
 		;;
     watch)
         container_specified "$2"
+        validate_settings
         watch "$2"
         ;;
     build)
+        validate_settings
         build
         ;;
     ssh)
         container_specified "$2"
+        validate_settings
         ssh "$2"
         ;;
     destroy)
+        validate_settings
         delete_remote
         ;;
     resync)
         container_specified "$2"
+        validate_settings
         resync "$2"
         ;;
 	*)
