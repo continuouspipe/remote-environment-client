@@ -38,40 +38,40 @@ function settings_file {
 }
 
 function project_key {
-    read_setting 4
+    echo "$PROJECT_KEY"
 }
 
 function remote_name {
-    read_setting 3
+    echo "$REMOTE_NAME"
 }
 
 function remote_branch {
-    read_setting 2
+    echo "$REMOTE_BRANCH"
 }
 
 function namespace {
-    if [ -z "$CUSTOM_NAMESPACE" ]; then
-        read_setting 1
+    if [ -n "$CUSTOM_NAMESPACE" ]; then
+        echo "$CUSTOM_NAMESPACE"
         return
     else
-        echo "$CUSTOM_NAMESPACE"
+        echo "$NAMESPACE"
     fi
 }
 
 function context {
-    read_setting 1
+    echo "$NAMESPACE"
 }
 
 function keen_write_key {
-    read_setting 5
+     echo "$KEEN_WRITE_KEY"
 }
 
 function keen_project_id {
-    read_setting 6
+    echo "$KEEN_PROJECT_ID"
 }
 
 function keen_event_collection {
-    read_setting 7
+    echo "$KEEN_EVENT_COLLECTION"
 }
 
 function pod {
@@ -92,23 +92,23 @@ function local_branch {
     git rev-parse --abbrev-ref HEAD
 }
 
-function read_setting {
-    sed "$1q;d" "$(dir)/.remote"
-}
-
 function validate_settings {
-    NUMBER_OF_REQUIRED_SETTINGS=4
 
     if [ ! -f "$(settings_file)" ]; then
          echo "The remote settings file is missing, please run the setup command"
          exit;
     fi
 
-    NUM_SETTINGS=$(wc -l "$(settings_file)" | awk '{print $1}')
-    if [ "$NUM_SETTINGS" -lt "$NUMBER_OF_REQUIRED_SETTINGS" ]; then
-         echo "The remote settings file does not have all the required settings, please run the setup command"
-         exit;
-    fi
+    source "$(settings_file)"
+
+    REQUIRED_SETTINGS=( NAMESPACE REMOTE_BRANCH REMOTE_NAME PROJECT_KEY)
+    for i in "${REQUIRED_SETTINGS[@]}"
+    do
+    	if [ -z "${!i}" ]; then
+    	    echo "Required setting $i missing, please run the setup command"
+    	    exit
+    	fi
+    done
 }
 
 function setup {
@@ -131,7 +131,6 @@ function setup {
 	REMOTE_DIR="$(dir)/.remote"
     
     read -r -p "What is your project key? " PROJECT_KEY
-    read -r -p "What is your remote development namespace? " NAMESPACE
     read -r -p "What is the name of the Git branch you are using for your remote environment? " REMOTE_BRANCH
     read -r -p "What is your github remote name? (origin) " REMOTE_NAME
     read -r -p "What is the IP of the cluster? " CLUSTER_IP
@@ -142,13 +141,15 @@ function setup {
     read -r -p "What is your keen.io event collection?  (Optional, only needed if you want to record usage stats) " KEEN_EVENT_COLLECTION
 
     REMOTE_NAME="${REMOTE_NAME:-origin}"
-    echo "$NAMESPACE" > "$REMOTE_DIR"
-    echo "$REMOTE_BRANCH" >> "$REMOTE_DIR"
-    echo "$REMOTE_NAME" >> "$REMOTE_DIR"
-    echo "$PROJECT_KEY" >> "$REMOTE_DIR"
-    echo "$KEEN_WRITE_KEY" >> "$REMOTE_DIR"
-    echo "$KEEN_PROJECT_ID" >> "$REMOTE_DIR"
-    echo "$KEEN_EVENT_COLLECTION" >> "$REMOTE_DIR"
+    NAMESPACE="$PROJECT_KEY-$REMOTE_BRANCH"
+
+    echo "NAMESPACE=$NAMESPACE" > "$REMOTE_DIR"
+    echo "REMOTE_BRANCH=$REMOTE_BRANCH" >> "$REMOTE_DIR"
+    echo "REMOTE_NAME=$REMOTE_NAME" >> "$REMOTE_DIR"
+    echo "PROJECT_KEY=$PROJECT_KEY" >> "$REMOTE_DIR"
+    echo "KEEN_WRITE_KEY=$KEEN_WRITE_KEY" >> "$REMOTE_DIR"
+    echo "KEEN_PROJECT_ID=$KEEN_PROJECT_ID" >> "$REMOTE_DIR"
+    echo "KEEN_EVENT_COLLECTION=$KEEN_EVENT_COLLECTION" >> "$REMOTE_DIR"
     echo "Remote settings written to $REMOTE_DIR"
 
     kubectl config set-credentials "$NAMESPACE-$USERNAME" --username="$USERNAME" --password="$PASSWORD"
