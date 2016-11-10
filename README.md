@@ -103,6 +103,39 @@ When the remote environment is rebuilt it may container changes that you do not 
   To ensure your local changes are kept, the resync command first stashes your changes, syncs from the remote to local,
   reapplies the changes and syncs them from local to the remote.
   
+## Port Forwarding
+
+ ```
+ cp-remote forward db 3306
+ ```
+ 
+The `forward` command will set up port forwarding from the local environment to a container 
+on the remote environment that has a port exposed. This is useful for tasks such as connecting 
+to a database using a local client. You need to specify the container and the port number 
+to forward. For example, with a container named db running MySql you would run:
+  
+  ```
+  cp-remote forward db 3306
+  ```
+  
+  this runs in the foreground, so in another terminal you can use the mysql client to connect:
+  
+  ```
+  mysql -h127.0.0.1 -u dbuser -pdbpass dbname
+  ```
+  
+  You can specify a second port number if the remote port number is different to the local port number:
+   
+  ```
+  cp-remote forward db 3307 3306
+  ``` 
+  
+  Here the local port 3307 is forward to 3306 on the remote, you could then connect using:
+  
+  ```
+  mysql -h127.0.0.1 -P3307 -u dbuser -pdbpass dbname
+  ```
+  
 ## Destroy
 
  ```
