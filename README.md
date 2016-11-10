@@ -58,12 +58,12 @@ The `build` command will push changes the branch you have checked out locally to
 ## Watch
  
  ```
- cp-remote watch container-name
+ cp-remote watch
  ```
    
  The `watch` command will sync changes you make locally to a container that's part of the remote environment.
- You need to specify which container to sync with using the docker composer service name. 
- This will usually be the main application container. For example, if the service you want to sync to is web:
+ This will use the default container specified during setup but you can specify another container to sync with. 
+ For example, if the service you want to sync to is web:
   
   ```
   cp-remote watch web
@@ -74,10 +74,10 @@ is rebuilt.
 ## ssh 
 
  ```
- cp-remote ssh container-name
+ cp-remote ssh
  ```
  
-You can ssh onto a running container with the `ssh` command by specifying the container name.
+ This will ssh onto the default container specified during setup but you can specify another container to ssh onto.
  For example, if the service you want to ssh on to is web:
  
  ```
@@ -87,14 +87,15 @@ You can ssh onto a running container with the `ssh` command by specifying the co
 ## Resync
 
 ```
-  cp-remote resync container-name
+  cp-remote resync
   ```
  
 When the remote environment is rebuilt it may container changes that you do not have on the local filesystem. 
   For example, for a PHP project part of building the remote environment could be installing the vendors using composer.
   Any new or updated vendors would be on the remote environment but not on the local filesystem which would cause issues, 
   such as autocomplete in your IDE not working correctly. The `resync` command will copy changes  from the remote to the local 
-  filesystem. You will need to specify the container service name, for example:
+  filesystem. This will resync with the default container specified during setup but you can specify another container.
+  For example to resync with the `web` container:
   
   ```
   cp-remote resync web

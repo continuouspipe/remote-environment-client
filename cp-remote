@@ -19,10 +19,19 @@ function help {
 }
 
 function container_specified {
-   if [ -z "$1" ]; then
+   if [ -z "$1" ] && [ -z "$(default_container)" ]; then
        echo "You need to specify the container to use with this command"
        exit;
    fi
+}
+
+function container {
+   if [ -n "$1" ]; then
+        echo "$1"
+        exit
+   fi
+
+   default_container
 }
 
 command_exists () {
@@ -60,6 +69,10 @@ function namespace {
 
 function context {
     echo "$NAMESPACE"
+}
+
+function default_container {
+    echo "$DEFAULT_CONTAINER"
 }
 
 function keen_write_key {
@@ -128,11 +141,12 @@ function setup {
 		echo "[OK] kubectl found"
 	fi
 	
-	REMOTE_DIR="$(dir)/.remote"
+	REMOTE_DIR="$(settings_file)"
     
     read -r -p "What is your project key? " PROJECT_KEY
     read -r -p "What is the name of the Git branch you are using for your remote environment? " REMOTE_BRANCH
-    read -r -p "What is your github remote name? (origin) " REMOTE_NAME
+    read -r -p "What is your github remote name? (defaults to: origin) " REMOTE_NAME
+    read -r -p "What is the default container for the watch, ssh and resync commands? (Optional)" DEFAULT_CONTAINER
     read -r -p "What is the IP of the cluster? " CLUSTER_IP
     read -r -p "What is the username? " USERNAME
     read -r -p "What is the password? " PASSWORD
@@ -147,6 +161,7 @@ function setup {
     echo "REMOTE_BRANCH=$REMOTE_BRANCH" >> "$REMOTE_DIR"
     echo "REMOTE_NAME=$REMOTE_NAME" >> "$REMOTE_DIR"
     echo "PROJECT_KEY=$PROJECT_KEY" >> "$REMOTE_DIR"
+    echo "DEFAULT_CONTAINER=$DEFAULT_CONTAINER" >> "$REMOTE_DIR"
     echo "KEEN_WRITE_KEY=$KEEN_WRITE_KEY" >> "$REMOTE_DIR"
     echo "KEEN_PROJECT_ID=$KEEN_PROJECT_ID" >> "$REMOTE_DIR"
     echo "KEEN_EVENT_COLLECTION=$KEEN_EVENT_COLLECTION" >> "$REMOTE_DIR"
@@ -325,27 +340,27 @@ case $COMMAND in
 		setup
 		;;
     watch)
-        container_specified "$2"
         validate_settings
-        watch "$2"
+        container_specified "$2"
+        watch "$(container "$2")"
         ;;
     build)
         validate_settings
         build
         ;;
     ssh)
-        container_specified "$2"
         validate_settings
-        ssh "$2"
+        container_specified "$2"
+        ssh "$(container "$2")"
         ;;
     destroy)
         validate_settings
         delete_remote
         ;;
     resync)
-        container_specified "$2"
         validate_settings
-        resync "$2"
+        container_specified "$2"
+        resync "$(container "$2")"
         ;;
     forward)
         container_specified "$2"
