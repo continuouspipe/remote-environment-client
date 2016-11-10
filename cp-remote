@@ -18,6 +18,24 @@ function help {
 	echo "   destroy           Destroy the remote environment"
 }
 
+function open_anybar {
+    if [ -n $ANYBAR_PORT ]; then
+        trap quit_anybar SIGINT
+        ANYBAR_PORT=$ANYBAR_PORT open -a AnyBar
+    fi
+}
+
+function quit_anybar {
+    anybar quit
+}
+
+function anybar {
+    if [ -n $ANYBAR_PORT ]; then
+        echo -n $1 | nc -4u -w0 localhost $ANYBAR_PORT
+    fi
+}
+
+
 function container_specified {
    if [ -z "$1" ] && [ -z "$(default_container)" ]; then
        echo "You need to specify the container to use with this command"
@@ -150,6 +168,7 @@ function setup {
     read -r -p "What is the IP of the cluster? " CLUSTER_IP
     read -r -p "What is the username? " USERNAME
     read -r -p "What is the password? " PASSWORD
+    read -r -p "If you want to use AnyBar, please provide a port number e.g 1738? " ANYBAR_PORT
     read -r -p "What is your keen.io write key? (Optional, only needed if you want to record usage stats) " KEEN_WRITE_KEY
     read -r -p "What is your keen.io project id? (Optional, only needed if you want to record usage stats) " KEEN_PROJECT_ID
     read -r -p "What is your keen.io event collection?  (Optional, only needed if you want to record usage stats) " KEEN_EVENT_COLLECTION
@@ -165,6 +184,7 @@ function setup {
     echo "KEEN_WRITE_KEY=$KEEN_WRITE_KEY" >> "$REMOTE_DIR"
     echo "KEEN_PROJECT_ID=$KEEN_PROJECT_ID" >> "$REMOTE_DIR"
     echo "KEEN_EVENT_COLLECTION=$KEEN_EVENT_COLLECTION" >> "$REMOTE_DIR"
+    echo "ANYBAR_PORT=$ANYBAR_PORT" >> "$REMOTE_DIR"
     echo "Remote settings written to $REMOTE_DIR"
 
     kubectl config set-credentials "$NAMESPACE-$USERNAME" --username="$USERNAME" --password="$PASSWORD"
@@ -239,6 +259,7 @@ function ssh {
 }
 
 function watch {
+    open_anybar
     # Sync latency / speed in seconds
     LATENCY="1"
     PROJECT_DIR_WITH_DOT="$(dir)/."
@@ -248,19 +269,23 @@ function watch {
     echo "The watch command will need to be restarted after rebuilding the remote environment"
     # Watch for changes and sync (exclude hidden files)
     echo    "Watching for changes. Quit anytime with Ctrl-C."
+    anybar green
     fswatch -0 -r -l "$LATENCY" .. --exclude="/\.[^/]*$" --exclude="\.idea" --exclude="\.git" --exclude="___jb_old___" --exclude="___jb_tmp___" \
     | while read -r -d "" event
       do
+        anybar orange
         echo "$(date)" "\"$event\" changed. Synchronizing... "
         file="${event/$(dir)/$PROJECT_DIR_WITH_DOT}"
         echo
 
         rsync --relative -rlptDv -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$file" --:/app
         echo "done."
+        anybar green
       done
 }
 
 function resync {
+    open_anybar
     START_TIME="$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")"
     POD=$(pod "$1")
     pod_found "$POD"
@@ -271,7 +296,7 @@ function resync {
         echo "Stashing your existing local changes failed so the resync was cancelled."
         exit
     fi
-
+    anybar red
     rsync -zrlptDv --blocking-io  --force --exclude=".*" \
         -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- --:/app/ "$(dir)"
 
@@ -280,6 +305,7 @@ function resync {
     rsync -zrlptDv --blocking-io  --force --exclude=".*" \
         -e 'kubectl  --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$(dir)/." --:/app
 
+    anybar green
     log "resync" "$START_TIME"
 }
 
