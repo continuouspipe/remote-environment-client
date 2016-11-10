@@ -50,6 +50,15 @@ function remote_branch {
 }
 
 function namespace {
+    if [ -z "$CUSTOM_NAMESPACE" ]; then
+        read_setting 1
+        return
+    else
+        echo "$CUSTOM_NAMESPACE"
+    fi
+}
+
+function context {
     read_setting 1
 }
 
@@ -67,7 +76,7 @@ function keen_event_collection {
 
 function pod {
     CONTAINER=$1
-    kubectl --context="$(namespace)" --namespace="$(namespace)" get pods | grep "^$CONTAINER" | awk '{print $1}'
+    kubectl --context="$(context)" --namespace="$(namespace)" get pods | grep "^$CONTAINER" | awk '{print $1}'
 }
 
 function pod_found {
@@ -148,7 +157,7 @@ function setup {
 
     echo "Created the context " "$NAMESPACE"
     echo
-    echo "Run 'kubectl --context=$(namespace) cluster-info' to verify the connectivity."
+    echo "Run 'kubectl --context=$(context) cluster-info' to verify the connectivity."
     echo
 }
 
@@ -208,7 +217,7 @@ function delete_remote {
 function ssh {
     POD="$(pod "$1")"
     pod_found "$POD"
-    cmd="kubectl --context=\"$(namespace)\" --namespace=\"$(namespace)\" exec -it $POD -- /bin/bash"
+    cmd="kubectl --context=\"$(context)\" --namespace=\"$(namespace)\" exec -it $POD -- /bin/bash"
     echo "Running: '${cmd}'."
     eval "${cmd}"
 }
@@ -230,7 +239,7 @@ function watch {
         file="${event/$(dir)/$PROJECT_DIR_WITH_DOT}"
         echo
 
-        rsync --relative -rlptDv -e 'kubectl --context='"$(namespace)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$file" --:/app
+        rsync --relative -rlptDv -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$file" --:/app
         echo "done."
       done
 }
@@ -248,12 +257,12 @@ function resync {
     fi
 
     rsync -zrlptDv --blocking-io  --force --exclude=".*" \
-        -e 'kubectl --context='"$(namespace)"' --namespace='"$(namespace)"' exec -i '"$POD" -- --:/app/ "$(dir)"
+        -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- --:/app/ "$(dir)"
 
     git reset --hard -q && git stash apply --index -q && git stash drop -q
 
     rsync -zrlptDv --blocking-io  --force --exclude=".*" \
-        -e 'kubectl  --context='"$(namespace)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$(dir)/." --:/app
+        -e 'kubectl  --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$(dir)/." --:/app
 
     log "resync" "$START_TIME"
 }
@@ -276,7 +285,7 @@ function port_forward {
         REMOTE_PORT="$3"
     fi
 
-    kubectl --context="$(namespace)" --namespace="$(namespace)" port-forward "$POD" "$LOCAL_PORT":"$REMOTE_PORT"
+    kubectl --context="$(context)" --namespace="$(namespace)" port-forward "$POD" "$LOCAL_PORT":"$REMOTE_PORT"
 }
 
 case $1 in
@@ -296,6 +305,19 @@ if [ -z "${COMMAND+x}" ]; then
 	help
 	exit 0
 fi
+
+for i in "$@"
+do
+    case $i in
+        -n=*|--namespace=*)
+        CUSTOM_NAMESPACE="${i#*=}"
+        shift # past argument=value
+        ;;
+        *)
+                # unknown option
+        ;;
+    esac
+done
 
 case $COMMAND in
 	setup)

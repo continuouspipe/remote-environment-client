@@ -150,5 +150,22 @@ then remove the environment.
 Usage stats for the longer running commands (build and resync) can be logged to keen.io by providing a 
  write key, project id and event collection name when running the setup command. No stats will be logged
  if these are not provided.
-
+ 
+## Working with a different environment
+ 
+The `--namespace|-n` option can be used with the `watch`, `ssh`, `resync` and `forward`
+ commands to run them against a different environment than the one specified during
+ setup. This is useful if you need to access a different environment such as a feature branch
+ environment. For example, to ssh onto the `web` container of the `example-feature-my-shiny-new-work`
+ environment you can run:
+ 
+ ```
+ cp-remote ssh web --namespace=example-feature-my-shiny-new-work
+ ```
+  
+  or
+  
+ ```
+ cp-remote ssh web -n=example-feature-my-shiny-new-work
+ ```
 
