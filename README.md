@@ -5,6 +5,19 @@ A command line tool to help with using Continuous Pipe as a remote development e
 This helps to set up Kubectl, create, build and destroy remote environments and keep files
 in sync with the local filesystem.
 
+## Prerequisites
+
+You will need the following:
+
+ * A Continuous Pipe hosted project with the GitHub integration set up
+ * The project checked out locally 
+ * The IP address, username and password to use for Kubenetes cluster
+ * rsync and fswatch installed locally
+ * A keen.io write token, project id and event collection name if you want to log usage stats 
+
+Note: if the GitHub repository is not the origin of your checked out project then you will
+need to add a remote for that repository. 
+
 ## Installation
 
 ```
