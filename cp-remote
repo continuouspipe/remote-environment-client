@@ -135,7 +135,6 @@ function setup {
 	REMOTE_DIR="$(dir)/.remote"
     
     read -r -p "What is your project key? " PROJECT_KEY
-    read -r -p "What is your remote development namespace? " NAMESPACE
     read -r -p "What is the name of the Git branch you are using for your remote environment? " REMOTE_BRANCH
     read -r -p "What is your github remote name? (origin) " REMOTE_NAME
     read -r -p "What is the IP of the cluster? " CLUSTER_IP
@@ -146,6 +145,8 @@ function setup {
     read -r -p "What is your keen.io event collection?  (Optional, only needed if you want to record usage stats) " KEEN_EVENT_COLLECTION
 
     REMOTE_NAME="${REMOTE_NAME:-origin}"
+    NAMESPACE="$PROJECT_KEY-$REMOTE_BRANCH"
+
     echo "NAMESPACE=$NAMESPACE" > "$REMOTE_DIR"
     echo "REMOTE_BRANCH=$REMOTE_BRANCH" >> "$REMOTE_DIR"
     echo "REMOTE_NAME=$REMOTE_NAME" >> "$REMOTE_DIR"
