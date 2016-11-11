@@ -34,7 +34,7 @@ cp-remote setup
 To start using this tool for a project, run the `setup` command from the project root.
  This will install kubectl if you do not have it installed already. It will then 
  ask a series of questions to get the details for the project set up. More information
- about these questions can be found in the [Configuration section](#Configuration) below.
+ about these questions can be found in the [Configuration section](#configuration) below.
  
 Your answers will be stored in a `.cp-remote-env-settings` file in the project root. You 
  will probably want to add this to your .gitignore file.
@@ -202,7 +202,7 @@ Here, this is the environment for the develop branch, so the project key is `dev
 ### REMOTE_BRANCH
 
 The name of the branch you will use for your remote environment. There may be a 
-project specific naming convention for this e.g. remote-<your name>
+project specific naming convention for this e.g. `remote-<your name>`
 
 ### REMOTE_NAME
 
