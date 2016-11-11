@@ -13,7 +13,7 @@ You will need the following:
  * The project checked out locally 
  * The IP address, username and password to use for Kubenetes cluster
  * rsync and fswatch installed locally
- * A keen.io write token, project id and event collection name if you want to log usage stats 
+ * A [keen.io](https://keen.io) write token, project id and event collection name if you want to log usage stats 
 
 Note: if the GitHub repository is not the origin of your checked out project then you will
 need to add a remote for that repository. 
@@ -152,7 +152,7 @@ then remove the environment.
 
 ## Usage Logging
 
-Usage stats for the longer running commands (build and resync) can be logged to keen.io by providing a 
+Usage stats for the longer running commands (build and resync) can be logged to https://keen.io by providing a 
  write key, project id and event collection name when running the setup command. No stats will be logged
  if these are not provided.
  
@@ -218,7 +218,7 @@ that you need to provide, it may be called something like `web` or `app`.
 
 ### KEEN_WRITE_KEY, KEEN_PROJECT_ID and KEEN_EVENT_COLLECTION
  
-These are only needed if you want to log usage stats using [https://keen.io/]. 
+These are only needed if you want to log usage stats using https://keen.io/. 
 
 ### ANYBAR_PORT
 
