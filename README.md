@@ -35,6 +35,9 @@ To start using this tool for a project, run the `setup` command from the project
  This will install kubectl if you do not have it installed already. It will then 
  ask a series of questions to get the details for the project set up. 
  
+Your answers will be stored in a `.cp-remote-env-settings` file in the project root. You 
+ will probably want to add this to your .gitignore file.
+ 
 ## Creating amd building remote environment
 
 ```

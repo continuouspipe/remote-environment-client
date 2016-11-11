@@ -43,7 +43,7 @@ function dir {
 }
 
 function settings_file {
-    echo "$(dir)/.remote"
+    echo "$(dir)/.cp-remote-env-settings"
 }
 
 function project_key {
