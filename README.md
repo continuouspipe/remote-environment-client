@@ -182,7 +182,7 @@ To get a status notification for the longer running commands (watch and resync) 
  
 ## Configuration
  
-The `setup` command uses your answers to generate a settings file `.remote` in the 
+The `setup` command uses your answers to generate a settings file `.cp-remote-env-settings` in the 
 root of the project. If you need to make changes to the settings you can run the `setup` command again 
 or you can directly edit the settings. 
 
