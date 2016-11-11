@@ -228,7 +228,7 @@ notifications are not sent when no port number is provided.
 
 ### Kubernetes settings
  
-These are asked for by the `set up` command but are not stored in the project config file. The
+These are asked for by the `setup` command but are not stored in the project config file. The
 cluster IP address and username can be found on the cluster page for the team in the 
 [Continuous Pipe admin site](https://ui.continuouspipe.io/):
 
