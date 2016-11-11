@@ -219,6 +219,12 @@ something like `web` or `app`.
  
 These are only needed if you want to log usage stats using https://keen.io/. 
 
+### ANYBAR_PORT
+
+This is only needed if you want to get [AnyBar](https://github.com/tonsky/AnyBar) notifications.
+A value needs to be provided, even if you want to use the default port of 1738, as the 
+notification are not sent when no port number is provided.
+
 ### Kubernetes settings
  
 These are asked for by the `set up` command but are not stored in the project config file. The
