@@ -197,7 +197,7 @@ names created by Continuous Pipe. You can find this on the environments page for
 
 ![Project Key](/docs/images/project-key.png?raw=true)
 
-Here, this is the environment for the develop branch, so the project key is `develop`.
+Here, this is the environment for the develop branch, so the project key is `my-project`.
 
 ### REMOTE_BRANCH
 
