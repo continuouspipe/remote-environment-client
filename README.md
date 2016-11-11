@@ -173,3 +173,8 @@ The `--namespace|-n` option can be used with the `watch`, `ssh`, `resync` and `f
  cp-remote ssh web -n=example-feature-my-shiny-new-work
  ```
 
+## Anybar notifications
+
+To get a status notification for the longer running commands (watch and resync) on OSX you can 
+ install [AnyBar](https://github.com/tonsky/AnyBar) and provide a port number to use for 
+ it during the `setup` command.
