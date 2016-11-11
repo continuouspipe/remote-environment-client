@@ -211,19 +211,20 @@ In most cases you will have cloned the project repo from this so this will be `o
  
 ### DEFAULT_CONTAINER     
  
-This is an optional setting, if provided this will be used by the `ssh`, `watch` and `resync` commands.
-It is the docker-compose service name for the container that you need to provide, it may be called 
-something like `web` or `app`.
+This is an optional setting, if provided this will be used by the `ssh`, `watch` and `resync` commands as
+the container you ssh onto, watch for file changes or resync with respectively unless you provide
+an alternative container to the command. It is the docker-compose  service name for the container 
+that you need to provide, it may be called something like `web` or `app`.
 
 ### KEEN_WRITE_KEY, KEEN_PROJECT_ID and KEEN_EVENT_COLLECTION
  
-These are only needed if you want to log usage stats using https://keen.io/. 
+These are only needed if you want to log usage stats using [https://keen.io/]. 
 
 ### ANYBAR_PORT
 
 This is only needed if you want to get [AnyBar](https://github.com/tonsky/AnyBar) notifications.
 A value needs to be provided, even if you want to use the default port of 1738, as the 
-notification are not sent when no port number is provided.
+notifications are not sent when no port number is provided.
 
 ### Kubernetes settings
  
