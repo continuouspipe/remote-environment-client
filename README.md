@@ -33,7 +33,8 @@ cp-remote setup
 
 To start using this tool for a project, run the `setup` command from the project root.
  This will install kubectl if you do not have it installed already. It will then 
- ask a series of questions to get the details for the project set up. 
+ ask a series of questions to get the details for the project set up. More information
+ about these questions can be found in the [Configuration section](#Configuration) below.
  
 Your answers will be stored in a `.cp-remote-env-settings` file in the project root. You 
  will probably want to add this to your .gitignore file.
@@ -178,3 +179,52 @@ The `--namespace|-n` option can be used with the `watch`, `ssh`, `resync` and `f
 To get a status notification for the longer running commands (watch and resync) on OSX you can 
  install [AnyBar](https://github.com/tonsky/AnyBar) and provide a port number to use for 
  it during the `setup` command.
+ 
+## Configuration
+ 
+The `setup` command uses your answers to generate a settings file `.remote` in the 
+root of the project. If you need to make changes to the settings you can run the `setup` command again 
+or you can directly edit the settings. 
+
+Note: the kubectl cluster IP address, username and password are not stored in this file. To change these
+ you can run `setup` again.
+ 
+### PROJECT_KEY
+ 
+This is the project name used in Continuous Pipe. It will be prefixed to all the environment
+names created by Continuous Pipe. You can find this on the environments page for the tide on the 
+[Continuous Pipe admin site](https://ui.continuouspipe.io/). For example:
+
+![Project Key](/docs/images/project-key.png?raw=true)
+
+Here, this is the environment for the develop branch, so the project key is `develop`.
+
+### REMOTE_BRANCH
+
+The name of the branch you will use for your remote environment. There may be a 
+project specific naming convention for this e.g. remote-<your name>
+
+### REMOTE_NAME
+
+The name of the git remote for the GitHub project which has the Continuous Pipe integration.
+In most cases you will have cloned the project repo from this so this will be `origin`.   
+ 
+### DEFAULT_CONTAINER     
+ 
+This is an optional setting, if provided this will be used by the `ssh`, `watch` and `resync` commands.
+It is the docker-compose service name for the container that you need to provide, it may be called 
+something like `web` or `app`.
+
+### KEEN_WRITE_KEY, KEEN_PROJECT_ID and KEEN_EVENT_COLLECTION
+ 
+These are only needed if you want to log usage stats using https://keen.io/. 
+
+### Kubernetes settings
+ 
+These are asked for by the `set up` command but are not stored in the project config file. The
+cluster IP address and username can be found on the cluster page for the team in the 
+[Continuous Pipe admin site](https://ui.continuouspipe.io/):
+
+![Project Key](/docs/images/kubernetes-config.png?raw=true)
+
+The password can be provided by your Continuous Pipe administrator. 

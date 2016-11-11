@@ -81,12 +81,12 @@ function namespace {
         echo "$CUSTOM_NAMESPACE"
         return
     else
-        echo "$NAMESPACE"
+        echo "$PROJECT_KEY-$REMOTE_BRANCH"
     fi
 }
 
 function context {
-    echo "$NAMESPACE"
+    echo "$PROJECT_KEY-$REMOTE_BRANCH"
 }
 
 function default_container {
@@ -132,7 +132,7 @@ function validate_settings {
 
     source "$(settings_file)"
 
-    REQUIRED_SETTINGS=( NAMESPACE REMOTE_BRANCH REMOTE_NAME PROJECT_KEY)
+    REQUIRED_SETTINGS=( REMOTE_BRANCH REMOTE_NAME PROJECT_KEY)
     for i in "${REQUIRED_SETTINGS[@]}"
     do
     	if [ -z "${!i}" ]; then
@@ -176,8 +176,7 @@ function setup {
     REMOTE_NAME="${REMOTE_NAME:-origin}"
     NAMESPACE="$PROJECT_KEY-$REMOTE_BRANCH"
 
-    echo "NAMESPACE=$NAMESPACE" > "$REMOTE_DIR"
-    echo "REMOTE_BRANCH=$REMOTE_BRANCH" >> "$REMOTE_DIR"
+    echo "REMOTE_BRANCH=$REMOTE_BRANCH" > "$REMOTE_DIR"
     echo "REMOTE_NAME=$REMOTE_NAME" >> "$REMOTE_DIR"
     echo "PROJECT_KEY=$PROJECT_KEY" >> "$REMOTE_DIR"
     echo "DEFAULT_CONTAINER=$DEFAULT_CONTAINER" >> "$REMOTE_DIR"
