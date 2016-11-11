@@ -39,7 +39,7 @@ To start using this tool for a project, run the `setup` command from the project
 Your answers will be stored in a `.cp-remote-env-settings` file in the project root. You 
  will probably want to add this to your .gitignore file.
  
-## Creating amd building remote environment
+## Creating and building remote environment
 
 ```
 cp-remote build
