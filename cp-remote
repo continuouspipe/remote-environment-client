@@ -31,7 +31,7 @@ function quit_anybar {
 
 function anybar {
     if [ -n "$ANYBAR_PORT" ]; then
-        echo -n $1 | nc -4u -w0 localhost $ANYBAR_PORT
+        echo -n "$1" | nc -4u -w0 localhost "$ANYBAR_PORT"
     fi
 }
 
