@@ -19,7 +19,7 @@ function help {
 }
 
 function open_anybar {
-    if [ -n $ANYBAR_PORT ]; then
+    if [ -n "$ANYBAR_PORT" ]; then
         trap quit_anybar SIGINT
         ANYBAR_PORT=$ANYBAR_PORT open -a AnyBar
     fi
@@ -30,7 +30,7 @@ function quit_anybar {
 }
 
 function anybar {
-    if [ -n $ANYBAR_PORT ]; then
+    if [ -n "$ANYBAR_PORT" ]; then
         echo -n $1 | nc -4u -w0 localhost $ANYBAR_PORT
     fi
 }
