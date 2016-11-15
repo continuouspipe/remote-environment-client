@@ -1,5 +1,4 @@
 #!/bin/bash
-
 CALLING_DIR=$(pwd)
 
 function help {
@@ -338,18 +337,17 @@ function port_forward {
 
 function check_version {
 
-    CURRENT_VERSION=`cat ${0} | grep "^# Version" | head -1 | awk '{print $3}'`
-    LATEST_VERSION=`curl -s https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/downloads/cp-remote-latest | grep "# Version" | awk '{print $3}'`
+    CURRENT_VERSION=$(grep "^# Version" "${0}" | head -1 | awk '{print $3}')
+    LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/downloads/cp-remote-latest | grep "^# Version" | head -1 | awk '{print $3}')
 
-    if [ $CURRENT_VERSION != $LATEST_VERSION ]; then
+    if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
         echo
         echo "You do not have the latest version of this tool."
         echo
         echo "You are using version $CURRENT_VERSION"
         echo "To install $LATEST_VERSION run:"
         echo
-        echo "sudo curl https://continuouspipe.github.io/remote-environment-client/downloads/cp-remote-latest > /usr/local/bin/cp-remote"
-        echo "chmod +x /usr/local/bin/cp-remote"
+        echo "sudo curl https://continuouspipe.github.io/remote-environment-client/downloads/cp-remote-latest > /usr/local/bin/cp-remote && chmod +x /usr/local/bin/cp-remote"
         echo
     else
         echo
