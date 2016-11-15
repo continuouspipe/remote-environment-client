@@ -1,5 +1,4 @@
 #!/bin/bash
-
 CALLING_DIR=$(pwd)
 
 function help {
@@ -16,6 +15,7 @@ function help {
 	echo "   resync            Sync remote changes to and from the local filesystem"
 	echo "   forward           Forward a port to a container"
 	echo "   destroy           Destroy the remote environment"
+	echo "   checkversion      Check for updates to this tool"
 }
 
 function open_anybar {
@@ -335,12 +335,33 @@ function port_forward {
     kubectl --context="$(context)" --namespace="$(namespace)" port-forward "$POD" "$LOCAL_PORT":"$REMOTE_PORT"
 }
 
+function check_version {
+
+    CURRENT_VERSION=$(grep "^# Version" "${0}" | head -1 | awk '{print $3}')
+    LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/downloads/cp-remote-latest | grep "^# Version" | head -1 | awk '{print $3}')
+
+    if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
+        echo
+        echo "You do not have the latest version of this tool."
+        echo
+        echo "You are using version $CURRENT_VERSION"
+        echo "To install $LATEST_VERSION run:"
+        echo
+        echo "sudo curl https://continuouspipe.github.io/remote-environment-client/downloads/cp-remote-latest > /usr/local/bin/cp-remote && chmod +x /usr/local/bin/cp-remote"
+        echo
+    else
+        echo
+        echo "You are using the latest version ($LATEST_VERSION) of this tool"
+    fi
+
+}
+
 case $1 in
     -h|--help|help)
     help
     exit 0
     ;;
-    setup|build|watch|ssh|destroy|resync|forward)
+    setup|build|watch|ssh|destroy|resync|forward|checkversion)
     COMMAND="$1"
     ;;
     *)
@@ -397,6 +418,9 @@ case $COMMAND in
         container_specified "$2"
         validate_settings
         port_forward "$2" "$3" "$4"
+        ;;
+    checkversion)
+        check_version
         ;;
 	*)
 		echo "Command not found: $COMMAND"
