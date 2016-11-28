@@ -236,9 +236,9 @@ use the default port of 1738, as the notifications are not sent unless a port nu
 
 ### Keen.io settings 
 
-What is your keen.io write key? (KEEN_WRITE_KEY)
-What is your keen.io project id? (KEEN_PROJECT_ID)
-What is your keen.io event collection? (KEEN_EVENT_COLLECTION)
+ * What is your keen.io write key? (KEEN_WRITE_KEY)
+ * What is your keen.io project id? (KEEN_PROJECT_ID)
+ * What is your keen.io event collection? (KEEN_EVENT_COLLECTION)
  
 These are only needed if you want to log usage stats using https://keen.io/.
 
@@ -253,6 +253,6 @@ cluster IP address and username can be found on the cluster page for the team in
 
 ![Project Key](/docs/images/kubernetes-config.png?raw=true)
 
-What is the cluster password?
+* What is the cluster password?
 
 The password can be provided by your Continuous Pipe administrator.
