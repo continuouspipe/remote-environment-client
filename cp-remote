@@ -161,14 +161,14 @@ function setup {
 	
 	REMOTE_DIR="$(settings_file)"
     
-    read -r -p "What is your project key? " PROJECT_KEY
+    read -r -p "What is your Continuous Pipe project key? " PROJECT_KEY
     read -r -p "What is the name of the Git branch you are using for your remote environment? " REMOTE_BRANCH
     read -r -p "What is your github remote name? (defaults to: origin) " REMOTE_NAME
     read -r -p "What is the default container for the watch, ssh and resync commands? (Optional)" DEFAULT_CONTAINER
     read -r -p "What is the IP of the cluster? " CLUSTER_IP
-    read -r -p "What is the username? " USERNAME
-    read -r -p "What is the password? " PASSWORD
-    read -r -p "If you want to use AnyBar, please provide a port number e.g 1738? " ANYBAR_PORT
+    read -r -p "What is the cluster username? " USERNAME
+    read -r -p "What is the cluster password? " PASSWORD
+    read -r -p "If you want to use AnyBar, please provide a port number e.g 1738 ? " ANYBAR_PORT
     read -r -p "What is your keen.io write key? (Optional, only needed if you want to record usage stats) " KEEN_WRITE_KEY
     read -r -p "What is your keen.io project id? (Optional, only needed if you want to record usage stats) " KEEN_PROJECT_ID
     read -r -p "What is your keen.io event collection?  (Optional, only needed if you want to record usage stats) " KEEN_EVENT_COLLECTION
@@ -176,14 +176,14 @@ function setup {
     REMOTE_NAME="${REMOTE_NAME:-origin}"
     NAMESPACE="$PROJECT_KEY-$REMOTE_BRANCH"
 
-    echo "REMOTE_BRANCH=$REMOTE_BRANCH" > "$REMOTE_DIR"
+    echo "PROJECT_KEY=$PROJECT_KEY" > "$REMOTE_DIR"
+    echo "REMOTE_BRANCH=$REMOTE_BRANCH" >> "$REMOTE_DIR"
     echo "REMOTE_NAME=$REMOTE_NAME" >> "$REMOTE_DIR"
-    echo "PROJECT_KEY=$PROJECT_KEY" >> "$REMOTE_DIR"
     echo "DEFAULT_CONTAINER=$DEFAULT_CONTAINER" >> "$REMOTE_DIR"
+    echo "ANYBAR_PORT=$ANYBAR_PORT" >> "$REMOTE_DIR"
     echo "KEEN_WRITE_KEY=$KEEN_WRITE_KEY" >> "$REMOTE_DIR"
     echo "KEEN_PROJECT_ID=$KEEN_PROJECT_ID" >> "$REMOTE_DIR"
     echo "KEEN_EVENT_COLLECTION=$KEEN_EVENT_COLLECTION" >> "$REMOTE_DIR"
-    echo "ANYBAR_PORT=$ANYBAR_PORT" >> "$REMOTE_DIR"
     echo "Remote settings written to $REMOTE_DIR"
 
     kubectl config set-credentials "$NAMESPACE-$USERNAME" --username="$USERNAME" --password="$PASSWORD"
