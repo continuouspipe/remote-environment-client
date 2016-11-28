@@ -165,14 +165,17 @@ The `--namespace|-n` option can be used with the `watch`, `ssh`, `resync` and `f
  environment you can run:
  
  ```
- cp-remote ssh web --namespace=example-feature-my-shiny-new-work
+ cp-remote --namespace=example-feature-my-shiny-new-work ssh web
  ```
   
   or
   
  ```
- cp-remote ssh web -n=example-feature-my-shiny-new-work
+ cp-remote -n=example-feature-my-shiny-new-work ssh web 
  ```
+ 
+ **Note:** the option needs to come immediately after `cp-remote` or it will not work. 
+ This is a limitation of how the option parsing is done in the bash script.
 
 ## Anybar notifications
 
