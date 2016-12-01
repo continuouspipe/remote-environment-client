@@ -81,12 +81,12 @@ function namespace {
         echo "$CUSTOM_NAMESPACE"
         return
     else
-        echo "$PROJECT_KEY-$REMOTE_BRANCH"
+        echo "$PROJECT_KEY-${REMOTE_BRANCH//\//-}"
     fi
 }
 
 function context {
-    echo "$PROJECT_KEY-$REMOTE_BRANCH"
+    echo "$PROJECT_KEY-${REMOTE_BRANCH//\//-}"
 }
 
 function default_container {
@@ -174,7 +174,7 @@ function setup {
     read -r -p "What is your keen.io event collection?  (Optional, only needed if you want to record usage stats) " KEEN_EVENT_COLLECTION
 
     REMOTE_NAME="${REMOTE_NAME:-origin}"
-    NAMESPACE="$PROJECT_KEY-$REMOTE_BRANCH"
+    NAMESPACE="$PROJECT_KEY-${REMOTE_BRANCH//\//-}"
 
     echo "REMOTE_BRANCH=$REMOTE_BRANCH" > "$REMOTE_DIR"
     echo "REMOTE_NAME=$REMOTE_NAME" >> "$REMOTE_DIR"
