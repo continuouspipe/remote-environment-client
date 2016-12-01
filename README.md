@@ -57,7 +57,7 @@ The `build` command will push changes the branch you have checked out locally to
  To rebuild your remote environment to use the current branch you have checked out you can use the 
   `build` command. This will force push the current branch which will make Continuous Pipe rebuild the
   environment. If the remote environment has the latest commit then it would not be rebuilt, in order
-  to force the rebuild a commit is automatically made updating a timestamp file.
+  to force the rebuild an empty commit is automatically made.
  
 ## Watch
  
