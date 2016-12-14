@@ -261,6 +261,10 @@ function ssh {
     bash $@
 }
 
+function sh {
+    bash $@
+}
+
 function bash {
     POD="$(pod "$1")"
     pod_found "$POD"
