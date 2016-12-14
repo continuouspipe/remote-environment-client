@@ -80,17 +80,18 @@ The `build` command will push changes the branch you have checked out locally to
 The watch command should be left running, it will however need restarting whenever the remote environment
 is rebuilt. 
 
-## ssh 
+## bash 
 
  ```
- cp-remote ssh
+ cp-remote bash
+ cp-remote sh
  ```
  
- This will ssh onto the default container specified during setup but you can specify another container to ssh onto.
- For example, if the service you want to ssh on to is web:
+ This will remotely connect to a bash session onto the default container specified during setup but you can specify another
+ container to connect to. For example, if the service you want to connect to is web:
  
  ```
- cp-remote ssh web
+ cp-remote bash web
  ```
  
 ## Resync
@@ -163,20 +164,20 @@ Usage stats for the longer running commands (build and resync) can be logged to 
  
 ## Working with a different environment
  
-The `--namespace|-n` option can be used with the `watch`, `ssh`, `resync` and `forward`
+The `--namespace|-n` option can be used with the `watch`, `bash`, `resync` and `forward`
  commands to run them against a different environment than the one specified during
  setup. This is useful if you need to access a different environment such as a feature branch
- environment. For example, to ssh onto the `web` container of the `example-feature-my-shiny-new-work`
+ environment. For example, to open a bash session on the `web` container of the `example-feature-my-shiny-new-work`
  environment you can run:
  
  ```
- cp-remote ssh web --namespace=example-feature-my-shiny-new-work
+ cp-remote bash web --namespace=example-feature-my-shiny-new-work
  ```
   
   or
   
  ```
- cp-remote ssh web -n=example-feature-my-shiny-new-work
+ cp-remote bash web -n=example-feature-my-shiny-new-work
  ```
 
 ## Anybar notifications
@@ -214,15 +215,15 @@ project specific naming convention for this e.g. `remote-<your name>`
 The name of the git remote for the GitHub project which has the Continuous Pipe integration.
 In most cases you will have cloned the project repo from this so this will be `origin`.   
  
-### What is the default container for the watch, ssh and resync commands? (DEFAULT_CONTAINER)     
+### What is the default container for the watch, bash and resync commands? (DEFAULT_CONTAINER)     
  
-This is an optional setting, if provided this will be used by the `ssh`, `watch` and `resync` commands as
-the container you ssh onto, watch for file changes or resync with respectively unless you provide
+This is an optional setting, if provided this will be used by the `bash`, `watch` and `resync` commands as
+the container you connect to, watch for file changes or resync with respectively unless you provide
 an alternative container to the command. It is the docker-compose  service name for the container 
 that you need to provide, it may be called something like `web` or `app`.
 
 If you do not provide a default container it will need to be specified every time you use the 
-`ssh`, `watch` and `resync` commands.
+`bash`, `watch` and `resync` commands.
 
 ### If you want to use AnyBar, please provide a port number e.g 1738 ? (ANYBAR_PORT)
 
