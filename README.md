@@ -100,7 +100,7 @@ is rebuilt.
   cp-remote resync
   ```
  
-When the remote environment is rebuilt it may container changes that you do not have on the local filesystem. 
+When the remote environment is rebuilt it may contain changes that you do not have on the local filesystem. 
   For example, for a PHP project part of building the remote environment could be installing the vendors using composer.
   Any new or updated vendors would be on the remote environment but not on the local filesystem which would cause issues, 
   such as autocomplete in your IDE not working correctly. The `resync` command will copy changes  from the remote to the local 
