@@ -391,7 +391,7 @@ case $1 in
     help
     exit 0
     ;;
-    setup|build|watch|ssh|destroy|fetch|resync|forward|checkversion)
+    setup|build|watch|ssh|bash|destroy|fetch|resync|forward|checkversion)
     COMMAND="$1"
     ;;
     *)
@@ -429,6 +429,11 @@ case $COMMAND in
     build)
         validate_settings
         build
+        ;;
+    bash)
+        validate_settings
+        container_specified "$2"
+        bash "$(container "$2")"
         ;;
     ssh)
         validate_settings
