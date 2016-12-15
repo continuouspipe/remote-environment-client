@@ -12,6 +12,7 @@ function help {
 	echo "   build             Create/Update the remote environment"
 	echo "   watch             Watch local changes and synchronize with the remote environment"
 	echo "   bash              Open a bash session in the remote environment container"
+	echo "   fetch             Sync remote changes to the local filesystem"
 	echo "   resync            Sync remote changes to and from the local filesystem"
 	echo "   forward           Forward a port to a container"
 	echo "   destroy           Destroy the remote environment"
@@ -170,7 +171,7 @@ function setup {
     read -r -p "What is your Continuous Pipe project key? " PROJECT_KEY
     read -r -p "What is the name of the Git branch you are using for your remote environment? " REMOTE_BRANCH
     read -r -p "What is your github remote name? (defaults to: origin) " REMOTE_NAME
-    read -r -p "What is the default container for the watch, bash and resync commands? (Optional) " DEFAULT_CONTAINER
+    read -r -p "What is the default container for the watch, bash, fetch and resync commands? (Optional) " DEFAULT_CONTAINER
     read -r -p "What is the IP of the cluster? " CLUSTER_IP
     read -r -p "What is the cluster username? " USERNAME
     read -r -p "What is the cluster password? " PASSWORD
@@ -333,6 +334,19 @@ function resync {
     log "resync" "$START_TIME"
 }
 
+function fetch {
+    open_anybar
+    START_TIME="$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")"
+    POD=$(pod "$1")
+    pod_found "$POD"
+
+    rsync -zrlptDv --blocking-io  --force --exclude=".*" \
+        -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- --:/app/ "$(dir)"
+
+    anybar green
+    log "fetch" "$START_TIME"
+}
+
 function port_forward {
     POD=$(pod "$1")
     pod_found "$POD"
@@ -380,7 +394,7 @@ case $1 in
     help
     exit 0
     ;;
-    setup|build|watch|ssh|destroy|resync|forward|checkversion)
+    setup|build|watch|ssh|bash|destroy|fetch|resync|forward|checkversion)
     COMMAND="$1"
     ;;
     *)
@@ -419,6 +433,11 @@ case $COMMAND in
         validate_settings
         build
         ;;
+    bash)
+        validate_settings
+        container_specified "$2"
+        bash "$(container "$2")"
+        ;;
     ssh)
         validate_settings
         container_specified "$2"
@@ -432,6 +451,11 @@ case $COMMAND in
         validate_settings
         container_specified "$2"
         resync "$(container "$2")"
+        ;;
+    fetch)
+        validate_settings
+        container_specified "$2"
+        fetch "$(container "$2")"
         ;;
     forward)
         container_specified "$2"

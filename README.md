@@ -93,26 +93,37 @@ is rebuilt.
  ```
  cp-remote bash web
  ```
- 
-## Resync
 
-```
-  cp-remote resync
+## Fetch
+
+  ```
+  cp-remote fetch
   ```
  
 When the remote environment is rebuilt it may contain changes that you do not have on the local filesystem. 
   For example, for a PHP project part of building the remote environment could be installing the vendors using composer.
   Any new or updated vendors would be on the remote environment but not on the local filesystem which would cause issues, 
-  such as autocomplete in your IDE not working correctly. The `resync` command will copy changes  from the remote to the local 
+  such as autocomplete in your IDE not working correctly. The `fetch` command will copy changes  from the remote to the local 
   filesystem. This will resync with the default container specified during setup but you can specify another container.
   For example to resync with the `web` container:
   
   ```
+    cp-remote fetch web
+  ```
+   
+## Resync
+
+  ```
+  cp-remote resync
+  ```
+ 
+The fetch command may overwrite local changes that have not been commited to git yet. The resync command stashes these changes first
+ and then after fetching the remote changes unstashes and transfers back these changes. This will resync with the default 
+ container specified during setup but you can specify another container. For example to resync with the `web` container:
+  
+  ```
   cp-remote resync web
   ```
-  
-  To ensure your local changes are kept, the resync command first stashes your changes, syncs from the remote to local,
-  reapplies the changes and syncs them from local to the remote.
   
 ## Port Forwarding
 
@@ -215,15 +226,15 @@ project specific naming convention for this e.g. `remote-<your name>`
 The name of the git remote for the GitHub project which has the Continuous Pipe integration.
 In most cases you will have cloned the project repo from this so this will be `origin`.   
  
-### What is the default container for the watch, bash and resync commands? (DEFAULT_CONTAINER)     
+### What is the default container for the watch, bash, fetch and resync commands? (DEFAULT_CONTAINER)     
  
-This is an optional setting, if provided this will be used by the `bash`, `watch` and `resync` commands as
-the container you connect to, watch for file changes or resync with respectively unless you provide
+This is an optional setting, if provided this will be used by the `bash`, `watch`, `fetch` and `resync` commands as
+the container you connect to, watch for file changes, fetch changes from or resync with respectively unless you provide
 an alternative container to the command. It is the docker-compose  service name for the container 
 that you need to provide, it may be called something like `web` or `app`.
 
 If you do not provide a default container it will need to be specified every time you use the 
-`bash`, `watch` and `resync` commands.
+`bash`, `watch`, `fetch` and `resync` commands.
 
 ### If you want to use AnyBar, please provide a port number e.g 1738 ? (ANYBAR_PORT)
 
