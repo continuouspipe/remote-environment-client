@@ -170,7 +170,7 @@ function setup {
     read -r -p "What is your Continuous Pipe project key? " PROJECT_KEY
     read -r -p "What is the name of the Git branch you are using for your remote environment? " REMOTE_BRANCH
     read -r -p "What is your github remote name? (defaults to: origin) " REMOTE_NAME
-    read -r -p "What is the default container for the watch, bash and resync commands? (Optional) " DEFAULT_CONTAINER
+    read -r -p "What is the default container for the watch, bash, fetch and resync commands? (Optional) " DEFAULT_CONTAINER
     read -r -p "What is the IP of the cluster? " CLUSTER_IP
     read -r -p "What is the cluster username? " USERNAME
     read -r -p "What is the cluster password? " PASSWORD
