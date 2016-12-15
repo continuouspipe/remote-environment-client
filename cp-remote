@@ -86,7 +86,12 @@ function namespace {
 }
 
 function context {
-    echo "$KUBERNETES_CONFIG_KEY"
+    if [ -n "$KUBERNETES_CONFIG_KEY" ]; then
+         echo "$KUBERNETES_CONFIG_KEY"
+        return
+    else
+        echo "$PROJECT_KEY-${REMOTE_BRANCH//\//-}"
+    fi
 }
 
 function default_container {
@@ -132,7 +137,7 @@ function validate_settings {
 
     source "$(settings_file)"
 
-    REQUIRED_SETTINGS=( REMOTE_BRANCH REMOTE_NAME PROJECT_KEY KUBERNETES_CONFIG_KEY)
+    REQUIRED_SETTINGS=( REMOTE_BRANCH REMOTE_NAME PROJECT_KEY)
     for i in "${REQUIRED_SETTINGS[@]}"
     do
     	if [ -z "${!i}" ]; then
