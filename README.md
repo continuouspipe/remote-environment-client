@@ -229,7 +229,7 @@ In most cases you will have cloned the project repo from this so this will be `o
 ### What is the default container for the watch, bash, fetch and resync commands? (DEFAULT_CONTAINER)     
  
 This is an optional setting, if provided this will be used by the `bash`, `watch`, `fetch` and `resync` commands as
-the container you ssh onto, watch for file changes or resync with respectively unless you provide
+the container you connect to, watch for file changes, fetch changes from or resync with respectively unless you provide
 an alternative container to the command. It is the docker-compose  service name for the container 
 that you need to provide, it may be called something like `web` or `app`.
 
