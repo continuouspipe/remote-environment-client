@@ -135,6 +135,7 @@ function validate_settings {
          exit;
     fi
 
+    # shellcheck source=/dev/null
     source "$(settings_file)"
 
     REQUIRED_SETTINGS=( REMOTE_BRANCH REMOTE_NAME PROJECT_KEY)
@@ -181,17 +182,19 @@ function setup {
     REMOTE_NAME="${REMOTE_NAME:-origin}"
     NAMESPACE="$PROJECT_KEY-${REMOTE_BRANCH//\//-}"
 
-    echo "PROJECT_KEY=$PROJECT_KEY" > "$REMOTE_DIR"
-    echo "REMOTE_BRANCH=$REMOTE_BRANCH" >> "$REMOTE_DIR"
-    echo "REMOTE_NAME=$REMOTE_NAME" >> "$REMOTE_DIR"
-    echo "DEFAULT_CONTAINER=$DEFAULT_CONTAINER" >> "$REMOTE_DIR"
-    echo "ANYBAR_PORT=$ANYBAR_PORT" >> "$REMOTE_DIR"
-    echo "KEEN_WRITE_KEY=$KEEN_WRITE_KEY" >> "$REMOTE_DIR"
-    echo "KEEN_PROJECT_ID=$KEEN_PROJECT_ID" >> "$REMOTE_DIR"
-    echo "KEEN_EVENT_COLLECTION=$KEEN_EVENT_COLLECTION" >> "$REMOTE_DIR"
-    echo "ANYBAR_PORT=$ANYBAR_PORT" >> "$REMOTE_DIR"
-    echo "# Do not change the KUBERNETES_CONFIG_KEY. If it has been changed please run the setup command again" >> "$REMOTE_DIR"
-    echo "KUBERNETES_CONFIG_KEY=$NAMESPACE" >> "$REMOTE_DIR"
+    {
+        echo "PROJECT_KEY=$PROJECT_KEY";
+        echo "REMOTE_BRANCH=$REMOTE_BRANCH";
+        echo "REMOTE_NAME=$REMOTE_NAME";
+        echo "DEFAULT_CONTAINER=$DEFAULT_CONTAINER";
+        echo "ANYBAR_PORT=$ANYBAR_PORT"
+        echo "KEEN_WRITE_KEY=$KEEN_WRITE_KEY"
+        echo "KEEN_PROJECT_ID=$KEEN_PROJECT_ID"
+        echo "KEEN_EVENT_COLLECTION=$KEEN_EVENT_COLLECTION"
+        echo "ANYBAR_PORT=$ANYBAR_PORT"
+        echo "# Do not change the KUBERNETES_CONFIG_KEY. If it has been changed please run the setup command again"
+        echo "KUBERNETES_CONFIG_KEY=$NAMESPACE"
+    } > "$REMOTE_DIR"
     echo "Remote settings written to $REMOTE_DIR"
 
     kubectl config set-credentials "$NAMESPACE-$USERNAME" --username="$USERNAME" --password="$PASSWORD"
@@ -264,11 +267,11 @@ function delete_remote {
 
 function ssh {
     echo "'cp-remote ssh' is deprecated, please use 'cp-remote bash'"
-    bash $@
+    bash "$@"
 }
 
 function sh {
-    bash $@
+    bash "$@"
 }
 
 function bash {
