@@ -33,8 +33,13 @@ cp-remote setup
 
 To start using this tool for a project, run the `setup` command from the project root.
  This will install kubectl if you do not have it installed already. It will then 
- ask a series of questions to get the details for the project set up. More information
- about these questions can be found in the [Configuration section](#configuration) below.
+ ask a series of questions to get the details for the project set up. [Please read the further 
+ information about these questions](#configuration) in the Configuration section below before 
+ running this command for the first time.
+ 
+ Many of the answers are project specific, it is advisable to provide details of the answers in the
+ project specific README and to securely share sensitive details, such as the cluster password with 
+ team members rather than them rely on the general information provided here.
  
 Your answers will be stored in a `.cp-remote-env-settings` file in the project root. You 
  will probably want to add this to your .gitignore file.
@@ -45,7 +50,7 @@ Your answers will be stored in a `.cp-remote-env-settings` file in the project r
 cp-remote build
 ```
 
-### Creating a new remote environments
+### Creating a new remote environment
 
 The `build` command will push changes the branch you have checked out locally to your remote 
  environment branch. Continuous Pipe will then build the environment. You can use the [Continuous Pipe admin
@@ -75,17 +80,18 @@ The `build` command will push changes the branch you have checked out locally to
 The watch command should be left running, it will however need restarting whenever the remote environment
 is rebuilt. 
 
-## ssh 
+## bash 
 
  ```
- cp-remote ssh
+ cp-remote bash
+ cp-remote sh
  ```
  
- This will ssh onto the default container specified during setup but you can specify another container to ssh onto.
- For example, if the service you want to ssh on to is web:
+ This will remotely connect to a bash session onto the default container specified during setup but you can specify another
+ container to connect to. For example, if the service you want to connect to is web:
  
  ```
- cp-remote ssh web
+ cp-remote bash web
  ```
  
 ## Resync
@@ -94,7 +100,7 @@ is rebuilt.
   cp-remote resync
   ```
  
-When the remote environment is rebuilt it may container changes that you do not have on the local filesystem. 
+When the remote environment is rebuilt it may contain changes that you do not have on the local filesystem. 
   For example, for a PHP project part of building the remote environment could be installing the vendors using composer.
   Any new or updated vendors would be on the remote environment but not on the local filesystem which would cause issues, 
   such as autocomplete in your IDE not working correctly. The `resync` command will copy changes  from the remote to the local 
@@ -158,20 +164,20 @@ Usage stats for the longer running commands (build and resync) can be logged to 
  
 ## Working with a different environment
  
-The `--namespace|-n` option can be used with the `watch`, `ssh`, `resync` and `forward`
+The `--namespace|-n` option can be used with the `watch`, `bash`, `resync` and `forward`
  commands to run them against a different environment than the one specified during
  setup. This is useful if you need to access a different environment such as a feature branch
- environment. For example, to ssh onto the `web` container of the `example-feature-my-shiny-new-work`
+ environment. For example, to open a bash session on the `web` container of the `example-feature-my-shiny-new-work`
  environment you can run:
  
  ```
- cp-remote ssh web --namespace=example-feature-my-shiny-new-work
+ cp-remote bash web --namespace=example-feature-my-shiny-new-work
  ```
   
   or
   
  ```
- cp-remote ssh web -n=example-feature-my-shiny-new-work
+ cp-remote bash web -n=example-feature-my-shiny-new-work
  ```
 
 ## Anybar notifications
@@ -189,7 +195,7 @@ or you can directly edit the settings.
 Note: the kubectl cluster IP address, username and password are not stored in this file. To change these
  you can run `setup` again.
  
-### PROJECT_KEY
+### What is your Continuous Pipe project key? (PROJECT_KEY)
  
 This is the project name used in Continuous Pipe. It will be prefixed to all the environment
 names created by Continuous Pipe. You can find this on the environments page for the tide on the 
@@ -199,39 +205,55 @@ names created by Continuous Pipe. You can find this on the environments page for
 
 Here, this is the environment for the develop branch, so the project key is `my-project`.
 
-### REMOTE_BRANCH
+### What is the name of the Git branch you are using for your remote environment? (REMOTE_BRANCH)
 
 The name of the branch you will use for your remote environment. There may be a 
 project specific naming convention for this e.g. `remote-<your name>`
 
-### REMOTE_NAME
+### What is your github remote name?  (REMOTE_NAME)
 
 The name of the git remote for the GitHub project which has the Continuous Pipe integration.
 In most cases you will have cloned the project repo from this so this will be `origin`.   
  
-### DEFAULT_CONTAINER     
+### What is the default container for the watch, bash and resync commands? (DEFAULT_CONTAINER)     
  
-This is an optional setting, if provided this will be used by the `ssh`, `watch` and `resync` commands as
-the container you ssh onto, watch for file changes or resync with respectively unless you provide
+This is an optional setting, if provided this will be used by the `bash`, `watch` and `resync` commands as
+the container you connect to, watch for file changes or resync with respectively unless you provide
 an alternative container to the command. It is the docker-compose  service name for the container 
 that you need to provide, it may be called something like `web` or `app`.
 
-### KEEN_WRITE_KEY, KEEN_PROJECT_ID and KEEN_EVENT_COLLECTION
- 
-These are only needed if you want to log usage stats using https://keen.io/. 
+If you do not provide a default container it will need to be specified every time you use the 
+`bash`, `watch` and `resync` commands.
 
-### ANYBAR_PORT
+### If you want to use AnyBar, please provide a port number e.g 1738 ? (ANYBAR_PORT)
 
 This is only needed if you want to get [AnyBar](https://github.com/tonsky/AnyBar) notifications.
-A value needs to be provided, even if you want to use the default port of 1738, as the 
-notifications are not sent when no port number is provided.
+This will provide a coloured dot in the OSX status bar which will show when syncing activity is 
+taking place. This provides some feedback to know that changes have been synced to the remote
+development environment.
+
+A value needs to be provided in answer to the question, even if you want to 
+use the default port of 1738, as the notifications are not sent unless a port number is provided.
+
+### Keen.io settings 
+
+ * What is your keen.io write key? (KEEN_WRITE_KEY)
+ * What is your keen.io project id? (KEEN_PROJECT_ID)
+ * What is your keen.io event collection? (KEEN_EVENT_COLLECTION)
+ 
+These are only needed if you want to log usage stats using https://keen.io/.
 
 ### Kubernetes settings
- 
+
+What is the IP of the cluster? 
+What is the cluster username? 
+
 These are asked for by the `setup` command but are not stored in the project config file. The
 cluster IP address and username can be found on the cluster page for the team in the 
 [Continuous Pipe admin site](https://ui.continuouspipe.io/):
 
 ![Project Key](/docs/images/kubernetes-config.png?raw=true)
 
-The password can be provided by your Continuous Pipe administrator. 
+* What is the cluster password?
+
+The password can be provided by your Continuous Pipe administrator.
