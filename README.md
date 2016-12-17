@@ -1,6 +1,6 @@
 # Remote environment client
 
-A command line tool to help with using Continuous Pipe as a remote development environment.
+A command line tool to help with using ContinuousPipe as a remote development environment.
 
 This helps to set up Kubectl, create, build and destroy remote environments and keep files
 in sync with the local filesystem.
@@ -9,7 +9,7 @@ in sync with the local filesystem.
 
 You will need the following:
 
- * A Continuous Pipe hosted project with the GitHub integration set up
+ * A ContinuousPipe hosted project with the GitHub integration set up
  * The project checked out locally 
  * The IP address, username and password to use for Kubenetes cluster
  * rsync and fswatch installed locally
@@ -53,14 +53,14 @@ cp-remote build
 ### Creating a new remote environment
 
 The `build` command will push changes the branch you have checked out locally to your remote 
- environment branch. Continuous Pipe will then build the environment. You can use the [Continuous Pipe admin
+ environment branch. ContinuousPipe will then build the environment. You can use the [ContinuousPipe admin
  site](https://ui.continuouspipe.io/) to see when the environment has finished building and 
  to find its IP address.
  
 ### Rebuilding the remote environment 
  
  To rebuild your remote environment to use the current branch you have checked out you can use the 
-  `build` command. This will force push the current branch which will make Continuous Pipe rebuild the
+  `build` command. This will force push the current branch which will make ContinuousPipe rebuild the
   environment. If the remote environment has the latest commit then it would not be rebuilt, in order
   to force the rebuild an empty commit is automatically made.
  
@@ -164,7 +164,7 @@ to forward. For example, with a container named db running MySql you would run:
  cp-remote destroy
  ```
  
-The `destroy` command will delete the remote branch used for your remote environment, Continuous Pipe will
+The `destroy` command will delete the remote branch used for your remote environment, ContinuousPipe will
 then remove the environment.
 
 ## Usage Logging
@@ -206,11 +206,11 @@ or you can directly edit the settings.
 Note: the kubectl cluster IP address, username and password are not stored in this file. To change these
  you can run `setup` again.
  
-### What is your Continuous Pipe project key? (PROJECT_KEY)
+### What is your ContinuousPipe project key? (PROJECT_KEY)
  
-This is the project name used in Continuous Pipe. It will be prefixed to all the environment
-names created by Continuous Pipe. You can find this on the environments page for the tide on the 
-[Continuous Pipe admin site](https://ui.continuouspipe.io/). For example:
+This is the project name used in ContinuousPipe. It will be prefixed to all the environment
+names created by ContinuousPipe. You can find this on the environments page for the tide on the 
+[ContinuousPipe admin site](https://ui.continuouspipe.io/). For example:
 
 ![Project Key](/docs/images/project-key.png?raw=true)
 
@@ -223,7 +223,7 @@ project specific naming convention for this e.g. `remote-<your name>`
 
 ### What is your github remote name?  (REMOTE_NAME)
 
-The name of the git remote for the GitHub project which has the Continuous Pipe integration.
+The name of the git remote for the GitHub project which has the ContinuousPipe integration.
 In most cases you will have cloned the project repo from this so this will be `origin`.   
  
 ### What is the default container for the watch, bash, fetch and resync commands? (DEFAULT_CONTAINER)     
@@ -261,10 +261,10 @@ What is the cluster username?
 
 These are asked for by the `setup` command but are not stored in the project config file. The
 cluster IP address and username can be found on the cluster page for the team in the 
-[Continuous Pipe admin site](https://ui.continuouspipe.io/):
+[ContinuousPipe admin site](https://ui.continuouspipe.io/):
 
 ![Project Key](/docs/images/kubernetes-config.png?raw=true)
 
 * What is the cluster password?
 
-The password can be provided by your Continuous Pipe administrator.
+The password can be provided by your ContinuousPipe administrator.
