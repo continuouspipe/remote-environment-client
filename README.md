@@ -21,7 +21,7 @@ need to add a remote for that repository.
 ## Installation
 
 ```
-sudo curl https://continuouspipe.github.io/remote-environment-client/downloads/cp-remote-latest > /usr/local/bin/cp-remote
+sudo curl https://continuouspipe.github.io/remote-environment-client/downloads/cp-remote-latest > /usr/local/bin/cp-remote && \
 chmod +x /usr/local/bin/cp-remote
 ```
 
