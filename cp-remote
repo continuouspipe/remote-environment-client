@@ -295,7 +295,7 @@ function watch {
     # Watch for changes and sync (exclude hidden files)
     echo    "Watching for changes. Quit anytime with Ctrl-C."
     anybar green
-    fswatch -0 -r -l "$LATENCY" .. --exclude="/\.[^/]*$" --exclude="\.idea" --exclude="\.git" --exclude="___jb_old___" --exclude="___jb_tmp___" \
+    fswatch -0 -r -l "$LATENCY" . --exclude="/\.[^/]*$" --exclude="\.idea" --exclude="\.git" --exclude="___jb_old___" --exclude="___jb_tmp___" \
     | while read -r -d "" event
       do
         anybar orange
