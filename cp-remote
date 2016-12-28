@@ -65,6 +65,10 @@ function settings_file {
     echo "$(dir)/.cp-remote-env-settings"
 }
 
+function excludes_file {
+    echo "$(dir)/cp-remote-excludes.txt"
+}
+
 function project_key {
     echo "$PROJECT_KEY"
 }
@@ -167,6 +171,10 @@ function setup {
 	fi
 	
 	REMOTE_DIR="$(settings_file)"
+
+    if [ ! -f "$(excludes_file)" ]; then
+        touch $(excludes_file)
+    fi
     
     read -r -p "What is your Continuous Pipe project key? " PROJECT_KEY
     read -r -p "What is the name of the Git branch you are using for your remote environment? " REMOTE_BRANCH
@@ -303,7 +311,7 @@ function watch {
         file="${event/$(dir)/$PROJECT_DIR_WITH_DOT}"
         echo
 
-        rsync --relative -rlptDv -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$file" --:/app
+        rsync --relative -rlptDv --exclude-from=$(excludes_file) -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$file" --:/app
         echo "done."
         anybar green
       done
@@ -322,12 +330,12 @@ function resync {
         exit
     fi
     anybar red
-    rsync -zrlptDv --blocking-io  --force --exclude=".*" \
+    rsync -zrlptDv --blocking-io  --force --exclude=".*" --exclude-from="$(excludes_file)"  \
         -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- --:/app/ "$(dir)"
 
     git reset --hard -q && git stash apply --index -q && git stash drop -q
 
-    rsync -zrlptDv --blocking-io  --force --exclude=".*" \
+    rsync -zrlptDv --blocking-io  --force --exclude=".*" --exclude-from="$(excludes_file)" \
         -e 'kubectl  --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$(dir)/." --:/app
 
     anybar green
@@ -340,7 +348,7 @@ function fetch {
     POD=$(pod "$1")
     pod_found "$POD"
 
-    rsync -zrlptDv --blocking-io  --force --exclude=".*" \
+    rsync -zrlptDv --blocking-io  --force --exclude=".*" --exclude-from="$(excludes_file)" \
         -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- --:/app/ "$(dir)"
 
     anybar green
