@@ -66,7 +66,14 @@ function settings_file {
 }
 
 function excludes_file {
-    echo "$(dir)/cp-remote-excludes.txt"
+
+    EXCLUDES_FILE="$(dir)/cp-remote-excludes.txt"
+
+    if [ ! -f "${EXCLUDES_FILE}" ]; then
+        touch "${EXCLUDES_FILE}"
+    fi
+
+    echo "${EXCLUDES_FILE}"
 }
 
 function project_key {
@@ -171,10 +178,6 @@ function setup {
 	fi
 	
 	REMOTE_DIR="$(settings_file)"
-
-    if [ ! -f "$(excludes_file)" ]; then
-        touch $(excludes_file)
-    fi
     
     read -r -p "What is your Continuous Pipe project key? " PROJECT_KEY
     read -r -p "What is the name of the Git branch you are using for your remote environment? " REMOTE_BRANCH
