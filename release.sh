@@ -18,6 +18,9 @@ TAG=$1
 git checkout master
 git tag "${TAG}"
 
+# Use argbash to create releasable file
+argbash $FILE_NAME.m4 -o $FILE_NAME
+
 # Add the build details
 awk 'NR==2 {print "\# Version: '"$TAG"'"} 1' $FILE_NAME > $FILE_NAME.build
 
