@@ -182,13 +182,13 @@ The `--namespace|-n` option can be used with the `watch`, `bash`, `resync` and `
  environment you can run:
  
  ```
- cp-remote bash web --namespace=example-feature-my-shiny-new-work
+ cp-remote bash --namespace=example-feature-my-shiny-new-work web 
  ```
   
   or
   
  ```
- cp-remote bash web -n=example-feature-my-shiny-new-work
+ cp-remote bash -n=example-feature-my-shiny-new-work web 
  ```
 
 ## Anybar notifications
