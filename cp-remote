@@ -65,6 +65,17 @@ function settings_file {
     echo "$(dir)/.cp-remote-env-settings"
 }
 
+function excludes_file {
+
+    EXCLUDES_FILE="$(dir)/.cp-remote-ignore"
+
+    if [ ! -f "${EXCLUDES_FILE}" ]; then
+        touch "${EXCLUDES_FILE}"
+    fi
+
+    echo "${EXCLUDES_FILE}"
+}
+
 function project_key {
     echo "$PROJECT_KEY"
 }
@@ -303,7 +314,7 @@ function watch {
         file="${event/$(dir)/$PROJECT_DIR_WITH_DOT}"
         echo
 
-        rsync --relative -rlptDv -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$file" --:/app
+        rsync --relative -rlptDv --exclude-from=$(excludes_file) -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$file" --:/app
         echo "done."
         anybar green
       done
@@ -322,12 +333,12 @@ function resync {
         exit
     fi
     anybar red
-    rsync -zrlptDv --blocking-io  --force --exclude=".*" \
+    rsync -zrlptDv --blocking-io  --force --exclude=".*" --exclude-from="$(excludes_file)"  \
         -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- --:/app/ "$(dir)"
 
     git reset --hard -q && git stash apply --index -q && git stash drop -q
 
-    rsync -zrlptDv --blocking-io  --force --exclude=".*" \
+    rsync -zrlptDv --blocking-io  --force --exclude=".*" --exclude-from="$(excludes_file)" \
         -e 'kubectl  --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$(dir)/." --:/app
 
     anybar green
@@ -340,7 +351,7 @@ function fetch {
     POD=$(pod "$1")
     pod_found "$POD"
 
-    rsync -zrlptDv --blocking-io  --force --exclude=".*" \
+    rsync -zrlptDv --blocking-io  --force --exclude=".*" --exclude-from="$(excludes_file)" \
         -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- --:/app/ "$(dir)"
 
     anybar green
