@@ -67,7 +67,7 @@ function settings_file {
 
 function excludes_file {
 
-    EXCLUDES_FILE="$(dir)/cp-remote-excludes.txt"
+    EXCLUDES_FILE="$(dir)/.cp-remote-ignore"
 
     if [ ! -f "${EXCLUDES_FILE}" ]; then
         touch "${EXCLUDES_FILE}"
