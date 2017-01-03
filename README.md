@@ -197,6 +197,12 @@ To get a status notification for the longer running commands (watch and resync) 
  install [AnyBar](https://github.com/tonsky/AnyBar) and provide a port number to use for 
  it during the `setup` command.
  
+## Ignoring files/directories when syncing
+ 
+Files/directories can be excluded from being synced by the `watch`, `resync` and `fetch` commands. This is done by 
+adding the files/directories to ignore to a `.cp-remote-ignore` file in the project root. This uses the standard 
+rsync excludes-from format.
+ 
 ## Configuration
  
 The `setup` command uses your answers to generate a settings file `.cp-remote-env-settings` in the 
