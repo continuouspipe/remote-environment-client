@@ -307,7 +307,7 @@ function watch {
     # Watch for changes and sync (exclude hidden files)
     echo    "Watching for changes. Quit anytime with Ctrl-C."
     anybar green
-    fswatch -0 -r -l "$LATENCY" --exclude="/\.[^/]*$" --exclude="\.idea" --exclude="\.git" --exclude="___jb_old___" --exclude="___jb_tmp___" $(dir) \
+    fswatch -0 -r -l "$LATENCY" --exclude="/\.[^/]*$" --exclude="\.idea" --exclude="\.git" --exclude="___jb_old___" --exclude="___jb_tmp___" "$(dir)" \
     | while read -r -d "" event
       do
         anybar orange
@@ -315,7 +315,7 @@ function watch {
         file="${event/$(dir)/$PROJECT_DIR_WITH_DOT}"
         echo
 
-        rsync --relative -rlptDv --exclude-from=$(excludes_file) -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$file" --:/app
+        rsync --relative -rlptDv --exclude-from="$(excludes_file)" -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$file" --:/app
         echo "done."
         anybar green
       done
@@ -402,7 +402,7 @@ function check_version {
 }
 
 function check_connection {
-    CONNECTION=$(kubectl --context=$(context) --namespace="$(namespace)" cluster-info)
+    CONNECTION=$(kubectl --context="$(context)" --namespace="$(namespace)" cluster-info)
 
     rc=$?; if [[ $rc != 0 ]]; then
         echo "$CONNECTION"
