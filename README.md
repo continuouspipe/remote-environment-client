@@ -80,7 +80,7 @@ The `build` command will push changes the branch you have checked out locally to
 The watch command should be left running, it will however need restarting whenever the remote environment
 is rebuilt. 
 
-## bash 
+## Bash 
 
  ```
  cp-remote bash
@@ -92,6 +92,22 @@ is rebuilt.
  
  ```
  cp-remote bash web
+ ```
+
+## Execute commands on a container   
+
+To execute a command on a container without first getting a bash session use the `exec` command. The command
+and its arguments need to follow `--`. 
+
+ ```
+ cp-remote exec -- ls -la
+ ```
+ 
+ This will run the command on the default container specified during setup but you can specify another
+ container to run the command on. For example, if the service you want to connect to is web:
+ 
+ ```
+ cp-remote exec web -- ls -la
  ```
 
 ## Fetch
@@ -175,7 +191,7 @@ Usage stats for the longer running commands (build and resync) can be logged to 
  
 ## Working with a different environment
  
-The `--namespace|-n` option can be used with the `watch`, `bash`, `resync`, `checkconnection` and `forward`
+The `--namespace|-n` option can be used with the `watch`, `bash`, `resync`, `checkconnection`, `exec` and `forward`
  commands to run them against a different environment than the one specified during
  setup. This is useful if you need to access a different environment such as a feature branch
  environment. For example, to open a bash session on the `web` container of the `example-feature-my-shiny-new-work`
