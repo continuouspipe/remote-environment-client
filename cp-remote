@@ -16,6 +16,7 @@ function help {
 	echo "   resync            Sync remote changes to and from the local filesystem"
 	echo "   forward           Forward a port to a container"
 	echo "   destroy           Destroy the remote environment"
+	echo "   exec              Execute a command on a container"
 	echo "   checkconnection   Check the connection to the remote environment"
 	echo "   checkversion      Check for updates to this tool"
 }
@@ -422,12 +423,35 @@ function check_connection {
     fi
 }
 
+function exec {
+    if [ "$1" != "--" ] && [ "$2" != "--" ]; then
+        echo "The command to run should be specified after --"
+        echo "The only argument before the -- should be the container name (which can be left off to use the default container)"
+        exit
+    fi
+
+    if [[ $1 == "--" ]]; then
+        CONTAINER=$(container "")
+    fi
+
+    if [[ $2 == "--" ]]; then
+        CONTAINER=$(container "$1")
+        shift
+    fi
+
+    POD="$(pod "$CONTAINER")"
+    pod_found "$POD"
+    cmd="kubectl --context=\"$(context)\" --namespace=\"$(namespace)\" exec -it $POD $*"
+    echo "Running: '${cmd}'."
+    eval "${cmd}"
+}
+
 case $1 in
     -h|--help|help)
     help
     exit 0
     ;;
-    setup|build|watch|ssh|bash|destroy|fetch|resync|forward|checkconnection|checkversion)
+    setup|build|watch|ssh|bash|destroy|fetch|resync|forward|exec|checkconnection|checkversion)
     COMMAND="$1"
     ;;
     *)
@@ -494,6 +518,11 @@ case $COMMAND in
         container_specified "$2"
         validate_settings
         port_forward "$2" "$3" "$4"
+        ;;
+    exec)
+        validate_settings
+        shift
+        exec "$@"
         ;;
     checkconnection)
         validate_settings
