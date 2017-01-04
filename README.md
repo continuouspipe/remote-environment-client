@@ -175,7 +175,7 @@ Usage stats for the longer running commands (build and resync) can be logged to 
  
 ## Working with a different environment
  
-The `--namespace|-n` option can be used with the `watch`, `bash`, `resync` and `forward`
+The `--namespace|-n` option can be used with the `watch`, `bash`, `resync`, `checkconnection` and `forward`
  commands to run them against a different environment than the one specified during
  setup. This is useful if you need to access a different environment such as a feature branch
  environment. For example, to open a bash session on the `web` container of the `example-feature-my-shiny-new-work`
@@ -202,6 +202,22 @@ To get a status notification for the longer running commands (watch and resync) 
 Files/directories can be excluded from being synced by the `watch`, `resync` and `fetch` commands. This is done by 
 adding the files/directories to ignore to a `.cp-remote-ignore` file in the project root. This uses the standard 
 rsync excludes-from format.
+
+## Checking the connection to an environment
+
+The `checkconnection` command can be used to check that the connection details for the Kubernetes cluster are correct
+and that if they are pods can be found for the environment. It can be used with the namespace option to check
+another environment:
+ 
+ ```
+ cp-remote checkconnection 
+ ```
+ 
+ or
+ 
+ ```
+ cp-remote checkconnection --namespace=example-feature-my-shiny-new-work 
+ ```
  
 ## Configuration
  

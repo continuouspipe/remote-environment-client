@@ -16,6 +16,7 @@ function help {
 	echo "   resync            Sync remote changes to and from the local filesystem"
 	echo "   forward           Forward a port to a container"
 	echo "   destroy           Destroy the remote environment"
+	echo "   checkconnection   Check the connection to the remote environment"
 	echo "   checkversion      Check for updates to this tool"
 }
 
@@ -400,12 +401,33 @@ function check_version {
 
 }
 
+function check_connection {
+    CONNECTION=$(kubectl --context=$(context) --namespace="$(namespace)" cluster-info)
+
+    rc=$?; if [[ $rc != 0 ]]; then
+        echo "$CONNECTION"
+        exit $rc
+    fi
+
+    echo "$CONNECTION" | sed -n '1 p'
+    echo ""
+    PODS=$(kubectl --context="$(context)" --namespace="$(namespace)" get pods)
+    if [ -z "$PODS" ]; then
+        echo "Can connect to the cluster but no pods found for the namespace, has the environment been successfully built?"
+        echo "Logs of the builds can be found on https://ui.continuouspipe.io/"
+    else
+        echo "The available pods are:"
+        echo ""
+        kubectl --context="$(context)" --namespace="$(namespace)" get pods
+    fi
+}
+
 case $1 in
     -h|--help|help)
     help
     exit 0
     ;;
-    setup|build|watch|ssh|bash|destroy|fetch|resync|forward|checkversion)
+    setup|build|watch|ssh|bash|destroy|fetch|resync|forward|checkconnection|checkversion)
     COMMAND="$1"
     ;;
     *)
@@ -472,6 +494,10 @@ case $COMMAND in
         container_specified "$2"
         validate_settings
         port_forward "$2" "$3" "$4"
+        ;;
+    checkconnection)
+        validate_settings
+        check_connection
         ;;
     checkversion)
         check_version
