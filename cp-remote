@@ -426,7 +426,7 @@ function check_connection {
 function exec {
     if [ "$1" != "--" ] && [ "$2" != "--" ]; then
         echo "The command to run should be specified after --"
-        echo "The only argument before the -- should be the container name (which can be left off to use the default container"
+        echo "The only argument before the -- should be the container name (which can be left off to use the default container)"
         exit
     fi
 
