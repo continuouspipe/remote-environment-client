@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"bufio"
-	remotenvconfig "github.com/alessandrozucca/remote-environment-client/cli/config"
+	envconfig "github.com/alessandrozucca/remote-environment-client/cli/config"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -21,7 +21,7 @@ Note: the kubectl cluster IP address, username and password are not stored in th
 }
 
 func execute(cmd *cobra.Command, args []string) {
-	config := &remotenvconfig.ConfigData{
+	config := &envconfig.ConfigData{
 		ProjectKey:          readString("What is your Continuous Pipe project key?"),
 		RemoteBranch:        readString("What is the name of the Git branch you are using for your remote environment?"),
 		RemoteName:          readString("What is your github remote name? (defaults to: origin)"),
@@ -35,7 +35,8 @@ func execute(cmd *cobra.Command, args []string) {
 		KeenEventCollection: readString("What is your keen.io event collection?  (Optional, only needed if you want to record usage stats)"),
 	}
 
-	fmt.Printf("You have inserted %+v.\n", config)
+	config.SaveOnDisk()
+	fmt.Printf("Remote settings written to %s", envconfig.SettingsFileDir())
 }
 
 func init() {

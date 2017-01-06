@@ -1,5 +1,13 @@
 package config
 
+import (
+	"path/filepath"
+	"os"
+)
+
+const settingsFile = ".cp-remote-env-settings"
+
+//Contains all remote environment settings
 type ConfigData struct {
 	//Continuous Pipe project key
 	ProjectKey string
@@ -23,4 +31,29 @@ type ConfigData struct {
 	KeenProjectId string
 	//keen.io event collection
 	KeenEventCollection string
+}
+
+//return the fullpath to the settings file
+func SettingsFileDir() string {
+	p, err := filepath.Abs(settingsFile)
+	if err != nil {
+		return ""
+	}
+	return filepath.Clean(p)
+}
+
+//save on the settings file the config data
+func (config ConfigData) SaveOnDisk() bool {
+	absFilePath := SettingsFileDir()
+	if absFilePath == "" {
+		return false
+	}
+	f, err := os.Create(absFilePath)
+	if err != nil {
+		return false;
+	}
+
+	//TODO: write on file
+	_ = f
+	return true;
 }
