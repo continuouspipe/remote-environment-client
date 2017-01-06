@@ -56,16 +56,16 @@ func (config ConfigData) SaveOnDisk() bool {
 		return false
 	}
 
-	tmpl, err := template.New("config").Parse(`"PROJECT_KEY={{.ProjectKey}}"
-REMOTE_BRANCH={{.RemoteBranch}}
-REMOTE_NAME={{.RemoteName}}
-DEFAULT_CONTAINER={{.DefaultContainer}}
-ANYBAR_PORT={{.AnybarPort}}
-KEEN_WRITE_KEY={{.KeenWriteKey}}
-KEEN_PROJECT_ID={{.KeenProjectId}}
-KEEN_EVENT_COLLECTION={{.KeenEventCollection}}
-# Do not change the KUBERNETES_CONFIG_KEY. If it has been changed please run the setup command again
-KUBERNETES_CONFIG_KEY={{.Namespace}}`)
+	tmpl, err := template.New("config").Parse(`"project-key: {{.ProjectKey}}"
+remote-branch: {{.RemoteBranch}}
+remote-name: {{.RemoteName}}
+default-container: {{.DefaultContainer}}
+anybar-port: {{.AnybarPort}}
+keen-write-key: {{.KeenWriteKey}}
+keen-project-id: {{.KeenProjectId}}
+keen-event-collection: {{.KeenEventCollection}}
+# Do not change the kubernetes-config-key. If it has been changed please run the setup command again
+kubernetes-config-key: {{.Namespace}}`)
 
 	err = tmpl.Execute(f, config)
 	return err == nil
