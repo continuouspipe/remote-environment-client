@@ -21,18 +21,33 @@ Note: the kubectl cluster IP address, username and password are not stored in th
 }
 
 func execute(cmd *cobra.Command, args []string) {
+	//TODO: Put Namespace as function in config package
+	//TODO: Repeat questions until the user does not insert a valid string
+	//NAMESPACE="$PROJECT_KEY-${REMOTE_BRANCH//\//-}"
+
+	var projectKey string;
+	for {
+		projectKey := readString("What is your Continuous Pipe project key?")
+		if len(projectKey) > 0 {
+			break
+		}
+	}
+
+	remoteBranch := readString("What is the name of the Git branch you are using for your remote environment?")
+
 	config := &envconfig.ConfigData{
-		ProjectKey:          readString("What is your Continuous Pipe project key?"),
-		RemoteBranch:        readString("What is the name of the Git branch you are using for your remote environment?"),
-		RemoteName:          readString("What is your github remote name? (defaults to: origin)"),
-		DefaultContainer:    readString("What is the default container for the watch, bash, fetch and resync commands? (Optional)"),
-		ClusterIp:           readString("What is the IP of the cluster?"),
-		Username:            readString("What is the cluster username?"),
-		Password:            readString("What is the cluster password?"),
-		AnybarPort:          readString("If you want to use AnyBar, please provide a port number e.g 1738 ?"),
-		KeenWriteKey:        readString("What is your keen.io write key? (Optional, only needed if you want to record usage stats)"),
-		KeenProjectId:       readString("What is your keen.io project id? (Optional, only needed if you want to record usage stats)"),
-		KeenEventCollection: readString("What is your keen.io event collection?  (Optional, only needed if you want to record usage stats)"),
+		ProjectKey:           projectKey,
+		RemoteBranch:         remoteBranch,
+		RemoteName:           applyDefault(readString("What is your github remote name? (defaults to: origin)"), "origin"),
+		DefaultContainer:     readString("What is the default container for the watch, bash, fetch and resync commands? (Optional)"),
+		ClusterIp:            readString("What is the IP of the cluster?"),
+		Username:             readString("What is the cluster username?"),
+		Password:             readString("What is the cluster password?"),
+		AnybarPort:           readString("If you want to use AnyBar, please provide a port number e.g 1738 ?"),
+		KeenWriteKey:         readString("What is your keen.io write key? (Optional, only needed if you want to record usage stats)"),
+		KeenProjectId:        readString("What is your keen.io project id? (Optional, only needed if you want to record usage stats)"),
+		KeenEventCollection:  readString("What is your keen.io event collection?  (Optional, only needed if you want to record usage stats)"),
+		Namespace:            projectKey + remoteBranch,
 	}
 
 	config.SaveOnDisk()
@@ -51,4 +66,11 @@ func readString(q string) string {
 		panic("An error occured when retrieving user input.")
 	}
 	return input
+}
+
+func applyDefault(s string, d string) string {
+	if s == "" && d != "" {
+		return d
+	}
+	return s
 }
