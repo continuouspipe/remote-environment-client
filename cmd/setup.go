@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	envconfig "github.com/alessandrozucca/remote-environment-client/config"
+	envconfig "github.com/continuouspipe/remote-environment-client/config"
 	"github.com/spf13/cobra"
 )
 
