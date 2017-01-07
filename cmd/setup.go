@@ -8,6 +8,7 @@ import (
 
 	envconfig "github.com/continuouspipe/remote-environment-client/config"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 type reader func(string) string
@@ -48,7 +49,7 @@ func execute(cmd *cobra.Command, args []string) {
 	}
 
 	config.SaveOnDisk()
-	fmt.Printf("\nRemote settings written to %s\n", envconfig.SettingsFileDir())
+	fmt.Printf("\nRemote settings written to %s\n", viper.ConfigFileUsed())
 }
 
 func init() {

@@ -1,12 +1,10 @@
 package config
 
 import (
-	"path/filepath"
 	"os"
 	"html/template"
+	"github.com/spf13/viper"
 )
-
-const settingsFile = ".cp-remote-env-settings"
 
 //Contains all remote environment settings
 type ConfigData struct {
@@ -36,18 +34,9 @@ type ConfigData struct {
 	Namespace string
 }
 
-//return the fullpath to the settings file
-func SettingsFileDir() string {
-	p, err := filepath.Abs(settingsFile)
-	if err != nil {
-		return ""
-	}
-	return filepath.Clean(p)
-}
-
 //save on the settings file the config data
 func (config ConfigData) SaveOnDisk() bool {
-	absFilePath := SettingsFileDir()
+	absFilePath := viper.ConfigFileUsed()
 	if absFilePath == "" {
 		return false
 	}
@@ -56,7 +45,7 @@ func (config ConfigData) SaveOnDisk() bool {
 		return false
 	}
 
-	tmpl, err := template.New("config").Parse(`"project-key: {{.ProjectKey}}"
+	tmpl, err := template.New("config").Parse(`project-key: {{.ProjectKey}}
 remote-branch: {{.RemoteBranch}}
 remote-name: {{.RemoteName}}
 default-container: {{.DefaultContainer}}
