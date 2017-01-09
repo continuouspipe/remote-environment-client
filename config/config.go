@@ -1,9 +1,9 @@
 package config
 
 import (
-	"os"
-	"html/template"
 	"github.com/spf13/viper"
+	"html/template"
+	"os"
 )
 
 //Contains all remote environment settings
@@ -58,17 +58,15 @@ func (writer YamlWriter) Save(config *ApplicationSettings) bool {
 	tmpl, err := template.New("config").Parse(`project-key: {{.ProjectKey}}
 remote-branch: {{.RemoteBranch}}
 remote-name: {{.RemoteName}}
+container: {{.DefaultContainer}}
 cluster-ip: {{.ClusterIp}}
 username: {{.Username}}
 password: {{.Password}}
-default-container: {{.DefaultContainer}}
 anybar-port: {{.AnybarPort}}
 keen-write-key: {{.KeenWriteKey}}
 keen-project-id: {{.KeenProjectId}}
 keen-event-collection: {{.KeenEventCollection}}
-# Do not change the kubernetes-config-key. If it has been changed please run the setup command again
-kubernetes-config-key: {{.Namespace}}`)
-
+environment: {{.Namespace}}`)
 	err = tmpl.Execute(f, config)
 	return err == nil
 }

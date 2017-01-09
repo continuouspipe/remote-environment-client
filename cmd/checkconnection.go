@@ -18,7 +18,7 @@ for the Kubernetes cluster are correct and that if they are pods can be found fo
 It can be used with the environment option to check another environment`,
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.BindPFlag("environment", cmd.PersistentFlags().Lookup("environment"))
-		context := viper.GetString("key")
+		context := viper.GetString("kubernetes-config-key")
 		environment := viper.GetString("environment")
 		fmt.Println("checking connection for environment " + environment)
 
