@@ -59,14 +59,27 @@ func (writer YamlWriter) Save(config *ApplicationSettings) bool {
 remote-branch: {{.RemoteBranch}}
 remote-name: {{.RemoteName}}
 container: {{.DefaultContainer}}
-environment: {{.Namespace}}
+cluster-ip: {{.ClusterIp}}
+username: {{.Username}}
+password: {{.Password}}
 anybar-port: {{.AnybarPort}}
 keen-write-key: {{.KeenWriteKey}}
 keen-project-id: {{.KeenProjectId}}
 keen-event-collection: {{.KeenEventCollection}}
+environment: {{.Namespace}}
 # Do not change the kubernetes-config-key. If it has been changed please run the setup command again
 kubernetes-config-key: {{.Namespace}}`)
-
 	err = tmpl.Execute(f, config)
 	return err == nil
+}
+
+//takes the application config from viper and checks that all the required fields are populated
+func Validate() (n int, missing []string) {
+	var mandatorySettings = []string{"project-key", "remote-branch", "remote-name", "cluster-ip", "container", "username", "password", "kubernetes-config-key"}
+	for _, setting := range mandatorySettings {
+		if settingValue := viper.Get(setting); settingValue == nil {
+			missing = append(missing, setting)
+		}
+	}
+	return len(missing), missing
 }
