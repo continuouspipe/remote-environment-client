@@ -5,12 +5,12 @@ import (
 	envconfig "github.com/continuouspipe/remote-environment-client/config"
 )
 
-func TestUserDefinedConfigurationParametersAreStoredOnDisk(t *testing.T) {
+func TestUserApplicationSettingsAreStored(t *testing.T) {
 
 	settings := &envconfig.ApplicationSettings{
 		ProjectKey:          "my-project",
 		RemoteBranch:        "feature/MYPROJ-312-initial-commit",
-		RemoteName:          "origin",
+		RemoteName:          "",
 		DefaultContainer:    "default-container",
 		ClusterIp:           "127.0.0.1",
 		Username:            "root",
@@ -23,6 +23,11 @@ func TestUserDefinedConfigurationParametersAreStoredOnDisk(t *testing.T) {
 	}
 
 	expectedSettings := *settings;
+
+	//this is the default expected value for RemoteName
+	expectedSettings.RemoteName = "origin"
+
+	//we expect / to be converted to - and namespace being a concatenation of ProjectKey and RemoteBranch
 	expectedSettings.Namespace = "my-project-feature-MYPROJ-312-initial-commit"
 
 	mockedQuestionPrompt := &MockQuestionPrompt{settings}
@@ -63,7 +68,7 @@ func (qp MockQuestionPrompt) ReadString(q string) string {
 }
 
 func (qp MockQuestionPrompt) ApplyDefault(question string, predef string) string {
-	return qp.ReadString(question)
+	return predef
 }
 
 func (qp MockQuestionPrompt) RepeatIfEmpty(question string) string {
