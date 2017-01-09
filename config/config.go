@@ -7,7 +7,7 @@ import (
 )
 
 //Contains all remote environment settings
-type ConfigData struct {
+type ApplicationSettings struct {
 	//Continuous Pipe project key
 	ProjectKey string
 	//Name of the git branch used for the remote environment
@@ -34,8 +34,18 @@ type ConfigData struct {
 	Namespace string
 }
 
+type Writer interface {
+	Save(*ApplicationSettings) bool
+}
+
+type YamlWriter struct{}
+
+func NewYamlWriter() *YamlWriter {
+	return &YamlWriter{};
+}
+
 //save on the settings file the config data
-func (config ConfigData) SaveOnDisk() bool {
+func (writer YamlWriter) Save(config *ApplicationSettings) bool {
 	absFilePath := viper.ConfigFileUsed()
 	if absFilePath == "" {
 		return false
