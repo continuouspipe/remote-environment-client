@@ -1,9 +1,9 @@
 package config
 
 import (
-	"os"
-	"html/template"
 	"github.com/spf13/viper"
+	"html/template"
+	"os"
 )
 
 //Contains all remote environment settings
@@ -58,7 +58,8 @@ func (writer YamlWriter) Save(config *ApplicationSettings) bool {
 	tmpl, err := template.New("config").Parse(`project-key: {{.ProjectKey}}
 remote-branch: {{.RemoteBranch}}
 remote-name: {{.RemoteName}}
-default-container: {{.DefaultContainer}}
+container: {{.DefaultContainer}}
+environment: {{.Namespace}}
 anybar-port: {{.AnybarPort}}
 keen-write-key: {{.KeenWriteKey}}
 keen-project-id: {{.KeenProjectId}}
