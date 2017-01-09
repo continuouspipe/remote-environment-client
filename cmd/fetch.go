@@ -18,10 +18,20 @@ autocomplete in your IDE not working correctly.
 The fetch command will copy changes from the remote to the local filesystem. This will resync 
 with the default container specified during setup but you can specify another container.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("fetch called")
+		handler := &FetchHandle{cmd}
+		handler.Handle(args)
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(fetchCmd)
+}
+
+type FetchHandle struct {
+	Command *cobra.Command
+}
+
+func (h *FetchHandle) Handle(args []string) {
+	validateConfig()
+	fmt.Println("fetch called")
 }

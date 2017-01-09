@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -20,12 +19,8 @@ var checkconnectionCmd = &cobra.Command{
 for the Kubernetes cluster are correct and that if they are pods can be found for the environment. 
 It can be used with the environment option to check another environment`,
 	Run: func(cmd *cobra.Command, args []string) {
-
-		viper.BindPFlag("environment", cmd.PersistentFlags().Lookup("environment"))
-		context := viper.GetString("kubernetes-config-key")
-		environment := viper.GetString("environment")
-		fmt.Println("checking connection for environment " + environment)
-		color.Green("Connected succesfully and found %d pods for the environment\n", fetchNumberOfPods(createClient(readConfig(context)), environment))
+		handler := &CheckConnectionHandle{cmd}
+		handler.Handle(args)
 	},
 }
 
@@ -35,17 +30,18 @@ func init() {
 	checkconnectionCmd.PersistentFlags().StringP("environment", "e", "", "The environment to use")
 }
 
-func checkErr(err error) {
-	if err != nil {
-		exitWithMessage(err.Error())
-	}
+type CheckConnectionHandle struct {
+	Command *cobra.Command
 }
 
-func exitWithMessage(message string) {
-	color.Set(color.FgRed)
-	fmt.Println("ERROR: " + message)
-	color.Unset()
-	os.Exit(1)
+func (h *CheckConnectionHandle) Handle(args []string) {
+	validateConfig()
+
+	viper.BindPFlag("environment", h.Command.PersistentFlags().Lookup("environment"))
+	context := viper.GetString("kubernetes-config-key")
+	environment := viper.GetString("environment")
+	fmt.Println("checking connection for environment " + environment)
+	color.Green("Connected succesfully and found %d pods for the environment\n", fetchNumberOfPods(createClient(readConfig(context)), environment))
 }
 
 func readConfig(context string) *rest.Config {

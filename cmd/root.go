@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	envconfig "github.com/continuouspipe/remote-environment-client/config"
@@ -70,4 +71,17 @@ func validateConfig() {
 	if i > 0 {
 		exitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the setup command.", missing))
 	}
+}
+
+func checkErr(err error) {
+	if err != nil {
+		exitWithMessage(err.Error())
+	}
+}
+
+func exitWithMessage(message string) {
+	color.Set(color.FgRed)
+	fmt.Println("ERROR: " + message)
+	color.Unset()
+	os.Exit(1)
 }
