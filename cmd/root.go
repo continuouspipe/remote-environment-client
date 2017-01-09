@@ -2,12 +2,18 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"os"
+	envconfig "github.com/continuouspipe/remote-environment-client/config"
 )
 
 var cfgFile string
+
+type Handler interface {
+	Handle(cmd *cobra.Command, args []string)
+}
 
 var RootCmd = &cobra.Command{
 	Use:   "cp-remote",
@@ -56,5 +62,12 @@ func initConfig() {
 	viper.AddConfigPath(pwd)
 	if err := viper.ReadInConfig(); err == nil {
 		//fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
+}
+
+func validateConfig() {
+	i, missing := envconfig.Validate()
+	if i > 0 {
+		exitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the setup command.", missing))
 	}
 }

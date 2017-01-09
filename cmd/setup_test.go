@@ -36,7 +36,8 @@ func TestUserApplicationSettingsAreStored(t *testing.T) {
 		expectedSettings: &expectedSettings,
 	}
 
-	runSetupCmd(mockedQuestionPrompt, mockedYamlWriter)
+	setupHandle := &SetupHandle{}
+	setupHandle.storeUserSettings(mockedQuestionPrompt, mockedYamlWriter)
 }
 
 type MockQuestionPrompt struct {
@@ -50,7 +51,7 @@ func (qp MockQuestionPrompt) ReadString(q string) string {
 		{"What is your Continuous Pipe project key?", qp.testSettings.ProjectKey},
 		{"What is the name of the Git branch you are using for your remote environment?", qp.testSettings.RemoteBranch},
 		{"What is your github remote name? (defaults to: origin)", qp.testSettings.RemoteName},
-		{"What is the default container for the watch, bash, fetch and resync commands? (Optional)", qp.testSettings.DefaultContainer},
+		{"What is the default container for the watch, bash, fetch and resync commands?", qp.testSettings.DefaultContainer},
 		{"What is the IP of the cluster?", qp.testSettings.ClusterIp},
 		{"What is the cluster username?", qp.testSettings.Username},
 		{"What is the cluster password?", qp.testSettings.Password},

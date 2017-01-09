@@ -18,14 +18,23 @@ var setupCmd = &cobra.Command{
 Your answers will be stored in a .cp-remote-env-settings file in the project root. You 
 will probably want to add this to your .gitignore file.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		qp := util.NewQuestionPrompt()
-		yamlWriter := envconfig.NewYamlWriter()
-		runSetupCmd(qp, yamlWriter)
-		fmt.Printf("\nRemote settings written to %s\n", viper.ConfigFileUsed())
+		handler := &SetupHandle{cmd}
+		handler.Handle(args)
 	},
 }
 
-func runSetupCmd(qp util.QuestionPrompter, yamlWriter envconfig.Writer) {
+type SetupHandle struct {
+	Command *cobra.Command
+}
+
+func (h *SetupHandle) Handle(args []string) {
+	qp := util.NewQuestionPrompt()
+	yamlWriter := envconfig.NewYamlWriter()
+	h.storeUserSettings(qp, yamlWriter)
+	fmt.Printf("\nRemote settings written to %s\n", viper.ConfigFileUsed())
+}
+
+func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter envconfig.Writer) {
 	projectKey := qp.RepeatIfEmpty("What is your Continuous Pipe project key?")
 	remoteBranch := qp.RepeatIfEmpty("What is the name of the Git branch you are using for your remote environment?")
 
@@ -37,7 +46,7 @@ func runSetupCmd(qp util.QuestionPrompter, yamlWriter envconfig.Writer) {
 		ProjectKey:          projectKey,
 		RemoteBranch:        remoteBranch,
 		RemoteName:          qp.ApplyDefault("What is your github remote name? (defaults to: origin)", "origin"),
-		DefaultContainer:    qp.ReadString("What is the default container for the watch, bash, fetch and resync commands? (Optional)"),
+		DefaultContainer:    qp.ReadString("What is the default container for the watch, bash, fetch and resync commands?"),
 		ClusterIp:           qp.RepeatIfEmpty("What is the IP of the cluster?"),
 		Username:            qp.RepeatIfEmpty("What is the cluster username?"),
 		Password:            qp.RepeatIfEmpty("What is the cluster password?"),

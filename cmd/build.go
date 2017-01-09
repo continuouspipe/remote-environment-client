@@ -14,10 +14,20 @@ environment branch. ContinuousPipe will then build the environment. You can use 
 https://ui.continuouspipe.io/ to see when the environment has finished building and to 
 find its IP address.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("build called")
+		handler := &BuildHandle{cmd}
+		handler.Handle(args)
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(buildCmd)
+}
+
+type BuildHandle struct {
+	Command *cobra.Command
+}
+
+func (h *BuildHandle) Handle(args []string) {
+	validateConfig()
+	fmt.Println("build called")
 }
