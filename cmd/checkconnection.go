@@ -3,13 +3,10 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/continuouspipe/remote-environment-client/kubeapi"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 var checkconnectionCmd = &cobra.Command{
@@ -41,25 +38,11 @@ func (h *CheckConnectionHandle) Handle(args []string) {
 	context := viper.GetString("kubernetes-config-key")
 	environment := viper.GetString("environment")
 	fmt.Println("checking connection for environment " + environment)
-	color.Green("Connected succesfully and found %d pods for the environment\n", fetchNumberOfPods(createClient(readConfig(context)), environment))
+	color.Green("Connected succesfully and found %d pods for the environment\n", fetchNumberOfPods(context, environment))
 }
 
-func readConfig(context string) *rest.Config {
-	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		clientcmd.NewDefaultClientConfigLoadingRules(),
-		&clientcmd.ConfigOverrides{CurrentContext: context}).ClientConfig()
-	checkErr(err)
-	return config
-}
-
-func createClient(config *rest.Config) *kubernetes.Clientset {
-	client, err := kubernetes.NewForConfig(config)
-	checkErr(err)
-	return client
-}
-
-func fetchNumberOfPods(client *kubernetes.Clientset, environment string) int {
-	pods, err := client.Core().Pods(environment).List(v1.ListOptions{})
+func fetchNumberOfPods(context string, environment string) int {
+	pods, err := kubeapi.FetchPods(context, environment)
 	checkErr(err)
 
 	if len(pods.Items) == 0 {
