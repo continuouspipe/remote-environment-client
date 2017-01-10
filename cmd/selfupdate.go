@@ -27,11 +27,11 @@ func (h *SelfUpdateHandle) Handle(args []string) {
 		// Manually update the const, or set it using `go build -ldflags="-X main.VERSION=<newver>" -o cp-remote remote-environment-client/main.go`
 		CurrentVersion: envconfig.CurrentVersion,
 		// The server hosting `$CmdName/$GOOS-$ARCH.json` which contains the checksum for the binary
-		ApiURL:         "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/downloads/",
+		ApiURL:         "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/",
 		// The server hosting the zip file containing the binary application which is a fallback for the patch method
-		BinURL:         "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/downloads/",
+		BinURL:         "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/",
 		// The server hosting the binary patch diff for incremental updates
-		DiffURL:        "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/downloads/",
+		DiffURL:        "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/",
 		// The directory created by the app when run which stores the cktime file
 		Dir:            "update/",
 		// The app name which is appended to the ApiURL to look for an update
