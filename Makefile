@@ -8,6 +8,7 @@ build:
 
 clean:
 	rm -f ${BINARY}
+	rm -f update/cktime
 
 package:
 	go-selfupdate ${BINARY} ${VERSION}

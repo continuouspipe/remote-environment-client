@@ -41,7 +41,7 @@ type Writer interface {
 type YamlWriter struct{}
 
 func NewYamlWriter() *YamlWriter {
-	return &YamlWriter{};
+	return &YamlWriter{}
 }
 
 //save on the settings file the config data
