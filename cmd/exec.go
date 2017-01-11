@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
+	"github.com/spf13/viper"
+	"fmt"
 )
 
 var execCmd = &cobra.Command{
@@ -19,6 +20,8 @@ the exec command. The command and its arguments need to follow --`,
 
 func init() {
 	RootCmd.AddCommand(execCmd)
+
+	execCmd.PersistentFlags().StringP("pod", "p", "", "The pod to use")
 }
 
 type ExecHandle struct {
@@ -27,5 +30,14 @@ type ExecHandle struct {
 
 func (h *ExecHandle) Handle(args []string) {
 	validateConfig()
-	fmt.Println("exec called")
+
+	context := viper.GetString("context")
+	namespace := viper.GetString("namespace")
+	pod := h.Command.PersistentFlags().Lookup("pod")
+
+	fmt.Println(context)
+	fmt.Println(namespace)
+	fmt.Println(pod)
+
+	kubectlapi.Exec(context, namespace, pod.Value.String(), "ls -all")
 }

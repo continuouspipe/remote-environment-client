@@ -1,4 +1,4 @@
-package kubeapi
+package kubectlapi
 
 import (
 	"errors"

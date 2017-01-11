@@ -3,10 +3,10 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/continuouspipe/remote-environment-client/kubeapi"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 )
 
 var checkconnectionCmd = &cobra.Command{
@@ -42,7 +42,7 @@ func (h *CheckConnectionHandle) Handle(args []string) {
 }
 
 func fetchNumberOfPods(context string, environment string) int {
-	pods, err := kubeapi.FetchPods(context, environment)
+	pods, err := kubectlapi.FetchPods(context, environment)
 	checkErr(err)
 
 	if len(pods.Items) == 0 {

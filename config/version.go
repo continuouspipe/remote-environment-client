@@ -1,3 +1,4 @@
 package config
 
-var CurrentVersion string;
+//The current version is assigned via ldflags, see Makefile
+var CurrentVersion string

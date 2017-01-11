@@ -22,7 +22,7 @@ func TestUserApplicationSettingsAreStored(t *testing.T) {
 		Namespace:           "",
 	}
 
-	expectedSettings := *settings;
+	expectedSettings := *settings
 
 	//this is the default expected value for RemoteName
 	expectedSettings.RemoteName = "origin"
