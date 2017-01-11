@@ -8,6 +8,7 @@ import (
 )
 
 func init() {
-	cmdOptions := kubectlcmd.NewKubectlCommand(kubectlcmdutil.NewFactory(nil), os.Stdin, os.Stdout, os.Stderr)
-	RootCmd.AddCommand(cmdOptions)
+	kubeCtlCommand := kubectlcmd.NewKubectlCommand(kubectlcmdutil.NewFactory(nil), os.Stdin, os.Stdout, os.Stderr)
+	kubeCtlCommand.Hidden = true;
+	RootCmd.AddCommand(kubeCtlCommand)
 }
