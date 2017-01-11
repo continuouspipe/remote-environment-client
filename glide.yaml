@@ -11,3 +11,6 @@ import:
   version: 1.5.1
   subpackages:
   - pkg/kubectl/cmd
+- package: k8s.io/client-go
+  subpackages:
+  - kubernetes

@@ -3,9 +3,10 @@ package cmd
 import (
 	"fmt"
 
-	//"github.com/fatih/color"
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 )
 
 var checkconnectionCmd = &cobra.Command{
@@ -34,18 +35,18 @@ func (h *CheckConnectionHandle) Handle(args []string) {
 	validateConfig()
 
 	viper.BindPFlag("environment", h.Command.PersistentFlags().Lookup("environment"))
-	//context := viper.GetString("kubernetes-config-key")
+	context := viper.GetString("kubernetes-config-key")
 	environment := viper.GetString("environment")
 	fmt.Println("checking connection for environment " + environment)
-	//color.Green("Connected succesfully and found %d pods for the environment\n", fetchNumberOfPods(context, environment))
+	color.Green("Connected succesfully and found %d pods for the environment\n", fetchNumberOfPods(context, environment))
 }
 
-//func fetchNumberOfPods(context string, environment string) int {
-//	pods, err := kubeapi.FetchPods(context, environment)
-//	checkErr(err)
-//
-//	if len(pods.Items) == 0 {
-//		exitWithMessage("connected to the cluster but no pods were found for the environment, has the environment been successfully built?")
-//	}
-//	return len(pods.Items)
-//}
+func fetchNumberOfPods(context string, environment string) int {
+	pods, err := kubectlapi.FetchPods(context, environment)
+	checkErr(err)
+
+	if len(pods.Items) == 0 {
+		exitWithMessage("connected to the cluster but no pods were found for the environment, has the environment been successfully built?")
+	}
+	return len(pods.Items)
+}
