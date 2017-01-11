@@ -10,5 +10,8 @@ clean:
 	rm -f ${BINARY}
 	rm -f update/cktime
 
+install-dep:
+	glide install --strip-vendor --strip-vcs
+
 package:
 	go-selfupdate ${BINARY} ${VERSION}
