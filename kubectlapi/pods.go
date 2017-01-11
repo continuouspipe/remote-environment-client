@@ -21,13 +21,13 @@ func createClient(config *rest.Config) (*kubernetes.Clientset, error) {
 }
 
 func FetchPods(context string, environment string) (*v1.PodList, error) {
-	config, err := ReadConfig(context)
+	config, err := readConfig(context)
 
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := CreateClient(config)
+	client, err := createClient(config)
 
 	if err != nil {
 		return nil, err
