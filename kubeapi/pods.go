@@ -10,13 +10,13 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-func ReadConfig(context string) (*rest.Config, error) {
+func readConfig(context string) (*rest.Config, error) {
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		clientcmd.NewDefaultClientConfigLoadingRules(),
 		&clientcmd.ConfigOverrides{CurrentContext: context}).ClientConfig()
 }
 
-func CreateClient(config *rest.Config) (*kubernetes.Clientset, error) {
+func createClient(config *rest.Config) (*kubernetes.Clientset, error) {
 	return kubernetes.NewForConfig(config)
 }
 
