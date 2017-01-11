@@ -8,6 +8,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 )
 
 var setupCmd = &cobra.Command{
@@ -30,11 +31,18 @@ type SetupHandle struct {
 func (h *SetupHandle) Handle(args []string) {
 	qp := util.NewQuestionPrompt()
 	yamlWriter := envconfig.NewYamlWriter()
-	h.storeUserSettings(qp, yamlWriter)
+
+	settings := h.storeUserSettings(qp, yamlWriter)
+	kubectlapi.ConfigSetAuthInfo(settings.Namespace, settings.Username, settings.Password)
+	kubectlapi.ConfigSetCluster(settings.Namespace, settings.ClusterIp)
+	kubectlapi.ConfigSetContext(settings.Namespace, settings.Username)
+
 	fmt.Printf("\nRemote settings written to %s\n", viper.ConfigFileUsed())
+	fmt.Printf("Created the context %s\n", settings.Namespace)
+	fmt.Println(kubectlapi.ClusterInfo(settings.Namespace))
 }
 
-func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter envconfig.Writer) {
+func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter envconfig.Writer) *envconfig.ApplicationSettings {
 	projectKey := qp.RepeatIfEmpty("What is your Continuous Pipe project key?")
 	remoteBranch := qp.RepeatIfEmpty("What is the name of the Git branch you are using for your remote environment?")
 
@@ -58,6 +66,7 @@ func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter env
 	}
 
 	yamlWriter.Save(settings)
+	return settings
 }
 
 func init() {

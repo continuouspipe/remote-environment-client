@@ -9,6 +9,6 @@ import (
 
 func init() {
 	kubeCtlCommand := kubectlcmd.NewKubectlCommand(kubectlcmdutil.NewFactory(nil), os.Stdin, os.Stdout, os.Stderr)
-	kubeCtlCommand.Hidden = true;
+	kubeCtlCommand.Hidden = true
 	RootCmd.AddCommand(kubeCtlCommand)
 }
