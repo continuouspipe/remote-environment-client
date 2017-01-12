@@ -4,11 +4,8 @@ import (
 	"os/exec"
 )
 
-const appName = "cp-remote-go"
-const kubeCtlName = "kubectl"
-
-func ConfigSetAuthInfo(namespace string, username string, password string) string {
-	nameParam := namespace + "-" + username
+func ConfigSetAuthInfo(environment string, username string, password string) string {
+	nameParam := environment + "-" + username
 	usernameFlag := "--username=" + username
 	passwordFlag := "--password=" + password
 
@@ -16,17 +13,17 @@ func ConfigSetAuthInfo(namespace string, username string, password string) strin
 	return executeCmd(cmd)
 }
 
-func ConfigSetCluster(namespace string, clusterIp string) string {
+func ConfigSetCluster(environment string, clusterIp string) string {
 	serverFlag := "--server=https://" + clusterIp
 
-	cmd := exec.Command(appName, kubeCtlName, "config", "set-cluster", namespace, serverFlag, "--insecure-skip-tls-verify=true")
+	cmd := exec.Command(appName, kubeCtlName, "config", "set-cluster", environment, serverFlag, "--insecure-skip-tls-verify=true")
 	return executeCmd(cmd)
 }
 
-func ConfigSetContext(namespace string, username string) string {
-	clusterFlag := "--cluster=" + namespace
-	userFlag := "--user=" + namespace + "-" + username
+func ConfigSetContext(environment string, username string) string {
+	clusterFlag := "--cluster=" + environment
+	userFlag := "--user=" + environment + "-" + username
 
-	cmd := exec.Command(appName, kubeCtlName, "config", "set-context", namespace, clusterFlag, userFlag)
+	cmd := exec.Command(appName, kubeCtlName, "config", "set-context", environment, clusterFlag, userFlag)
 	return executeCmd(cmd)
 }

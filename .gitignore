@@ -1,3 +1,4 @@
 vendor/
 .cp-remote-env-settings.yml
 glide.lock
+cp-remote-go

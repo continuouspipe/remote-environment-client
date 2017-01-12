@@ -35,14 +35,14 @@ func (h *CheckConnectionHandle) Handle(args []string) {
 	validateConfig()
 
 	viper.BindPFlag("environment", h.Command.PersistentFlags().Lookup("environment"))
-	context := viper.GetString("kubernetes-config-key")
+	kubeConfigKey := viper.GetString("kubernetes-config-key")
 	environment := viper.GetString("environment")
 	fmt.Println("checking connection for environment " + environment)
-	color.Green("Connected succesfully and found %d pods for the environment\n", fetchNumberOfPods(context, environment))
+	color.Green("Connected succesfully and found %d pods for the environment\n", fetchNumberOfPods(kubeConfigKey, environment))
 }
 
-func fetchNumberOfPods(context string, environment string) int {
-	pods, err := kubectlapi.FetchPods(context, environment)
+func fetchNumberOfPods(kubeConfigKey string, environment string) int {
+	pods, err := kubectlapi.FetchPods(kubeConfigKey, environment)
 	checkErr(err)
 
 	if len(pods.Items) == 0 {

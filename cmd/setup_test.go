@@ -8,18 +8,18 @@ import (
 func TestUserApplicationSettingsAreStored(t *testing.T) {
 
 	settings := &envconfig.ApplicationSettings{
-		ProjectKey:          "my-project",
-		RemoteBranch:        "feature/MYPROJ-312-initial-commit",
-		RemoteName:          "",
-		DefaultContainer:    "default-container",
-		ClusterIp:           "127.0.0.1",
-		Username:            "root",
-		Password:            "123456",
-		AnybarPort:          "6542",
-		KeenWriteKey:        "sk29dj22d882",
-		KeenProjectId:       "cc3d902idi01",
-		KeenEventCollection: "event-collection",
-		Namespace:           "",
+		ProjectKey:            "my-project",
+		RemoteBranch:          "feature/MYPROJ-312-initial-commit",
+		RemoteName:            "",
+		DefaultService:        "web",
+		ClusterIp:             "127.0.0.1",
+		Username:              "root",
+		Password:              "123456",
+		AnybarPort:            "6542",
+		KeenWriteKey:          "sk29dj22d882",
+		KeenProjectId:         "cc3d902idi01",
+		KeenEventCollection:   "event-collection",
+		Environment:           "",
 	}
 
 	expectedSettings := *settings
@@ -28,7 +28,7 @@ func TestUserApplicationSettingsAreStored(t *testing.T) {
 	expectedSettings.RemoteName = "origin"
 
 	//we expect / to be converted to - and namespace being a concatenation of ProjectKey and RemoteBranch
-	expectedSettings.Namespace = "my-project-feature-MYPROJ-312-initial-commit"
+	expectedSettings.Environment = "my-project-feature-MYPROJ-312-initial-commit"
 
 	mockedQuestionPrompt := &MockQuestionPrompt{settings}
 	mockedYamlWriter := &MockYamlWriter{
@@ -51,7 +51,7 @@ func (qp MockQuestionPrompt) ReadString(q string) string {
 		{"What is your Continuous Pipe project key?", qp.testSettings.ProjectKey},
 		{"What is the name of the Git branch you are using for your remote environment?", qp.testSettings.RemoteBranch},
 		{"What is your github remote name? (defaults to: origin)", qp.testSettings.RemoteName},
-		{"What is the default container for the watch, bash, fetch and resync commands?", qp.testSettings.DefaultContainer},
+		{"What is the default container for the watch, bash, fetch and resync commands?", qp.testSettings.DefaultService},
 		{"What is the IP of the cluster?", qp.testSettings.ClusterIp},
 		{"What is the cluster username?", qp.testSettings.Username},
 		{"What is the cluster password?", qp.testSettings.Password},
@@ -85,7 +85,7 @@ func (w MockYamlWriter) Save(c *envconfig.ApplicationSettings) bool {
 	assertSame(w.test, w.expectedSettings.ProjectKey, c.ProjectKey)
 	assertSame(w.test, w.expectedSettings.RemoteBranch, c.RemoteBranch)
 	assertSame(w.test, w.expectedSettings.RemoteName, c.RemoteName)
-	assertSame(w.test, w.expectedSettings.DefaultContainer, c.DefaultContainer)
+	assertSame(w.test, w.expectedSettings.DefaultService, c.DefaultService)
 	assertSame(w.test, w.expectedSettings.ClusterIp, c.ClusterIp)
 	assertSame(w.test, w.expectedSettings.Username, c.Username)
 	assertSame(w.test, w.expectedSettings.Password, c.Password)
@@ -93,7 +93,7 @@ func (w MockYamlWriter) Save(c *envconfig.ApplicationSettings) bool {
 	assertSame(w.test, w.expectedSettings.KeenWriteKey, c.KeenWriteKey)
 	assertSame(w.test, w.expectedSettings.KeenProjectId, c.KeenProjectId)
 	assertSame(w.test, w.expectedSettings.KeenEventCollection, c.KeenEventCollection)
-	assertSame(w.test, w.expectedSettings.Namespace, c.Namespace)
+	assertSame(w.test, w.expectedSettings.Environment, c.Environment)
 	return true
 }
 

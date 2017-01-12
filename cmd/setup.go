@@ -33,28 +33,26 @@ func (h *SetupHandle) Handle(args []string) {
 	yamlWriter := envconfig.NewYamlWriter()
 
 	settings := h.storeUserSettings(qp, yamlWriter)
-	kubectlapi.ConfigSetAuthInfo(settings.Namespace, settings.Username, settings.Password)
-	kubectlapi.ConfigSetCluster(settings.Namespace, settings.ClusterIp)
-	kubectlapi.ConfigSetContext(settings.Namespace, settings.Username)
+	applySettingsToCubeCtlConfig(settings)
 
 	fmt.Printf("\nRemote settings written to %s\n", viper.ConfigFileUsed())
-	fmt.Printf("Created the context %s\n", settings.Namespace)
-	fmt.Println(kubectlapi.ClusterInfo(settings.Namespace))
+	fmt.Printf("Created the kubernetes config key %s\n", settings.Environment)
+	fmt.Println(kubectlapi.ClusterInfo(settings.Environment))
 }
 
 func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter envconfig.Writer) *envconfig.ApplicationSettings {
 	projectKey := qp.RepeatIfEmpty("What is your Continuous Pipe project key?")
 	remoteBranch := qp.RepeatIfEmpty("What is the name of the Git branch you are using for your remote environment?")
 
-	namespace := strings.Replace(remoteBranch, "/", "-", -1)
-	namespace = strings.Replace(namespace, "\\", "-", -1)
-	namespace = projectKey + "-" + namespace
+	environment := strings.Replace(remoteBranch, "/", "-", -1)
+	environment = strings.Replace(environment, "\\", "-", -1)
+	environment = projectKey + "-" + environment
 
 	settings := &envconfig.ApplicationSettings{
 		ProjectKey:          projectKey,
 		RemoteBranch:        remoteBranch,
 		RemoteName:          qp.ApplyDefault("What is your github remote name? (defaults to: origin)", "origin"),
-		DefaultContainer:    qp.ReadString("What is the default container for the watch, bash, fetch and resync commands?"),
+		DefaultService:      qp.ReadString("What is the default container for the watch, bash, fetch and resync commands?"),
 		ClusterIp:           qp.RepeatIfEmpty("What is the IP of the cluster?"),
 		Username:            qp.RepeatIfEmpty("What is the cluster username?"),
 		Password:            qp.RepeatIfEmpty("What is the cluster password?"),
@@ -62,11 +60,17 @@ func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter env
 		KeenWriteKey:        qp.ReadString("What is your keen.io write key? (Optional, only needed if you want to record usage stats)"),
 		KeenProjectId:       qp.ReadString("What is your keen.io project id? (Optional, only needed if you want to record usage stats)"),
 		KeenEventCollection: qp.ReadString("What is your keen.io event collection?  (Optional, only needed if you want to record usage stats)"),
-		Namespace:           namespace,
+		Environment:         environment,
 	}
 
 	yamlWriter.Save(settings)
 	return settings
+}
+
+func applySettingsToCubeCtlConfig(settings *envconfig.ApplicationSettings) {
+	kubectlapi.ConfigSetAuthInfo(settings.Environment, settings.Username, settings.Password)
+	kubectlapi.ConfigSetCluster(settings.Environment, settings.ClusterIp)
+	kubectlapi.ConfigSetContext(settings.Environment, settings.Username)
 }
 
 func init() {

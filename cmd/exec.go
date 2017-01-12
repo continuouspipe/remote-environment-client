@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/spf13/viper"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
+	"github.com/continuouspipe/remote-environment-client/config"
 	"fmt"
 )
 
@@ -20,8 +21,6 @@ the exec command. The command and its arguments need to follow --`,
 
 func init() {
 	RootCmd.AddCommand(execCmd)
-
-	execCmd.PersistentFlags().StringP("pod", "p", "", "The pod to use")
 }
 
 type ExecHandle struct {
@@ -31,13 +30,13 @@ type ExecHandle struct {
 func (h *ExecHandle) Handle(args []string) {
 	validateConfig()
 
-	context := viper.GetString("context")
-	namespace := viper.GetString("namespace")
-	pod := h.Command.PersistentFlags().Lookup("pod")
+	kubeConfigKey := viper.GetString(config.KubeConfigKey)
+	environment := viper.GetString(config.Environment)
+	service := viper.GetString(config.Service)
 
-	fmt.Println(context)
-	fmt.Println(namespace)
-	fmt.Println(pod)
+	pod, err := kubectlapi.FindPodByService(kubeConfigKey, environment, service)
+	checkErr(err)
 
-	kubectlapi.Exec(context, namespace, pod.Value.String(), "ls -all")
+	res := kubectlapi.Exec(kubeConfigKey, environment, pod.GetName(), args...)
+	fmt.Println(res)
 }
