@@ -36,19 +36,19 @@ func FetchPods(context string, environment string) (*v1.PodList, error) {
 	return client.Core().Pods(environment).List(v1.ListOptions{})
 }
 
-func FindPodByContainer(context string, environment string, container string) (v1.Pod, error) {
+func FindPodByContainer(context string, environment string, container string) (*v1.Pod, error) {
 	pods, err := FetchPods(context, environment)
 
 	if err != nil {
-		return v1.Pod{}, err
+		return nil, err
 	}
 
 	for _, pod := range pods.Items {
 		if strings.HasPrefix(pod.GetName(), container) {
-			return pod, nil
+			return &pod, nil
 		}
 	}
 
-	return v1.Pod{}, errors.New("Pods were found but not for the container specified")
+	return nil, errors.New("Pods were found but not for the container specified")
 
 }
