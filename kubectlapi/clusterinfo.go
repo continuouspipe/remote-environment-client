@@ -1,9 +1,12 @@
 package kubectlapi
 
-import "os/exec"
+import (
+	"github.com/continuouspipe/remote-environment-client/osapi"
+)
 
-func ClusterInfo(context string) string {
-	contextFlag := "--context=" + context
-	cmd := exec.Command(appName, kubeCtlName, contextFlag, "cluster-info")
-	return executeCmd(cmd)
+func ClusterInfo(kubeConfigKey string) string {
+	contextFlag := "--context=" + kubeConfigKey
+	args := []string{kubeCtlName, contextFlag, "cluster-info"}
+
+	return osapi.CommandExec(appName, args...)
 }

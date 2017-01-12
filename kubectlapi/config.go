@@ -1,7 +1,7 @@
 package kubectlapi
 
 import (
-	"os/exec"
+	"github.com/continuouspipe/remote-environment-client/osapi"
 )
 
 func ConfigSetAuthInfo(environment string, username string, password string) string {
@@ -9,21 +9,21 @@ func ConfigSetAuthInfo(environment string, username string, password string) str
 	usernameFlag := "--username=" + username
 	passwordFlag := "--password=" + password
 
-	cmd := exec.Command(appName, kubeCtlName, "config", "set-credentials", nameParam, usernameFlag, passwordFlag)
-	return executeCmd(cmd)
+	args := []string{kubeCtlName, "config", "set-credentials", nameParam, usernameFlag, passwordFlag}
+	return osapi.CommandExec(appName, args...)
 }
 
 func ConfigSetCluster(environment string, clusterIp string) string {
 	serverFlag := "--server=https://" + clusterIp
 
-	cmd := exec.Command(appName, kubeCtlName, "config", "set-cluster", environment, serverFlag, "--insecure-skip-tls-verify=true")
-	return executeCmd(cmd)
+	args := []string{kubeCtlName, "config", "set-cluster", environment, serverFlag, "--insecure-skip-tls-verify=true"}
+	return osapi.CommandExec(appName, args...)
 }
 
 func ConfigSetContext(environment string, username string) string {
 	clusterFlag := "--cluster=" + environment
 	userFlag := "--user=" + environment + "-" + username
 
-	cmd := exec.Command(appName, kubeCtlName, "config", "set-context", environment, clusterFlag, userFlag)
-	return executeCmd(cmd)
+	args := []string{kubeCtlName, "config", "set-context", environment, clusterFlag, userFlag}
+	return osapi.CommandExec(appName, args...)
 }
