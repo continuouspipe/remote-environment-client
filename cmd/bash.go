@@ -1,8 +1,10 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
+	"github.com/continuouspipe/remote-environment-client/config"
 )
 
 var bashCmd = &cobra.Command{
@@ -20,11 +22,19 @@ type BashHandle struct {
 	Command *cobra.Command
 }
 
-func (h *BashHandle) Handle(args []string) {
-	validateConfig()
-	fmt.Println("bash called")
-}
-
 func init() {
 	RootCmd.AddCommand(bashCmd)
+}
+
+func (h *BashHandle) Handle(args []string) {
+	validateConfig()
+
+	kubeConfigKey := viper.GetString(config.KubeConfigKey)
+	environment := viper.GetString(config.Environment)
+	service := viper.GetString(config.Service)
+
+	pod, err := kubectlapi.FindPodByService(kubeConfigKey, environment, service)
+	checkErr(err)
+
+	kubectlapi.SysCallExec(kubeConfigKey, environment, pod.GetName(), "/bin/bash")
 }

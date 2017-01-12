@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/config"
-	"fmt"
 )
 
 var execCmd = &cobra.Command{
@@ -37,6 +38,6 @@ func (h *ExecHandle) Handle(args []string) {
 	pod, err := kubectlapi.FindPodByService(kubeConfigKey, environment, service)
 	checkErr(err)
 
-	res := kubectlapi.Exec(kubeConfigKey, environment, pod.GetName(), args...)
+	res := kubectlapi.CommandExec(kubeConfigKey, environment, pod.GetName(), args...)
 	fmt.Println(res)
 }
