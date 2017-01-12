@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+var AppName = os.Args[0]
+
 const (
 	ProjectKey          = "project-key"
 	RemoteBranch        = "remote-branch"
@@ -20,6 +22,8 @@ const (
 	KeenEventCollection = "keen-event-collection"
 	Environment         = "environment"
 	KubeConfigKey       = "kubernetes-config-key"
+
+	KubeCtlName = "kubectl"
 )
 
 //Contains all remote environment settings

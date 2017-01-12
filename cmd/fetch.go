@@ -1,9 +1,11 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
+	"github.com/continuouspipe/remote-environment-client/sync"
 )
 
 var fetchCmd = &cobra.Command{
@@ -33,5 +35,13 @@ type FetchHandle struct {
 
 func (h *FetchHandle) Handle(args []string) {
 	validateConfig()
-	fmt.Println("fetch called")
+
+	kubeConfigKey := viper.GetString(config.KubeConfigKey)
+	environment := viper.GetString(config.Environment)
+	service := viper.GetString(config.Service)
+
+	pod, err := kubectlapi.FindPodByService(kubeConfigKey, environment, service)
+	checkErr(err)
+
+	sync.Fetch(kubeConfigKey, environment, service, pod.GetName())
 }

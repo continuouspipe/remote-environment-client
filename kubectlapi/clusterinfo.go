@@ -1,12 +1,15 @@
 package kubectlapi
 
 import (
+	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/osapi"
 )
 
 func ClusterInfo(kubeConfigKey string) string {
-	contextFlag := "--context=" + kubeConfigKey
-	args := []string{kubeCtlName, contextFlag, "cluster-info"}
+	args := []string{
+		config.KubeCtlName,
+		"--context=" + kubeConfigKey,
+		"cluster-info"}
 
-	return osapi.CommandExec(appName, args...)
+	return osapi.CommandExec(config.AppName, args...)
 }
