@@ -43,5 +43,5 @@ func (h *FetchHandle) Handle(args []string) {
 	pod, err := kubectlapi.FindPodByService(kubeConfigKey, environment, service)
 	checkErr(err)
 
-	sync.Fetch(kubeConfigKey, environment, service, pod.GetName())
+	sync.Fetch(kubeConfigKey, environment, pod.GetName())
 }
