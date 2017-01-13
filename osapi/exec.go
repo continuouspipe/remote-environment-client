@@ -31,7 +31,7 @@ func SysCallExec(name string, arg ...string) {
 func executeCmd(cmd *exec.Cmd) string {
 	out, err := cmd.Output()
 	if err != nil {
-		panic(err)
+		panic(err.Error())
 	}
 	return string(out[:])
 }

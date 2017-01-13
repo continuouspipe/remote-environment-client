@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	envconfig "github.com/continuouspipe/remote-environment-client/config"
-	"github.com/continuouspipe/remote-environment-client/update"
 )
 
 var cfgFile string
@@ -45,7 +44,6 @@ func Execute() {
 }
 
 func init() {
-	update.CheckForLatestVersion()
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", ".cp-remote-env-settings.yml", "config file (default is .cp-remote-env-settings.yml in the directory cp-remote is run from.)")
 	cobra.OnInitialize(initConfig)
 }
