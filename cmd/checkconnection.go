@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
+	"github.com/continuouspipe/remote-environment-client/config"
 )
 
 var checkconnectionCmd = &cobra.Command{
@@ -16,6 +17,10 @@ var checkconnectionCmd = &cobra.Command{
 for the Kubernetes cluster are correct and that if they are pods can be found for the environment. 
 It can be used with the environment option to check another environment`,
 	Run: func(cmd *cobra.Command, args []string) {
+		settings := config.NewApplicationSettings()
+		validator := config.NewMandatoryChecker()
+		validateConfig(validator, settings)
+
 		handler := &CheckConnectionHandle{cmd}
 		podsFinder := pods.NewKubePodsFind()
 		handler.Handle(args, podsFinder)
@@ -33,8 +38,6 @@ type CheckConnectionHandle struct {
 }
 
 func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) {
-	validateConfig()
-
 	viper.BindPFlag("environment", h.Command.PersistentFlags().Lookup("environment"))
 	kubeConfigKey := viper.GetString("kubernetes-config-key")
 	environment := viper.GetString("environment")

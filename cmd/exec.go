@@ -16,6 +16,10 @@ var execCmd = &cobra.Command{
 	Long: `To execute a command on a container without first getting a bash session use
 the exec command. The command and its arguments need to follow --`,
 	Run: func(cmd *cobra.Command, args []string) {
+		settings := config.NewApplicationSettings()
+		validator := config.NewMandatoryChecker()
+		validateConfig(validator, settings)
+
 		handler := &ExecHandle{cmd}
 		podsFinder := pods.NewKubePodsFind()
 		podsFilter := pods.NewKubePodsFilter()
@@ -33,8 +37,6 @@ type ExecHandle struct {
 }
 
 func (h *ExecHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, spawn exec.Spawner) {
-	validateConfig()
-
 	kubeConfigKey := viper.GetString(config.KubeConfigKey)
 	environment := viper.GetString(config.Environment)
 	service := viper.GetString(config.Service)

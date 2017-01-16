@@ -15,8 +15,11 @@ var bashCmd = &cobra.Command{
 	Long: `This will remotely connect to a bash session onto the default container specified
 during setup but you can specify another container to connect to. `,
 	Run: func(cmd *cobra.Command, args []string) {
-		handler := &BashHandle{cmd}
 		settings := config.NewApplicationSettings()
+		validator := config.NewMandatoryChecker()
+		validateConfig(validator, settings)
+
+		handler := &BashHandle{cmd}
 		podsFinder := pods.NewKubePodsFind()
 		podsFilter := pods.NewKubePodsFilter()
 		local := exec.NewLocal()
@@ -34,8 +37,6 @@ func init() {
 }
 
 func (h *BashHandle) Handle(args []string, settingsReader config.Reader, podsFinder pods.Finder, podsFilter pods.Filter, executor exec.Executor) {
-	validateConfig()
-
 	kubeConfigKey := settingsReader.GetString(config.KubeConfigKey)
 	environment := settingsReader.GetString(config.Environment)
 	service := settingsReader.GetString(config.Service)

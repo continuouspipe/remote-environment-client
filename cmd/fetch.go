@@ -20,6 +20,10 @@ autocomplete in your IDE not working correctly.
 The fetch command will copy changes from the remote to the local filesystem. This will resync 
 with the default container specified during setup but you can specify another container.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		settings := config.NewApplicationSettings()
+		validator := config.NewMandatoryChecker()
+		validateConfig(validator, settings)
+
 		handler := &FetchHandle{cmd}
 		podsFinder := pods.NewKubePodsFind()
 		podsFilter := pods.NewKubePodsFilter()
@@ -36,8 +40,6 @@ type FetchHandle struct {
 }
 
 func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter) {
-	validateConfig()
-
 	kubeConfigKey := viper.GetString(config.KubeConfigKey)
 	environment := viper.GetString(config.Environment)
 	service := viper.GetString(config.Service)

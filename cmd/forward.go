@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 )
 
@@ -32,6 +32,10 @@ to a container on the remote environment that has a port exposed. This is useful
 such as connecting to a database using a local client. You need to specify the container and 
 the port number to forward.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		settings := config.NewApplicationSettings()
+		validator := config.NewMandatoryChecker()
+		validateConfig(validator, settings)
+
 		handler := &ForwardHandle{cmd}
 		if err := handler.Validate(args); err != nil {
 			checkErr(err)
@@ -52,8 +56,6 @@ type ForwardHandle struct {
 }
 
 func (h *ForwardHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter) {
-	validateConfig()
-
 	kubeConfigKey := viper.GetString(config.KubeConfigKey)
 	environment := viper.GetString(config.Environment)
 	service := viper.GetString(config.Service)

@@ -64,8 +64,8 @@ func initConfig() {
 	}
 }
 
-func validateConfig() {
-	i, missing := envconfig.Validate()
+func validateConfig(validator envconfig.Validator, reader envconfig.Reader) {
+	i, missing := validator.Validate(reader)
 	if i > 0 {
 		exitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the setup command.", missing))
 	}

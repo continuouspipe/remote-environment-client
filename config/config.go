@@ -111,12 +111,31 @@ func (writer YamlWriter) Save(config *ApplicationSettings) bool {
 	return err == nil
 }
 
-//TODO: Refactor this adding Validator as interface and making ApplicationSettings implement it
-//takes the application config from viper and checks that all the required fields are populated
-func Validate() (n int, missing []string) {
-	var mandatorySettings = []string{"project-key", "remote-branch", "remote-name", "cluster-ip", "service", "username", "password", "kubernetes-config-key"}
-	for _, setting := range mandatorySettings {
-		if settingValue := viper.Get(setting); settingValue == nil {
+type Validator interface {
+	Validate(Reader) (n int, missing []string)
+}
+
+type MandatoryChecker struct {
+	settings []string
+}
+
+func NewMandatoryChecker() *MandatoryChecker {
+	checker := &MandatoryChecker{}
+	checker.settings = []string{"project-key",
+								"remote-branch",
+								"remote-name",
+								"cluster-ip",
+								"service",
+								"username",
+								"password",
+								"kubernetes-config-key"}
+	return checker
+}
+
+//takes the application config from a config reader and checks that all the required fields are populated
+func (checker *MandatoryChecker) Validate(configReader Reader) (n int, missing []string) {
+	for _, setting := range checker.settings {
+		if settingValue := configReader.GetString(setting); settingValue == "" {
 			missing = append(missing, setting)
 		}
 	}

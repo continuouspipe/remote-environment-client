@@ -21,6 +21,10 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	test.AssertSame(t, "my-config-key", mockLocalExecutor.kubeConfigKey)
 	test.AssertSame(t, "feature-testing", mockLocalExecutor.environment)
 	test.AssertSame(t, "web-123456", mockLocalExecutor.pod)
+
+	if mockLocalExecutor.callsCount != 1 {
+		t.Error("Expected SysCallExec to be called only once")
+	}
 }
 
 type MockConfigReader struct{}

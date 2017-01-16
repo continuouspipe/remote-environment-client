@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -14,6 +15,10 @@ var watchCmd = &cobra.Command{
 of the remote environment. This will use the default container specified during
 setup but you can specify another container to sync with.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		settings := config.NewApplicationSettings()
+		validator := config.NewMandatoryChecker()
+		validateConfig(validator, settings)
+
 		handler := &WatchHandle{cmd}
 		handler.Handle(args)
 	},
@@ -31,8 +36,6 @@ type WatchHandle struct {
 }
 
 func (h *WatchHandle) Handle(args []string) {
-	validateConfig()
-
 	viper.BindPFlag("container", h.Command.PersistentFlags().Lookup("container"))
 	viper.BindPFlag("environment", h.Command.PersistentFlags().Lookup("environment"))
 

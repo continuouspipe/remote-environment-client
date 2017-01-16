@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/continuouspipe/remote-environment-client/config"
 )
 
 var destroyCmd = &cobra.Command{
@@ -12,6 +13,10 @@ var destroyCmd = &cobra.Command{
 	Long: `The destroy command will delete the remote branch used for your remote
 environment, ContinuousPipe will then remove the environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		settings := config.NewApplicationSettings()
+		validator := config.NewMandatoryChecker()
+		validateConfig(validator, settings)
+
 		handler := &DestroyHandle{cmd}
 		handler.Handle(args)
 	},
@@ -26,6 +31,5 @@ type DestroyHandle struct {
 }
 
 func (h *DestroyHandle) Handle(args []string) {
-	validateConfig()
 	fmt.Println("destroy called")
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/continuouspipe/remote-environment-client/config"
 )
 
 var buildCmd = &cobra.Command{
@@ -14,6 +15,10 @@ environment branch. ContinuousPipe will then build the environment. You can use 
 https://ui.continuouspipe.io/ to see when the environment has finished building and to 
 find its IP address.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		settings := config.NewApplicationSettings()
+		validator := config.NewMandatoryChecker()
+		validateConfig(validator, settings)
+
 		handler := &BuildHandle{cmd}
 		handler.Handle(args)
 	},
@@ -28,6 +33,5 @@ type BuildHandle struct {
 }
 
 func (h *BuildHandle) Handle(args []string) {
-	validateConfig()
 	fmt.Println("build called")
 }
