@@ -8,8 +8,8 @@ import (
 	"github.com/continuouspipe/remote-environment-client/test"
 )
 
-func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
-	bashHandle := &BashHandle{}
+func TestCommandsAreSpawned(t *testing.T) {
+	execHandle := &ExecHandle{}
 
 	configReader := test.GetMockConfigReader()
 	configReader.MockGetString(func(key string) string {
@@ -40,12 +40,17 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 
 	mockLocalExecutor := test.GetMockLocalExecutor()
 
-	bashHandle.Handle([]string{}, configReader, mockPodsFinder, mockPodFilter, mockLocalExecutor)
+	mockLocalExecutor.MockCommandExec(func() string {
+		return "some retult back.."
+	})
 
-	firstCall := mockLocalExecutor.FirstCallsFor("SysCallExec")
+	out := execHandle.Handle([]string{"ls", "-a", "-l", "-l"}, configReader, mockPodsFinder, mockPodFilter, mockLocalExecutor)
+	test.AssertSame(t, "some retult back..", out)
 
-	if mockLocalExecutor.CallsCountFor("SysCallExec") != 1 {
-		t.Error("Expected SysCallExec to be called only once")
+	firstCall := mockLocalExecutor.FirstCallsFor("CommandExec")
+
+	if mockLocalExecutor.CallsCountFor("CommandExec") != 1 {
+		t.Error("Expected CommandExec to be called only once")
 	}
 
 	if str, ok := firstCall.Arguments["kubeConfigKey"].(string); ok {
@@ -65,4 +70,11 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	} else {
 		t.Fatalf("Expected pod to be a string, given %T", firstCall.Arguments["pod"])
 	}
+
+	if execArgs, ok := firstCall.Arguments["execCmdArgs"].([]string); ok {
+		test.AssertDeepEqual(t, execArgs, []string{"ls", "-a", "-l", "-l"})
+	} else {
+		t.Fatalf("Expected pod to be a string, given %T", firstCall.Arguments["pod"])
+	}
+
 }

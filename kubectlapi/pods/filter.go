@@ -1,11 +1,11 @@
 package pods
 
 import (
+	"fmt"
 	"errors"
 	"strings"
 
 	"k8s.io/client-go/pkg/api/v1"
-	"fmt"
 )
 
 type Filter interface {
