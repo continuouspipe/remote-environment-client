@@ -52,12 +52,29 @@ type ApplicationSettings struct {
 	KeenEventCollection string
 	//Continuous Pipe project Environment (Called Namespace in Kubernetes)
 	Environment string
+
+	//Adds configuration reading capabilities
+	viper *viper.Viper
 }
 
+func NewApplicationSettings() *ApplicationSettings {
+	s := &ApplicationSettings{}
+	s.viper = viper.GetViper()
+	return s
+}
+
+type Reader interface {
+	GetString(key string) string
+}
+
+func (s ApplicationSettings) GetString(key string) string {
+	return s.viper.GetString(key)
+}
+
+//TODO: Refactor this and make ApplicationSettings implement Save
 type Writer interface {
 	Save(*ApplicationSettings) bool
 }
-
 type YamlWriter struct{}
 
 func NewYamlWriter() *YamlWriter {
@@ -94,6 +111,7 @@ func (writer YamlWriter) Save(config *ApplicationSettings) bool {
 	return err == nil
 }
 
+//TODO: Refactor this adding Validator as interface and making ApplicationSettings implement it
 //takes the application config from viper and checks that all the required fields are populated
 func Validate() (n int, missing []string) {
 	var mandatorySettings = []string{"project-key", "remote-branch", "remote-name", "cluster-ip", "service", "username", "password", "kubernetes-config-key"}

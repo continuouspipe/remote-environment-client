@@ -5,8 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 )
 
 var execCmd = &cobra.Command{
@@ -16,7 +17,10 @@ var execCmd = &cobra.Command{
 the exec command. The command and its arguments need to follow --`,
 	Run: func(cmd *cobra.Command, args []string) {
 		handler := &ExecHandle{cmd}
-		handler.Handle(args)
+		podsFinder := pods.NewKubePodsFind()
+		podsFilter := pods.NewKubePodsFilter()
+		local := exec.NewLocal()
+		handler.Handle(args, podsFinder, podsFilter, local)
 	},
 }
 
@@ -28,16 +32,19 @@ type ExecHandle struct {
 	Command *cobra.Command
 }
 
-func (h *ExecHandle) Handle(args []string) {
+func (h *ExecHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, spawn exec.Spawner) {
 	validateConfig()
 
 	kubeConfigKey := viper.GetString(config.KubeConfigKey)
 	environment := viper.GetString(config.Environment)
 	service := viper.GetString(config.Service)
 
-	pod, err := kubectlapi.FindPodByService(kubeConfigKey, environment, service)
+	allPods, err := podsFinder.FindAll(kubeConfigKey, environment)
 	checkErr(err)
 
-	res := kubectlapi.CommandExec(kubeConfigKey, environment, pod.GetName(), args...)
+	pod, err := podsFilter.ByService(allPods, service)
+	checkErr(err)
+
+	res := spawn.CommandExec(kubeConfigKey, environment, pod.GetName(), args...)
 	fmt.Println(res)
 }

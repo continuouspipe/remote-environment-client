@@ -6,7 +6,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/continuouspipe/remote-environment-client/kubectlapi"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 )
 
 var checkconnectionCmd = &cobra.Command{
@@ -17,7 +17,8 @@ for the Kubernetes cluster are correct and that if they are pods can be found fo
 It can be used with the environment option to check another environment`,
 	Run: func(cmd *cobra.Command, args []string) {
 		handler := &CheckConnectionHandle{cmd}
-		handler.Handle(args)
+		podsFinder := pods.NewKubePodsFind()
+		handler.Handle(args, podsFinder)
 	},
 }
 
@@ -31,18 +32,18 @@ type CheckConnectionHandle struct {
 	Command *cobra.Command
 }
 
-func (h *CheckConnectionHandle) Handle(args []string) {
+func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) {
 	validateConfig()
 
 	viper.BindPFlag("environment", h.Command.PersistentFlags().Lookup("environment"))
 	kubeConfigKey := viper.GetString("kubernetes-config-key")
 	environment := viper.GetString("environment")
 	fmt.Println("checking connection for environment " + environment)
-	color.Green("Connected succesfully and found %d pods for the environment\n", fetchNumberOfPods(kubeConfigKey, environment))
+	color.Green("Connected succesfully and found %d pods for the environment\n", fetchNumberOfPods(kubeConfigKey, environment, podsFinder))
 }
 
-func fetchNumberOfPods(kubeConfigKey string, environment string) int {
-	pods, err := kubectlapi.FetchPods(kubeConfigKey, environment)
+func fetchNumberOfPods(kubeConfigKey string, environment string, podsFinder pods.Finder) int {
+	pods, err := podsFinder.FindAll(kubeConfigKey, environment)
 	checkErr(err)
 
 	if len(pods.Items) == 0 {

@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/config"
-	"fmt"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 )
 
 var (
@@ -35,7 +36,9 @@ the port number to forward.`,
 		if err := handler.Validate(args); err != nil {
 			checkErr(err)
 		}
-		handler.Handle(args)
+		podsFinder := pods.NewKubePodsFind()
+		podsFilter := pods.NewKubePodsFilter()
+		handler.Handle(args, podsFinder, podsFilter)
 	},
 	Example: portforward_example,
 }
@@ -48,14 +51,17 @@ type ForwardHandle struct {
 	Command *cobra.Command
 }
 
-func (h *ForwardHandle) Handle(args []string) {
+func (h *ForwardHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter) {
 	validateConfig()
 
 	kubeConfigKey := viper.GetString(config.KubeConfigKey)
 	environment := viper.GetString(config.Environment)
 	service := viper.GetString(config.Service)
 
-	pod, err := kubectlapi.FindPodByService(kubeConfigKey, environment, service)
+	allPods, err := podsFinder.FindAll(kubeConfigKey, environment)
+	checkErr(err)
+
+	pod, err := podsFilter.ByService(allPods, service)
 	checkErr(err)
 
 	ports := args[0]

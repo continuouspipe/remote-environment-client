@@ -4,8 +4,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/continuouspipe/remote-environment-client/config"
-	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/sync"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 )
 
 var fetchCmd = &cobra.Command{
@@ -21,7 +21,9 @@ The fetch command will copy changes from the remote to the local filesystem. Thi
 with the default container specified during setup but you can specify another container.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		handler := &FetchHandle{cmd}
-		handler.Handle(args)
+		podsFinder := pods.NewKubePodsFind()
+		podsFilter := pods.NewKubePodsFilter()
+		handler.Handle(args, podsFinder, podsFilter)
 	},
 }
 
@@ -33,14 +35,17 @@ type FetchHandle struct {
 	Command *cobra.Command
 }
 
-func (h *FetchHandle) Handle(args []string) {
+func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter) {
 	validateConfig()
 
 	kubeConfigKey := viper.GetString(config.KubeConfigKey)
 	environment := viper.GetString(config.Environment)
 	service := viper.GetString(config.Service)
 
-	pod, err := kubectlapi.FindPodByService(kubeConfigKey, environment, service)
+	allPods, err := podsFinder.FindAll(kubeConfigKey, environment)
+	checkErr(err)
+
+	pod, err := podsFilter.ByService(allPods, service)
 	checkErr(err)
 
 	sync.Fetch(kubeConfigKey, environment, pod.GetName())

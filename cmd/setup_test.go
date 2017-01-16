@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"testing"
+
 	envconfig "github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/test"
 )
 
 func TestUserApplicationSettingsAreStored(t *testing.T) {
@@ -82,23 +84,17 @@ type MockYamlWriter struct {
 }
 
 func (w MockYamlWriter) Save(c *envconfig.ApplicationSettings) bool {
-	assertSame(w.test, w.expectedSettings.ProjectKey, c.ProjectKey)
-	assertSame(w.test, w.expectedSettings.RemoteBranch, c.RemoteBranch)
-	assertSame(w.test, w.expectedSettings.RemoteName, c.RemoteName)
-	assertSame(w.test, w.expectedSettings.DefaultService, c.DefaultService)
-	assertSame(w.test, w.expectedSettings.ClusterIp, c.ClusterIp)
-	assertSame(w.test, w.expectedSettings.Username, c.Username)
-	assertSame(w.test, w.expectedSettings.Password, c.Password)
-	assertSame(w.test, w.expectedSettings.AnybarPort, c.AnybarPort)
-	assertSame(w.test, w.expectedSettings.KeenWriteKey, c.KeenWriteKey)
-	assertSame(w.test, w.expectedSettings.KeenProjectId, c.KeenProjectId)
-	assertSame(w.test, w.expectedSettings.KeenEventCollection, c.KeenEventCollection)
-	assertSame(w.test, w.expectedSettings.Environment, c.Environment)
+	test.AssertSame(w.test, w.expectedSettings.ProjectKey, c.ProjectKey)
+	test.AssertSame(w.test, w.expectedSettings.RemoteBranch, c.RemoteBranch)
+	test.AssertSame(w.test, w.expectedSettings.RemoteName, c.RemoteName)
+	test.AssertSame(w.test, w.expectedSettings.DefaultService, c.DefaultService)
+	test.AssertSame(w.test, w.expectedSettings.ClusterIp, c.ClusterIp)
+	test.AssertSame(w.test, w.expectedSettings.Username, c.Username)
+	test.AssertSame(w.test, w.expectedSettings.Password, c.Password)
+	test.AssertSame(w.test, w.expectedSettings.AnybarPort, c.AnybarPort)
+	test.AssertSame(w.test, w.expectedSettings.KeenWriteKey, c.KeenWriteKey)
+	test.AssertSame(w.test, w.expectedSettings.KeenProjectId, c.KeenProjectId)
+	test.AssertSame(w.test, w.expectedSettings.KeenEventCollection, c.KeenEventCollection)
+	test.AssertSame(w.test, w.expectedSettings.Environment, c.Environment)
 	return true
-}
-
-func assertSame(t *testing.T, expected string, given string) {
-	if given != expected {
-		t.Errorf("Mismatch between expected setting %s and written setting %s", expected, given)
-	}
 }
