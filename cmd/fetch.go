@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
@@ -27,7 +26,8 @@ with the default container specified during setup but you can specify another co
 		handler := &FetchHandle{cmd}
 		podsFinder := pods.NewKubePodsFind()
 		podsFilter := pods.NewKubePodsFilter()
-		handler.Handle(args, podsFinder, podsFilter)
+		rsyncFetch := sync.NewRsyncFetch()
+		handler.Handle(args, settings, podsFinder, podsFilter, rsyncFetch)
 	},
 }
 
@@ -39,10 +39,10 @@ type FetchHandle struct {
 	Command *cobra.Command
 }
 
-func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter) {
-	kubeConfigKey := viper.GetString(config.KubeConfigKey)
-	environment := viper.GetString(config.Environment)
-	service := viper.GetString(config.Service)
+func (h *FetchHandle) Handle(args []string, settings config.Reader, podsFinder pods.Finder, podsFilter pods.Filter, fetcher sync.Fetcher) {
+	kubeConfigKey := settings.GetString(config.KubeConfigKey)
+	environment := settings.GetString(config.Environment)
+	service := settings.GetString(config.Service)
 
 	allPods, err := podsFinder.FindAll(kubeConfigKey, environment)
 	checkErr(err)
@@ -50,5 +50,5 @@ func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter p
 	pod, err := podsFilter.ByService(allPods, service)
 	checkErr(err)
 
-	sync.Fetch(kubeConfigKey, environment, pod.GetName())
+	fetcher.Fetch(kubeConfigKey, environment, pod.GetName())
 }

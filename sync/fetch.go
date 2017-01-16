@@ -8,7 +8,17 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 )
 
-func Fetch(kubeConfigKey string, environment string, pod string) bool {
+type Fetcher interface {
+	Fetch(kubeConfigKey string, environment string, pod string) bool
+}
+
+type RsyncFetch struct{}
+
+func NewRsyncFetch() *RsyncFetch {
+	return &RsyncFetch{}
+}
+
+func (r RsyncFetch) Fetch(kubeConfigKey string, environment string, pod string) bool {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return false

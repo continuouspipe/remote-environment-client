@@ -4,11 +4,10 @@ import (
 	"testing"
 
 	"k8s.io/client-go/pkg/api/v1"
-	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/test"
 )
 
-func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
+func TestFetch(t *testing.T) {
 	//get mocked dependencies
 	configReader := getMockConfigReaderInitialized()
 	mockPodsFinder := test.GetMockPodsFinder()
@@ -21,17 +20,17 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 		mockPod.SetName("web-123456")
 		return mockPod, nil
 	})
-	mockLocalExecutor := test.GetMockLocalExecutor()
+	mockFetcher := test.GetMockRsyncFetch()
 
 	//test subject called
-	bashHandle := &BashHandle{}
-	bashHandle.Handle([]string{}, configReader, mockPodsFinder, mockPodFilter, mockLocalExecutor)
+	handler := &FetchHandle{}
+	handler.Handle([]string{}, configReader, mockPodsFinder, mockPodFilter, mockFetcher)
 
 	//expectations
-	firstCall := mockLocalExecutor.FirstCallsFor("SysCallExec")
+	firstCall := mockFetcher.FirstCallsFor("Fetch")
 
-	if mockLocalExecutor.CallsCountFor("SysCallExec") != 1 {
-		t.Error("Expected SysCallExec to be called only once")
+	if mockFetcher.CallsCountFor("Fetch") != 1 {
+		t.Error("Expected Fetch to be called only once")
 	}
 	if str, ok := firstCall.Arguments["kubeConfigKey"].(string); ok {
 		test.AssertSame(t, "my-config-key", str)
@@ -48,21 +47,4 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	} else {
 		t.Fatalf("Expected pod to be a string, given %T", firstCall.Arguments["pod"])
 	}
-}
-func getMockConfigReaderInitialized() *test.MockConfigReader {
-	configReader := test.GetMockConfigReader()
-	configReader.MockGetString(func(key string) string {
-		switch key {
-		case config.KubeConfigKey:
-			return "my-config-key"
-
-		case config.Environment:
-			return "feature-testing"
-
-		case config.Service:
-			return "web"
-		}
-		return ""
-	})
-	return configReader
 }
