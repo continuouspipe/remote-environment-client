@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-
-	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/sync"
 )
 
 var watchCmd = &cobra.Command{
@@ -18,28 +16,29 @@ setup but you can specify another container to sync with.`,
 		settings := config.NewApplicationSettings()
 		validator := config.NewMandatoryChecker()
 		validateConfig(validator, settings)
+		dirWatcher := sync.GetDirectoryWatch()
 
 		handler := &WatchHandle{cmd}
-		handler.Handle(args)
+		handler.Handle(args, settings, dirWatcher)
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(watchCmd)
-
-	watchCmd.PersistentFlags().StringP("container", "c", "", "The container to use")
-	watchCmd.PersistentFlags().StringP("environment", "e", "", "The environment to use")
+	//watchCmd.PersistentFlags().StringP("container", "c", "", "The container to use")
+	//watchCmd.PersistentFlags().StringP("environment", "e", "", "The environment to use")
 }
 
 type WatchHandle struct {
 	Command *cobra.Command
 }
 
-func (h *WatchHandle) Handle(args []string) {
-	viper.BindPFlag("container", h.Command.PersistentFlags().Lookup("container"))
-	viper.BindPFlag("environment", h.Command.PersistentFlags().Lookup("environment"))
+func (h *WatchHandle) Handle(args []string, settings config.Reader, dirWatcher sync.DirectoryWatchEventCaller) {
+	//viper.BindPFlag("container", h.Command.PersistentFlags().Lookup("container"))
+	//viper.BindPFlag("environment", h.Command.PersistentFlags().Lookup("environment"))
+	//fmt.Println("The container is set to: " + viper.GetString("container"))
+	//fmt.Println("The environment is set to: " + viper.GetString("environment"))
 
-	fmt.Println("watch called")
-	fmt.Println("The container is set to: " + viper.GetString("container"))
-	fmt.Println("The environment is set to: " + viper.GetString("environment"))
+	observer := sync.GetDirectoryEventSyncAll()
+	dirWatcher.AnyEventCall(".", observer)
 }

@@ -1,0 +1,130 @@
+package sync
+
+import (
+	"fmt"
+	"os"
+	"sync"
+	"time"
+	"github.com/fsnotify/fsnotify"
+	"github.com/golang/glog"
+	"github.com/continuouspipe/remote-environment-client/path/filepath"
+)
+
+type DirectoryEventObserver interface {
+	OnEvent(fsnotify.Event)
+}
+
+type DirectoryWatchEventCaller interface {
+	//watches the given directory and its sub-directories for any event
+	//when an event occurs it executes the callback with the supplied arguments
+	AnyEventCall(directory string, observer DirectoryEventObserver) error
+}
+
+type DirectoryWatch struct{}
+
+func GetDirectoryWatch() *DirectoryWatch {
+	return &DirectoryWatch{}
+}
+
+func (w DirectoryWatch) AnyEventCall(directory string, observer DirectoryEventObserver) error {
+	// these variables must be accessed while holding the changeLock
+	// mutex as they are shared between goroutines to communicate
+	// sync state/events.
+	var (
+		changeLock sync.Mutex
+		dirty      bool
+		lastChange time.Time
+		watchError error
+	)
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("error setting up filesystem watcher: %v", err)
+	}
+	defer watcher.Close()
+
+	go func() {
+		for {
+			select {
+			case event := <-watcher.Events:
+				changeLock.Lock()
+				fmt.Printf("filesystem watch event: %s", event)
+				lastChange = time.Now()
+				dirty = true
+				if event.Op&fsnotify.Remove == fsnotify.Remove {
+					if e := watcher.Remove(event.Name); e != nil {
+						glog.V(5).Infof("error removing watch for %s: %v", event.Name, e)
+					}
+				} else {
+					if e := w.AddRecursiveWatch(watcher, event.Name); e != nil && watchError == nil {
+						watchError = e
+					}
+				}
+				changeLock.Unlock()
+			case err := <-watcher.Errors:
+				changeLock.Lock()
+				watchError = fmt.Errorf("error watching filesystem for changes: %v", err)
+				changeLock.Unlock()
+			}
+		}
+	}()
+
+	err = w.AddRecursiveWatch(watcher, directory)
+	if err != nil {
+		return fmt.Errorf("error watching source path %s: %v", directory, err)
+	}
+
+	delay := 2 * time.Second
+	ticker := time.NewTicker(delay)
+	defer ticker.Stop()
+	for {
+		changeLock.Lock()
+		if watchError != nil {
+			return watchError
+		}
+		// if a change happened more than 'delay' seconds ago, sync it now.
+		// if a change happened less than 'delay' seconds ago, sleep for 'delay' seconds
+		// and see if more changes happen, we don't want to sync when
+		// the filesystem is in the middle of changing due to a massive
+		// set of changes (such as a local build in progress).
+		if dirty && time.Now().After(lastChange.Add(delay)) {
+			glog.V(1).Info("Synchronizing filesystem changes...")
+			//err = o.Strategy.Copy(o.Source, o.Destination, o.Out, o.ErrOut)
+			if err != nil {
+				return err
+			}
+			glog.V(1).Info("Done.")
+			dirty = false
+		}
+		changeLock.Unlock()
+		<-ticker.C
+	}
+}
+
+// AddRecursiveWatch handles adding watches recursively for the path provided
+// and its subdirectories.  If a non-directory is specified, this call is a no-op.
+// Recursive logic from https://github.com/bronze1man/kmg/blob/master/fsnotify/Watcher.go
+func (w DirectoryWatch) AddRecursiveWatch(watcher *fsnotify.Watcher, path string) error {
+	file, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("error introspecting path %s: %v", path, err)
+	}
+	if !file.IsDir() {
+		return nil
+	}
+
+	folders, err := filepath.GetSubFolders(path)
+	for _, v := range folders {
+		glog.V(5).Infof("adding watch on path %s", v)
+		err = watcher.Add(v)
+		if err != nil {
+			// "no space left on device" issues are usually resolved via
+			// $ sudo sysctl fs.inotify.max_user_watches=65536
+			return fmt.Errorf("error adding watcher for path %s: %v", v, err)
+		}
+	}
+	return nil
+}
