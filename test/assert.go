@@ -12,15 +12,7 @@ func AssertSame(t *testing.T, expected interface{}, actual interface{}) {
 }
 
 func AssertDeepEqual(t *testing.T, expected interface{}, actual interface{}) {
-	//act := make([]string, len(actual))
-	//exp := make([]string, len(expected))
-	//copy(act, actual)
-	//copy(exp, expected)
-	//
-	//sort.StringSlice(act).Sort()
-	//sort.StringSlice(exp).Sort()
-
 	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("Expected(sorted): %#v, Actual(sorted): %#v", expected, actual)
+		t.Errorf("Expected(un-sorted): %#v, \nActual(un-sorted): %#v", expected, actual)
 	}
 }

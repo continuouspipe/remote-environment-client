@@ -1,5 +1,10 @@
 package test
 
+import (
+	"github.com/continuouspipe/remote-environment-client/config"
+	"fmt"
+)
+
 //A map that stores a list of function arguments [argumentName] => value (any type)
 type Arguments map[string]interface{}
 
@@ -38,15 +43,15 @@ func (spy *Spy) CallsCountFor(functionName string) int {
 }
 
 //Spy to mock the LocalExecutor
-type MockLocalExecutor struct {
+type SpyLocalExecutor struct {
 	Spy
 }
 
-func GetMockLocalExecutor() *MockLocalExecutor {
-	return &MockLocalExecutor{}
+func GetSpyLocalExecutor() *SpyLocalExecutor {
+	return &SpyLocalExecutor{}
 }
 
-func (m *MockLocalExecutor) SysCallExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) {
+func (m *SpyLocalExecutor) SysCallExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) {
 	args := make(Arguments)
 	args["kubeConfigKey"] = kubeConfigKey
 	args["environment"] = environment
@@ -57,7 +62,7 @@ func (m *MockLocalExecutor) SysCallExec(kubeConfigKey string, environment string
 	m.calledFunctions = append(m.calledFunctions, *function)
 }
 
-func (m *MockLocalExecutor) CommandExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) string {
+func (m *SpyLocalExecutor) CommandExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) string {
 	args := make(Arguments)
 	args["kubeConfigKey"] = kubeConfigKey
 	args["environment"] = environment
@@ -70,20 +75,20 @@ func (m *MockLocalExecutor) CommandExec(kubeConfigKey string, environment string
 	return m.commandExec()
 }
 
-func (m *MockLocalExecutor) MockCommandExec(mocked func() string) {
+func (m *SpyLocalExecutor) SpyCommandExec(mocked func() string) {
 	m.commandExec = mocked
 }
 
-//Mock for RsyncFetch
-type MockRsyncFetch struct {
+//Spy for RsyncFetch
+type SpyRsyncFetch struct {
 	Spy
 }
 
-func GetMockRsyncFetch() *MockRsyncFetch {
-	return &MockRsyncFetch{}
+func GetSpyRsyncFetch() *SpyRsyncFetch {
+	return &SpyRsyncFetch{}
 }
 
-func (r *MockRsyncFetch) Fetch(kubeConfigKey string, environment string, pod string) bool {
+func (r *SpyRsyncFetch) Fetch(kubeConfigKey string, environment string, pod string) bool {
 	args := make(Arguments)
 	args["kubeConfigKey"] = kubeConfigKey
 	args["environment"] = environment
@@ -91,4 +96,27 @@ func (r *MockRsyncFetch) Fetch(kubeConfigKey string, environment string, pod str
 	function := &Function{Name: "Fetch", Arguments: args}
 	r.calledFunctions = append(r.calledFunctions, *function)
 	return true
+}
+
+//Spy for YamlWriter
+type SpyYamlWriter struct {
+	Spy
+}
+
+func GetSpyYamlWriter() *SpyYamlWriter {
+	return &SpyYamlWriter{}
+}
+
+func (m *SpyYamlWriter) Save(settings *config.ApplicationSettings) bool {
+
+	copySettings := *settings
+
+	args := make(Arguments)
+	args["settings"] = &copySettings
+
+	fmt.Println(args["settings"])
+
+	function := &Function{Name: "Save", Arguments: args}
+	m.calledFunctions = append(m.calledFunctions, *function)
+	return true;
 }

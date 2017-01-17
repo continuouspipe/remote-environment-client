@@ -20,16 +20,16 @@ func TestFetch(t *testing.T) {
 		mockPod.SetName("web-123456")
 		return mockPod, nil
 	})
-	mockFetcher := test.GetMockRsyncFetch()
+	spyFetcher := test.GetSpyRsyncFetch()
 
 	//test subject called
 	handler := &FetchHandle{}
-	handler.Handle([]string{}, configReader, mockPodsFinder, mockPodFilter, mockFetcher)
+	handler.Handle([]string{}, configReader, mockPodsFinder, mockPodFilter, spyFetcher)
 
 	//expectations
-	firstCall := mockFetcher.FirstCallsFor("Fetch")
+	firstCall := spyFetcher.FirstCallsFor("Fetch")
 
-	if mockFetcher.CallsCountFor("Fetch") != 1 {
+	if spyFetcher.CallsCountFor("Fetch") != 1 {
 		t.Error("Expected Fetch to be called only once")
 	}
 	if str, ok := firstCall.Arguments["kubeConfigKey"].(string); ok {

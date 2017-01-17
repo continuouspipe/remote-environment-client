@@ -20,20 +20,20 @@ func TestCommandsAreSpawned(t *testing.T) {
 		mockPod.SetName("web-123456")
 		return mockPod, nil
 	})
-	mockLocalExecutor := test.GetMockLocalExecutor()
-	mockLocalExecutor.MockCommandExec(func() string {
+	spyLocalExecutor := test.GetSpyLocalExecutor()
+	spyLocalExecutor.SpyCommandExec(func() string {
 		return "some retult back.."
 	})
 
 	//test subject called
 	execHandle := &ExecHandle{}
-	out := execHandle.Handle([]string{"ls", "-a", "-l", "-l"}, configReader, mockPodsFinder, mockPodFilter, mockLocalExecutor)
+	out := execHandle.Handle([]string{"ls", "-a", "-l", "-l"}, configReader, mockPodsFinder, mockPodFilter, spyLocalExecutor)
 
 	//expectations
 	test.AssertSame(t, "some retult back..", out)
-	firstCall := mockLocalExecutor.FirstCallsFor("CommandExec")
+	firstCall := spyLocalExecutor.FirstCallsFor("CommandExec")
 
-	if mockLocalExecutor.CallsCountFor("CommandExec") != 1 {
+	if spyLocalExecutor.CallsCountFor("CommandExec") != 1 {
 		t.Error("Expected CommandExec to be called only once")
 	}
 	if str, ok := firstCall.Arguments["kubeConfigKey"].(string); ok {

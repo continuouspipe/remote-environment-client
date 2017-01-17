@@ -59,6 +59,18 @@ type ApplicationSettings struct {
 
 func NewApplicationSettings() *ApplicationSettings {
 	s := &ApplicationSettings{}
+	s.ProjectKey = viper.GetString(ProjectKey)
+	s.RemoteBranch = viper.GetString(RemoteBranch)
+	s.RemoteName = viper.GetString(RemoteName)
+	s.DefaultService = viper.GetString(Service)
+	s.ClusterIp = viper.GetString(ClusterIp)
+	s.Username = viper.GetString(Username)
+	s.Password = viper.GetString(Password)
+	s.AnybarPort = viper.GetString(AnybarPort)
+	s.KeenWriteKey = viper.GetString(KeenWriteKey)
+	s.KeenProjectId = viper.GetString(KeenProjectId)
+	s.KeenEventCollection = viper.GetString(KeenEventCollection)
+	s.Environment = viper.GetString(Environment)
 	s.viper = viper.GetViper()
 	return s
 }
@@ -71,7 +83,6 @@ func (s ApplicationSettings) GetString(key string) string {
 	return s.viper.GetString(key)
 }
 
-//TODO: Refactor this and make ApplicationSettings implement Save
 type Writer interface {
 	Save(*ApplicationSettings) bool
 }
@@ -121,14 +132,14 @@ type MandatoryChecker struct {
 
 func NewMandatoryChecker() *MandatoryChecker {
 	checker := &MandatoryChecker{}
-	checker.settings = []string{"project-key",
-								"remote-branch",
-								"remote-name",
-								"cluster-ip",
-								"service",
-								"username",
-								"password",
-								"kubernetes-config-key"}
+	checker.settings = []string{ProjectKey,
+								RemoteBranch,
+								RemoteName,
+								ClusterIp,
+								Service,
+								Username,
+								Password,
+								KubeConfigKey}
 	return checker
 }
 

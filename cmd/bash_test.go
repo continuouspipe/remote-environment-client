@@ -21,16 +21,16 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 		mockPod.SetName("web-123456")
 		return mockPod, nil
 	})
-	mockLocalExecutor := test.GetMockLocalExecutor()
+	spyLocalExecutor := test.GetSpyLocalExecutor()
 
 	//test subject called
 	bashHandle := &BashHandle{}
-	bashHandle.Handle([]string{}, configReader, mockPodsFinder, mockPodFilter, mockLocalExecutor)
+	bashHandle.Handle([]string{}, configReader, mockPodsFinder, mockPodFilter, spyLocalExecutor)
 
 	//expectations
-	firstCall := mockLocalExecutor.FirstCallsFor("SysCallExec")
+	firstCall := spyLocalExecutor.FirstCallsFor("SysCallExec")
 
-	if mockLocalExecutor.CallsCountFor("SysCallExec") != 1 {
+	if spyLocalExecutor.CallsCountFor("SysCallExec") != 1 {
 		t.Error("Expected SysCallExec to be called only once")
 	}
 	if str, ok := firstCall.Arguments["kubeConfigKey"].(string); ok {
