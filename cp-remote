@@ -267,7 +267,7 @@ function push_to_remote {
     echo
     echo "You can see when it is complete and find its IP address at https://ui.continuouspipe.io/"
     echo
-    echo "Please wait unti the build is complete to use any of this tool's other commands."
+    echo "Please wait until the build is complete to use any of this tool's other commands."
     echo
 }
 
