@@ -6,11 +6,13 @@ import (
 	"os"
 )
 
+//Executes a command and waits for it to finish
 func CommandExec(name string, arg ...string) string {
 	cmd := exec.Command(name, arg...)
 	return executeCmd(cmd)
 }
 
+//Exec a command and then continues without waiting
 func SysCallExec(name string, arg ...string) {
 	appBinPath, lookErr := exec.LookPath(name)
 	if lookErr != nil {

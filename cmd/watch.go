@@ -5,6 +5,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"fmt"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 )
 
 var watchCmd = &cobra.Command{
@@ -21,27 +22,36 @@ setup but you can specify another container to sync with.`,
 		validator := config.NewMandatoryChecker()
 		validateConfig(validator, settings)
 		dirWatcher := sync.GetRecursiveDirectoryMonitor()
+		podsFinder := pods.NewKubePodsFind()
+		podsFilter := pods.NewKubePodsFilter()
 
 		handler := &WatchHandle{cmd}
-		handler.Handle(args, settings, dirWatcher)
+		handler.Handle(args, settings, dirWatcher, podsFinder, podsFilter)
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(watchCmd)
-	//watchCmd.PersistentFlags().StringP("container", "c", "", "The container to use")
-	//watchCmd.PersistentFlags().StringP("environment", "e", "", "The environment to use")
 }
 
 type WatchHandle struct {
 	Command *cobra.Command
 }
 
-func (h *WatchHandle) Handle(args []string, settings config.Reader, recursiveDirWatcher sync.DirectoryMonitor) {
-	//viper.BindPFlag("container", h.Command.PersistentFlags().Lookup("container"))
-	//viper.BindPFlag("environment", h.Command.PersistentFlags().Lookup("environment"))
-	//fmt.Println("The container is set to: " + viper.GetString("container"))
-	//fmt.Println("The environment is set to: " + viper.GetString("environment"))
+func (h *WatchHandle) Handle(args []string, settings config.Reader, recursiveDirWatcher sync.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) {
+	kubeConfigKey := settings.GetString(config.KubeConfigKey)
+	environment := settings.GetString(config.Environment)
+	service := settings.GetString(config.Service)
+
+	allPods, err := podsFinder.FindAll(kubeConfigKey, environment)
+	checkErr(err)
+
+	pod, err := podsFilter.ByService(allPods, service)
+	checkErr(err)
+
 	observer := sync.GetDirectoryEventSyncAll()
+	observer.KubeConfigKey = kubeConfigKey
+	observer.Environment = environment
+	observer.Pod = *pod
 	recursiveDirWatcher.AnyEventCall(".", observer)
 }
