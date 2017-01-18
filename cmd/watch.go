@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/sync"
+	"fmt"
 )
 
 var watchCmd = &cobra.Command{
@@ -13,6 +14,9 @@ var watchCmd = &cobra.Command{
 of the remote environment. This will use the default container specified during
 setup but you can specify another container to sync with.`,
 	Run: func(cmd *cobra.Command, args []string) {
+
+		fmt.Println("Watching for changes. Quit anytime with Ctrl-C.")
+
 		settings := config.NewApplicationSettings()
 		validator := config.NewMandatoryChecker()
 		validateConfig(validator, settings)
@@ -38,7 +42,6 @@ func (h *WatchHandle) Handle(args []string, settings config.Reader, recursiveDir
 	//viper.BindPFlag("environment", h.Command.PersistentFlags().Lookup("environment"))
 	//fmt.Println("The container is set to: " + viper.GetString("container"))
 	//fmt.Println("The environment is set to: " + viper.GetString("environment"))
-
 	observer := sync.GetDirectoryEventSyncAll()
 	recursiveDirWatcher.AnyEventCall(".", observer)
 }

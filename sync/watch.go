@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 	"time"
+	"regexp"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/continuouspipe/remote-environment-client/path/filepath"
@@ -20,10 +21,19 @@ type DirectoryMonitor interface {
 	AnyEventCall(directory string, observer EventsObserver) error
 }
 
-type RecursiveDirectoryMonitor struct{}
+type RecursiveDirectoryMonitor struct {
+	Exclusions []string
+}
 
 func GetRecursiveDirectoryMonitor() *RecursiveDirectoryMonitor {
-	return &RecursiveDirectoryMonitor{}
+	m := &RecursiveDirectoryMonitor{}
+	m.Exclusions = []string{`/\.[^/]*$`,
+							`\.idea`,
+							`\.git`,
+							`___jb_old___`,
+							`___jb_tmp___`,
+							`cp-remote-logs`}
+	return m
 }
 
 func (w RecursiveDirectoryMonitor) AnyEventCall(directory string, observer EventsObserver) error {
@@ -48,7 +58,16 @@ func (w RecursiveDirectoryMonitor) AnyEventCall(directory string, observer Event
 			select {
 			case event := <-watcher.Events:
 				changeLock.Lock()
-				fmt.Printf("filesystem event for %s(%s)\n", event.Name, event.Op)
+				cplogs.V(1).Infof("filesystem event for %s(%s)\n", event.Name, event.Op)
+
+				//check if the file matches the exclusion list, if so ignore the event
+				match := w.matchExclusionList(event.Name)
+				if match == true {
+					cplogs.V(2).Infof("skipped %s(%s) as is in the exclusion list", event.Name, event.Op)
+					changeLock.Unlock()
+					continue
+				}
+
 				lastChange = time.Now()
 				dirty = true
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
@@ -118,6 +137,14 @@ func (w RecursiveDirectoryMonitor) AddRecursiveWatch(watcher *fsnotify.Watcher, 
 
 	folders, err := filepath.GetSubFolders(path)
 	for _, v := range folders {
+
+		//check if the folder matches the exclusion list, if so ignore the event
+		match := w.matchExclusionList(v)
+		if match == true {
+			cplogs.V(5).Infof("skipped path as matches exlusion list, path %s", v)
+			continue
+		}
+
 		cplogs.V(5).Infof("adding watch on path %s", v)
 		err = watcher.Add(v)
 		if err != nil {
@@ -127,4 +154,17 @@ func (w RecursiveDirectoryMonitor) AddRecursiveWatch(watcher *fsnotify.Watcher, 
 		}
 	}
 	return nil
+}
+
+func (w RecursiveDirectoryMonitor) matchExclusionList(target string) bool {
+	for _, elem := range w.Exclusions {
+		regex, err := regexp.Compile(elem)
+		if err != nil {
+			return false
+		}
+		if res := regex.MatchString(target); res == true {
+			return true
+		}
+	}
+	return false
 }
