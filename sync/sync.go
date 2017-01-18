@@ -23,22 +23,23 @@ func GetDirectoryEventSyncAll() *DirectoryEventSyncAll {
 }
 
 func (o *DirectoryEventSyncAll) OnLastChange() error {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	os.Setenv("RSYNC_RSH", fmt.Sprintf(`%s %s --context=%s --namespace=%s exec -i %s`, config.AppName, config.KubeCtlName, o.KubeConfigKey, o.Environment, o.Pod.GetName()))
+	rsh := fmt.Sprintf(`%s %s --context=%s --namespace=%s exec -i %s`, config.AppName, config.KubeCtlName, o.KubeConfigKey, o.Environment, o.Pod.GetName())
+	cplogs.V(5).Infof("setting RSYNC_RSH to %s\n", rsh)
+	os.Setenv("RSYNC_RSH", rsh)
 	defer os.Unsetenv("RSYNC_RSH")
 
 	args := []string{
+		"-av",
+		"--delete",
 		"--relative",
-		"-zrlptDv",
+		"--blocking-io",
 		fmt.Sprintf(`--exclude-from=%s`, SyncExcluded),
 		"--",
-		currentDir,
+		"./",
 		"--:/app/",
 	}
+
+	cplogs.V(5).Infof("rsync arguments: %s", args)
 
 	cmd := exec.Command("rsync", args...)
 	stdout, err := cmd.StdoutPipe()

@@ -1,10 +1,11 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/sync"
-	"fmt"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 )
 
@@ -53,5 +54,6 @@ func (h *WatchHandle) Handle(args []string, settings config.Reader, recursiveDir
 	observer.KubeConfigKey = kubeConfigKey
 	observer.Environment = environment
 	observer.Pod = *pod
-	recursiveDirWatcher.AnyEventCall(".", observer)
+	err = recursiveDirWatcher.AnyEventCall(".", observer)
+	checkErr(err)
 }
