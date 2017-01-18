@@ -16,7 +16,7 @@ setup but you can specify another container to sync with.`,
 		settings := config.NewApplicationSettings()
 		validator := config.NewMandatoryChecker()
 		validateConfig(validator, settings)
-		dirWatcher := sync.GetDirectoryWatch()
+		dirWatcher := sync.GetRecursiveDirectoryMonitor()
 
 		handler := &WatchHandle{cmd}
 		handler.Handle(args, settings, dirWatcher)
@@ -33,12 +33,12 @@ type WatchHandle struct {
 	Command *cobra.Command
 }
 
-func (h *WatchHandle) Handle(args []string, settings config.Reader, dirWatcher sync.DirectoryWatchEventCaller) {
+func (h *WatchHandle) Handle(args []string, settings config.Reader, recursiveDirWatcher sync.DirectoryMonitor) {
 	//viper.BindPFlag("container", h.Command.PersistentFlags().Lookup("container"))
 	//viper.BindPFlag("environment", h.Command.PersistentFlags().Lookup("environment"))
 	//fmt.Println("The container is set to: " + viper.GetString("container"))
 	//fmt.Println("The environment is set to: " + viper.GetString("environment"))
 
 	observer := sync.GetDirectoryEventSyncAll()
-	dirWatcher.AnyEventCall(".", observer)
+	recursiveDirWatcher.AnyEventCall(".", observer)
 }

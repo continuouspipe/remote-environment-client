@@ -2,7 +2,6 @@ package sync
 
 import (
 	"fmt"
-	"github.com/fsnotify/fsnotify"
 )
 
 const SyncExcluded = ".cp-remote-ignore"
@@ -16,9 +15,7 @@ func GetDirectoryEventSyncAll() *DirectoryEventSyncAll {
 	return &DirectoryEventSyncAll{}
 }
 
-func (o *DirectoryEventSyncAll) OnEvent(event fsnotify.Event) {
-	fmt.Println("Event Received to Observer")
-	fmt.Println(event.Name)
-	fmt.Println(event.Op)
-	fmt.Println(event.String())
+func (o *DirectoryEventSyncAll) OnLastChange() error {
+	fmt.Println("AtAnyEvent() Called")
+	return nil
 }
