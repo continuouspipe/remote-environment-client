@@ -32,12 +32,17 @@ func (o *DirectoryEventSyncAll) OnLastChange() error {
 		"-av",
 		"--delete",
 		"--relative",
-		"--blocking-io",
-		fmt.Sprintf(`--exclude-from=%s`, SyncExcluded),
+		"--blocking-io"}
+
+	if _, err := os.Stat(SyncExcluded); err == nil {
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, SyncExcluded))
+	}
+
+	args = append(args,
 		"--",
 		"./",
 		"--:/app/",
-	}
+	)
 
 	cplogs.V(5).Infof("rsync arguments: %s", args)
 
