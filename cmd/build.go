@@ -35,5 +35,6 @@ type BuildHandle struct {
 func (h *BuildHandle) Handle(args []string, settings config.Reader, commitTrigger git.CommitTrigger) {
 	remoteName := settings.GetString(config.RemoteName)
 	remoteBranch := settings.GetString(config.RemoteBranch)
-	commitTrigger.PushEmptyCommit(remoteName, remoteBranch)
+	_, err := commitTrigger.PushEmptyCommit(remoteBranch, remoteName)
+	checkErr(err)
 }

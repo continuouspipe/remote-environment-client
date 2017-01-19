@@ -25,35 +25,35 @@ func NewGitCommitTrigger() *GitCommitTrigger {
 }
 
 func (g *GitCommitTrigger) PushEmptyCommit(remoteBranch string, remoteName string) (bool, error) {
+	fullBranchName := remoteName + "/" + remoteBranch
 
 	repo, err := lgit.OpenRepository("./")
 	if err != nil {
 		return false, err
 	}
-	fmt.Printf("repo.Path() is %s", repo.Path())
+	fmt.Printf("repository path: %s\n", repo.Path())
 
-	branch, err := repo.LookupBranch(remoteBranch, lgit.BranchRemote)
+	fmt.Printf("finding branch: %s\n", fullBranchName)
+	branch, err := repo.LookupBranch(fullBranchName, lgit.BranchRemote)
 	if err != nil {
 		return false, err
 	}
-	fmt.Printf("branch.Name() is %s", branch.Name())
+
+	fetchedBranchName, _ := branch.Name()
+	if err != nil {
+		return false, err
+	}
+	fmt.Printf("found branch: %s\n", fetchedBranchName)
 
 	idx, err := repo.Index()
 	if err != nil {
 		return false, err
 	}
-	fmt.Printf("idx is %d", idx)
-
-	//err = idx.AddByPath("some content")
-	//if err != nil {
-	//	panic(err)
-	//}
 
 	treeId, err := idx.WriteTree()
 	if err != nil {
 		return false, err
 	}
-	fmt.Printf("treeId is %d", treeId)
 
 	err = idx.Write()
 	if err != nil {
@@ -69,9 +69,8 @@ func (g *GitCommitTrigger) PushEmptyCommit(remoteBranch string, remoteName strin
 	if err != nil {
 		return false, err
 	}
-	fmt.Printf("commitTarget.Id() is %d", commitTarget.Id())
-	fmt.Printf("commitTarget.Message() is %s", commitTarget.Message())
-	fmt.Printf("commitTarget.Summary() is %s", commitTarget.Summary())
+
+	fmt.Printf("commit message: %s\n", commitTarget.Message())
 
 	signature := &lgit.Signature{
 		Name:  "Continuous Pipe",
@@ -83,7 +82,9 @@ func (g *GitCommitTrigger) PushEmptyCommit(remoteBranch string, remoteName strin
 	if err != nil {
 		return false, err
 	}
-	fmt.Printf("oid is %d", oid)
+	fmt.Printf("oid is %d", oid.String())
+
+
 
 	return true, nil
 }
