@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/git"
 )
 
 var destroyCmd = &cobra.Command{
@@ -17,8 +18,14 @@ environment, ContinuousPipe will then remove the environment.`,
 		validator := config.NewMandatoryChecker()
 		validateConfig(validator, settings)
 
+		fmt.Println("Destroying remote environment")
+		fmt.Println("Deleting remote branch")
+
+		gitBranchRemover := git.NewGitBranchRemover()
 		handler := &DestroyHandle{cmd}
-		handler.Handle(args)
+		handler.Handle(args, settings, gitBranchRemover)
+
+		fmt.Println("Continuous Pipe will now destroy the remote environment")
 	},
 }
 
@@ -30,6 +37,8 @@ type DestroyHandle struct {
 	Command *cobra.Command
 }
 
-func (h *DestroyHandle) Handle(args []string) {
-	fmt.Println("destroy called")
+func (h *DestroyHandle) Handle(args []string, settings config.Reader, branchRemover git.BranchRemover) {
+	remoteName := settings.GetString(config.RemoteName)
+	remoteBranch := settings.GetString(config.RemoteBranch)
+	branchRemover.Delete(remoteName, remoteBranch)
 }

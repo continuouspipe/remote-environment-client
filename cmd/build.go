@@ -1,10 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/git"
 )
 
 var buildCmd = &cobra.Command{
@@ -20,7 +19,8 @@ find its IP address.`,
 		validateConfig(validator, settings)
 
 		handler := &BuildHandle{cmd}
-		handler.Handle(args)
+		gitCommitTrigger := git.NewGitCommitTrigger()
+		handler.Handle(args, settings, gitCommitTrigger)
 	},
 }
 
@@ -32,6 +32,8 @@ type BuildHandle struct {
 	Command *cobra.Command
 }
 
-func (h *BuildHandle) Handle(args []string) {
-	fmt.Println("build called")
+func (h *BuildHandle) Handle(args []string, settings config.Reader, commitTrigger git.CommitTrigger) {
+	remoteName := settings.GetString(config.RemoteName)
+	remoteBranch := settings.GetString(config.RemoteBranch)
+	commitTrigger.PushEmptyCommit(remoteName, remoteBranch)
 }

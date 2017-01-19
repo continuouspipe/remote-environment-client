@@ -2,15 +2,23 @@ package: github.com/continuouspipe/remote-environment-client
 import:
 - package: github.com/fatih/color
   version: ^1.2.0
+- package: github.com/fsnotify/fsnotify
+  version: ^1.4.2
 - package: github.com/sanbornm/go-selfupdate
   subpackages:
   - selfupdate
 - package: github.com/spf13/cobra
 - package: github.com/spf13/viper
-- package: k8s.io/kubernetes
-  version: 1.5.1
-  subpackages:
-  - pkg/kubectl/cmd
 - package: k8s.io/client-go
+  version: ^2.0.0-alpha.1
   subpackages:
   - kubernetes
+  - pkg/api/v1
+  - rest
+  - tools/clientcmd
+- package: k8s.io/kubernetes
+  version: ^1.6.0-alpha.0
+  subpackages:
+  - pkg/kubectl/cmd
+  - pkg/kubectl/cmd/util
+- package: github.com/pkg/sftp
