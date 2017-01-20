@@ -1,13 +1,16 @@
 package osapi
 
 import (
-	"os/exec"
-	"syscall"
 	"os"
+	"strings"
+	"syscall"
+	"os/exec"
+
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 )
 
 //Executes a command and waits for it to finish
-func CommandExec(name string, arg ...string) string {
+func CommandExec(name string, arg ...string) (string, error) {
 	cmd := exec.Command(name, arg...)
 	return executeCmd(cmd)
 }
@@ -30,10 +33,15 @@ func SysCallExec(name string, arg ...string) {
 	}
 }
 
-func executeCmd(cmd *exec.Cmd) string {
+func executeCmd(cmd *exec.Cmd) (string, error) {
+	cplogs.V(5).Infof("executing command path: %#v with arguments: %#v", cmd.Path, cmd.Args)
 	out, err := cmd.Output()
 	if err != nil {
-		panic(err.Error())
+		cplogs.V(3).Infof("command error: %#v", err)
+		return "", err
 	}
-	return string(out[:])
+	sout := string(out[:])
+	cplogs.V(5).Infof("command output as string: %s", sout)
+	//remove newline and space from string
+	return strings.Trim(sout, "\n "), nil
 }

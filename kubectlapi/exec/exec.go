@@ -6,7 +6,7 @@ import (
 )
 
 type Spawner interface {
-	CommandExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) string
+	CommandExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) (string, error)
 }
 
 type Executor interface {
@@ -21,7 +21,7 @@ func NewLocal() *Local {
 }
 
 // executes a command (spawn) on a specific pod
-func (l Local) CommandExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) string {
+func (l Local) CommandExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) (string, error) {
 	args := l.getAllArgs(kubeConfigKey, environment, pod, execCmdArgs...)
 	return osapi.CommandExec(config.AppName, args...)
 }

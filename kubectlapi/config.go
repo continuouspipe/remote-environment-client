@@ -5,7 +5,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/osapi"
 )
 
-func ConfigSetAuthInfo(environment string, username string, password string) string {
+func ConfigSetAuthInfo(environment string, username string, password string) (string, error) {
 	args := []string{
 		config.KubeCtlName,
 		"config",
@@ -18,7 +18,7 @@ func ConfigSetAuthInfo(environment string, username string, password string) str
 	return osapi.CommandExec(config.AppName, args...)
 }
 
-func ConfigSetCluster(environment string, clusterIp string) string {
+func ConfigSetCluster(environment string, clusterIp string) (string, error) {
 	args := []string{
 		config.KubeCtlName,
 		"config",
@@ -31,7 +31,7 @@ func ConfigSetCluster(environment string, clusterIp string) string {
 	return osapi.CommandExec(config.AppName, args...)
 }
 
-func ConfigSetContext(environment string, username string) string {
+func ConfigSetContext(environment string, username string) (string, error) {
 	args := []string{
 		config.KubeCtlName,
 		"config",

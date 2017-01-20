@@ -46,11 +46,11 @@ func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) {
 }
 
 func fetchNumberOfPods(kubeConfigKey string, environment string, podsFinder pods.Finder) int {
-	pods, err := podsFinder.FindAll(kubeConfigKey, environment)
+	foundPods, err := podsFinder.FindAll(kubeConfigKey, environment)
 	checkErr(err)
 
-	if len(pods.Items) == 0 {
+	if len(foundPods.Items) == 0 {
 		exitWithMessage("connected to the cluster but no pods were found for the environment, has the environment been successfully built?")
 	}
-	return len(pods.Items)
+	return len(foundPods.Items)
 }

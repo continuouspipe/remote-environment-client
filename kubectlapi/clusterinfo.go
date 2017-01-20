@@ -5,7 +5,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/osapi"
 )
 
-func ClusterInfo(kubeConfigKey string) string {
+func ClusterInfo(kubeConfigKey string) (string, error) {
 	args := []string{
 		config.KubeCtlName,
 		"--context=" + kubeConfigKey,
