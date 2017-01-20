@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/continuouspipe/remote-environment-client/config"
-	//"github.com/continuouspipe/remote-environment-client/git"
+	"github.com/continuouspipe/remote-environment-client/git"
 )
 
 var destroyCmd = &cobra.Command{
@@ -37,6 +37,10 @@ type DestroyHandle struct {
 }
 
 func (h *DestroyHandle) Handle(args []string, settings config.Reader) {
-	//remoteName := settings.GetString(config.RemoteName)
-	//remoteBranch := settings.GetString(config.RemoteBranch)
+	remoteName := settings.GetString(config.RemoteName)
+	remoteBranch := settings.GetString(config.RemoteBranch)
+
+	push := git.NewPush()
+	_, err := push.DeleteRemote(remoteName, remoteBranch)
+	checkErr(err)
 }

@@ -35,13 +35,16 @@ func SysCallExec(name string, arg ...string) {
 
 func executeCmd(cmd *exec.Cmd) (string, error) {
 	cplogs.V(5).Infof("executing command path: %#v with arguments: %#v", cmd.Path, cmd.Args)
+	cplogs.Flush()
 	out, err := cmd.Output()
 	if err != nil {
-		cplogs.V(3).Infof("command error: %#v", err)
+		cplogs.V(3).Infof("command error: %#v", err.Error())
+		cplogs.Flush()
 		return "", err
 	}
 	sout := string(out[:])
 	cplogs.V(5).Infof("command output as string: %s", sout)
+	cplogs.Flush()
 	//remove newline and space from string
 	return strings.Trim(sout, "\n "), nil
 }

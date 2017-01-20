@@ -1,4 +1,4 @@
-// execute rev-parse command
+// execute rev-parse commands
 // e.g. git rev-parse --abbrev-ref HEAD
 package git
 
@@ -7,7 +7,7 @@ import (
 )
 
 type RevParseExecutor interface {
-	GetLocalBranchName() string
+	GetLocalBranchName() (string, error)
 }
 
 type revParse struct{}

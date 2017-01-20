@@ -8,7 +8,11 @@ import (
 	"flag"
 	"os"
 	"fmt"
+	"time"
 )
+
+//low timeout but we want to see the logs if something went wrong
+const flushInterval = 2 * time.Second
 
 const defaultLogDir = "./cp-remote-logs/"
 
@@ -26,7 +30,7 @@ func init() {
 	flag.Parse()
 
 	//create the log folder if is not there already
-	if err := os.MkdirAll(defaultLogDir, 0755); err != nil {
+	if err := os.MkdirAll(defaultLogDir, 0775); err != nil {
 		fmt.Errorf("Error creating cp remote logs directory: %s", defaultLogDir)
 		return
 	}
@@ -41,6 +45,6 @@ func init() {
 	logging.stderrThreshold = errorLog
 
 	//set maximum level of verbose
-	logging.setVState(5, nil, false)
+	logging.setVState(10, nil, false)
 	go logging.flushDaemon()
 }

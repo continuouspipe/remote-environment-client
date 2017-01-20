@@ -1,11 +1,11 @@
-// executes git commit command
+// executes git commit commands
 // e.g. git commit --allow-empty -m "Add empty commit to force rebuild on continuous pipe"
 package git
 
 import "github.com/continuouspipe/remote-environment-client/osapi"
 
 type CommitExecutor interface {
-	Commit(message string) string
+	Commit(message string) (string, error)
 }
 
 type commit struct{}

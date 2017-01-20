@@ -1,11 +1,11 @@
-// execute ls remote command
+// execute ls remote commands
 // e.g. git ls-remote --exit-code  --quiet . "origin/feature/cp-remote-testing"
 package git
 
 import "github.com/continuouspipe/remote-environment-client/osapi"
 
 type LsRemoteExecutor interface {
-	GetList(remoteName string, remoteBranch string) string
+	GetList(remoteName string, remoteBranch string) (string, error)
 }
 
 type lsRemote struct{}
@@ -17,7 +17,6 @@ func NewLsRemote() *lsRemote {
 func (g *lsRemote) GetList(remoteName string, remoteBranch string) (string, error) {
 	args := []string{
 		"ls-remote",
-		"--exit-code",
 		"--quiet",
 		".",
 		remoteName + "/" + remoteBranch,

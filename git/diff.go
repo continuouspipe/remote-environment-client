@@ -1,11 +1,11 @@
-// executes git diff command
+// executes git diff commands
 // e.g. git diff --exit-code --quiet "feature/cp-remote-testing" "origin/feature/cp-remote-testing"
 package git
 
 import "github.com/continuouspipe/remote-environment-client/osapi"
 
 type DiffExecutor interface {
-	GetDiff(remoteName string, remoteBranch string) string
+	GetDiff(remoteName string, remoteBranch string) (string, error)
 }
 
 type diff struct{}

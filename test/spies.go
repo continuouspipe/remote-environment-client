@@ -118,5 +118,5 @@ func (m *SpyYamlWriter) Save(settings *config.ApplicationSettings) bool {
 
 	function := &Function{Name: "Save", Arguments: args}
 	m.calledFunctions = append(m.calledFunctions, *function)
-	return true;
+	return true
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/git"
 	"fmt"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 )
 
 var buildCmd = &cobra.Command{
@@ -42,12 +43,15 @@ type BuildHandle struct {
 }
 
 func (h *BuildHandle) Handle(args []string) error {
-	if !h.hasRemote() {
-		return fmt.Errorf("Remote branch %s/%s not found", h.remoteName, h.remoteBranch)
-	}
 
-	if localChanges := h.hasLocalChanges(); localChanges == false {
-		h.commitAnEmptyChange()
+	remoteExists := h.hasRemote()
+	cplogs.V(5).Infof("remoteExists value is %s", remoteExists)
+	cplogs.Flush()
+
+	if remoteExists == true {
+		if localChanges := h.hasLocalChanges(); localChanges == false {
+			h.commitAnEmptyChange()
+		}
 	}
 
 	fmt.Println("Pushing to remote")
@@ -58,11 +62,14 @@ func (h *BuildHandle) Handle(args []string) error {
 
 	return nil
 }
+
 func (h *BuildHandle) pushToLocalBranch() {
 	revparse := git.NewRevParse()
 	push := git.NewPush()
 
 	lbn, err := revparse.GetLocalBranchName()
+	cplogs.V(5).Infof("local branch name value is %s", lbn)
+	cplogs.Flush()
 	checkErr(err)
 
 	push.Push(lbn, h.remoteName, h.remoteBranch)
@@ -71,10 +78,14 @@ func (h *BuildHandle) pushToLocalBranch() {
 func (h *BuildHandle) hasLocalChanges() bool {
 	revparse := git.NewRevParse()
 	lbn, err := revparse.GetLocalBranchName()
+	cplogs.V(5).Infof("local branch name value is %s", lbn)
+	cplogs.Flush()
 	checkErr(err)
 
 	list := git.NewRevList()
 	changes, err := list.GetLocalBranchAheadCount(lbn, h.remoteName, h.remoteBranch)
+	cplogs.V(5).Infof("amount of changes found is %s", changes)
+	cplogs.Flush()
 	checkErr(err)
 
 	if changes > 0 {
@@ -86,6 +97,8 @@ func (h *BuildHandle) hasLocalChanges() bool {
 func (h *BuildHandle) hasRemote() bool {
 	lsRemote := git.NewLsRemote()
 	list, err := lsRemote.GetList(h.remoteName, h.remoteBranch)
+	cplogs.V(5).Infof("list of remote branches that matches remote name and branch are %s", list)
+	cplogs.Flush()
 	checkErr(err)
 	if len(list) == 0 {
 		return false
@@ -93,10 +106,9 @@ func (h *BuildHandle) hasRemote() bool {
 	return true
 }
 
-func (h *BuildHandle) commitAnEmptyChange() string {
+func (h *BuildHandle) commitAnEmptyChange() {
 	commit := git.NewCommit()
 	fmt.Println("No changes so making an empty commit to force rebuild")
-	out, err := commit.Commit("Add empty commit to force rebuild on continuous pipe")
+	_, err := commit.Commit("Add empty commit to force rebuild on continuous pipe")
 	checkErr(err)
-	return out
 }
