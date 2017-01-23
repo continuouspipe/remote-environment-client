@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/continuouspipe/remote-environment-client/benchmark"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/git"
@@ -23,12 +24,17 @@ find its IP address.`,
 		remoteName := settings.GetString(config.RemoteName)
 		remoteBranch := settings.GetString(config.RemoteBranch)
 
+		benchmark := benchmark.NewCmdBenchmark()
+		benchmark.Start("build")
+
 		handler := &BuildHandle{
 			cmd,
 			remoteName,
 			remoteBranch,
 		}
 		handler.Handle(args)
+		_, err := benchmark.StopAndLog("build")
+		checkErr(err)
 	},
 }
 
@@ -43,7 +49,6 @@ type BuildHandle struct {
 }
 
 func (h *BuildHandle) Handle(args []string) error {
-
 	remoteExists := h.hasRemote()
 	cplogs.V(5).Infof("remoteExists value is %s", remoteExists)
 	cplogs.Flush()
