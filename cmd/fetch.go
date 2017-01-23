@@ -31,9 +31,10 @@ with the default container specified during setup but you can specify another co
 		podsFinder := pods.NewKubePodsFind()
 		podsFilter := pods.NewKubePodsFilter()
 		rsyncFetch := sync.NewRsyncFetch()
-		handler.Handle(args, settings, podsFinder, podsFilter, rsyncFetch)
 
-		_, err := benchmark.StopAndLog("fetch")
+		err := handler.Handle(args, settings, podsFinder, podsFilter, rsyncFetch)
+		checkErr(err)
+		_, err = benchmark.StopAndLog()
 		checkErr(err)
 	},
 }
@@ -46,7 +47,7 @@ type FetchHandle struct {
 	Command *cobra.Command
 }
 
-func (h *FetchHandle) Handle(args []string, settings config.Reader, podsFinder pods.Finder, podsFilter pods.Filter, fetcher sync.Fetcher) {
+func (h *FetchHandle) Handle(args []string, settings config.Reader, podsFinder pods.Finder, podsFilter pods.Filter, fetcher sync.Fetcher) error {
 	kubeConfigKey := settings.GetString(config.KubeConfigKey)
 	environment := settings.GetString(config.Environment)
 	service := settings.GetString(config.Service)
@@ -57,5 +58,5 @@ func (h *FetchHandle) Handle(args []string, settings config.Reader, podsFinder p
 	pod, err := podsFilter.ByService(allPods, service)
 	checkErr(err)
 
-	fetcher.Fetch(kubeConfigKey, environment, pod.GetName())
+	return fetcher.Fetch(kubeConfigKey, environment, pod.GetName())
 }

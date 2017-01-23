@@ -29,16 +29,24 @@ func (k *Sender) Send(payload PayloadProvider) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	fmt.Printf("sending body %s", string(out[:]))
+
 	reader := bytes.NewReader(out)
+
+	cplogs.V(5).Infof("sending GET request to %s, payload %s", k.getEndpointUrl(), reader)
 	req, err := http.NewRequest("GET", k.getEndpointUrl(), reader)
 	if err != nil {
-		cplogs.Errorf("could not create request for GET request for url: %s", k.getEndpointUrl())
+		cplogs.V(4).Infof("could not create request for GET request for url: %s", k.getEndpointUrl())
 		return false, err
 	}
+
+	req.Header.Set("Content-Type", "application/json")
+
 	client := http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		cplogs.Errorf("could not execute the GET request for url: %s", k.getEndpointUrl())
+		cplogs.V(4).Infof("could not execute the GET request for url: %s", k.getEndpointUrl())
 		return false, err
 	}
 	if resp.StatusCode == 200 || resp.StatusCode == 201 {

@@ -9,12 +9,14 @@ import (
 
 type BenchmarkPayload struct {
 	settings  config.Reader
-	command   string
-	startTime string
+	Command   string
+	StartTime string
 }
 
 func NewBenchmarkPayload() *BenchmarkPayload {
-	return &BenchmarkPayload{}
+	b := &BenchmarkPayload{}
+	b.settings = config.NewApplicationSettings()
+	return b
 }
 
 func (b *BenchmarkPayload) GetJsonPayload() ([]byte, error) {
@@ -24,12 +26,12 @@ func (b *BenchmarkPayload) GetJsonPayload() ([]byte, error) {
 	payload := make(map[string]string)
 	payload["project"] = b.settings.GetString(config.ProjectKey)
 	payload["namespace"] = b.settings.GetString(config.Environment)
-	payload["command"] = b.settings.GetString(b.command)
-	payload["start-time"] = b.settings.GetString(b.startTime)
-	payload["end-time"] = b.settings.GetString(endTime)
+	payload["command"] = b.settings.GetString(b.Command)
+	payload["start-time"] = b.StartTime
+	payload["end-time"] = endTime
 	out, err := json.Marshal(payload)
 	if err != nil {
-		cplogs.Errorf("could not generate the benchmark json payload for %#v", payload)
+		cplogs.V(4).Infof("could not generate the benchmark json payload for %#v", payload)
 		return nil, err
 	}
 	return out, nil

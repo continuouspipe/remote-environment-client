@@ -9,7 +9,7 @@ import (
 )
 
 type Fetcher interface {
-	Fetch(kubeConfigKey string, environment string, pod string) bool
+	Fetch(kubeConfigKey string, environment string, pod string) error
 }
 
 type RsyncFetch struct{}
@@ -18,10 +18,10 @@ func NewRsyncFetch() *RsyncFetch {
 	return &RsyncFetch{}
 }
 
-func (r RsyncFetch) Fetch(kubeConfigKey string, environment string, pod string) bool {
+func (r RsyncFetch) Fetch(kubeConfigKey string, environment string, pod string) error {
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return false
+		return err
 	}
 
 	os.Setenv("RSYNC_RSH", fmt.Sprintf(`%s %s --context=%s --namespace=%s exec -i %s`, config.AppName, config.KubeCtlName, kubeConfigKey, environment, pod))
@@ -38,6 +38,5 @@ func (r RsyncFetch) Fetch(kubeConfigKey string, environment string, pod string) 
 		currentDir,
 	}
 
-	osapi.SysCallExec("rsync", args...)
-	return true
+	return osapi.CommandExecL("rsync", args...)
 }

@@ -1,14 +1,13 @@
 package sync
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"k8s.io/client-go/pkg/api/v1"
+	"github.com/continuouspipe/remote-environment-client/osapi"
 )
 
 const SyncExcluded = ".cp-remote-ignore"
@@ -46,20 +45,5 @@ func (o *DirectoryEventSyncAll) OnLastChange() error {
 
 	cplogs.V(5).Infof("rsync arguments: %s", args)
 
-	cmd := exec.Command("rsync", args...)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		cplogs.Fatal(err)
-	}
-	if err := cmd.Start(); err != nil {
-		cplogs.Fatal(err)
-	}
-
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		line := scanner.Text()
-		cplogs.V(5).Infoln(line)
-	}
-
-	return nil
+	return osapi.CommandExecL("rsync", args...)
 }

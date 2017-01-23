@@ -8,6 +8,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 )
 
 var cfgFile string
@@ -83,5 +84,6 @@ func exitWithMessage(message string) {
 	color.Set(color.FgRed)
 	fmt.Println("ERROR: " + message)
 	color.Unset()
+	cplogs.Flush()
 	os.Exit(1)
 }

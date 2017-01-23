@@ -33,7 +33,7 @@ find its IP address.`,
 			remoteBranch,
 		}
 		handler.Handle(args)
-		_, err := benchmark.StopAndLog("build")
+		_, err := benchmark.StopAndLog()
 		checkErr(err)
 	},
 }
@@ -51,7 +51,6 @@ type BuildHandle struct {
 func (h *BuildHandle) Handle(args []string) error {
 	remoteExists := h.hasRemote()
 	cplogs.V(5).Infof("remoteExists value is %s", remoteExists)
-	cplogs.Flush()
 
 	if remoteExists == true {
 		if localChanges := h.hasLocalChanges(); localChanges == false {
@@ -74,7 +73,6 @@ func (h *BuildHandle) pushToLocalBranch() {
 
 	lbn, err := revparse.GetLocalBranchName()
 	cplogs.V(5).Infof("local branch name value is %s", lbn)
-	cplogs.Flush()
 	checkErr(err)
 
 	push.Push(lbn, h.remoteName, h.remoteBranch)
@@ -84,13 +82,11 @@ func (h *BuildHandle) hasLocalChanges() bool {
 	revparse := git.NewRevParse()
 	lbn, err := revparse.GetLocalBranchName()
 	cplogs.V(5).Infof("local branch name value is %s", lbn)
-	cplogs.Flush()
 	checkErr(err)
 
 	list := git.NewRevList()
 	changes, err := list.GetLocalBranchAheadCount(lbn, h.remoteName, h.remoteBranch)
 	cplogs.V(5).Infof("amount of changes found is %s", changes)
-	cplogs.Flush()
 	checkErr(err)
 
 	if changes > 0 {
@@ -103,7 +99,6 @@ func (h *BuildHandle) hasRemote() bool {
 	lsRemote := git.NewLsRemote()
 	list, err := lsRemote.GetList(h.remoteName, h.remoteBranch)
 	cplogs.V(5).Infof("list of remote branches that matches remote name and branch are %s", list)
-	cplogs.Flush()
 	checkErr(err)
 	if len(list) == 0 {
 		return false
