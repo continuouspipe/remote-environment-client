@@ -2,9 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
-	envconfig "github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/spf13/cobra"
@@ -30,7 +29,7 @@ type SetupHandle struct {
 
 func (h *SetupHandle) Handle(args []string) {
 	qp := util.NewQuestionPrompt()
-	yamlWriter := envconfig.NewYamlWriter()
+	yamlWriter := config.NewYamlWriter()
 
 	settings := h.storeUserSettings(qp, yamlWriter)
 	applySettingsToCubeCtlConfig(settings)
@@ -40,15 +39,11 @@ func (h *SetupHandle) Handle(args []string) {
 	fmt.Println(kubectlapi.ClusterInfo(settings.Environment))
 }
 
-func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter envconfig.Writer) *envconfig.ApplicationSettings {
+func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter config.Writer) *config.ApplicationSettings {
 	projectKey := qp.RepeatIfEmpty("What is your Continuous Pipe project key?")
 	remoteBranch := qp.RepeatIfEmpty("What is the name of the Git branch you are using for your remote environment?")
 
-	environment := strings.Replace(remoteBranch, "/", "-", -1)
-	environment = strings.Replace(environment, "\\", "-", -1)
-	environment = projectKey + "-" + environment
-
-	settings := &envconfig.ApplicationSettings{
+	settings := &config.ApplicationSettings{
 		ProjectKey:          projectKey,
 		RemoteBranch:        remoteBranch,
 		RemoteName:          qp.ApplyDefault("What is your github remote name? (defaults to: origin)", "origin"),
@@ -60,14 +55,14 @@ func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter env
 		KeenWriteKey:        qp.ReadString("What is your keen.io write key? (Optional, only needed if you want to record usage stats)"),
 		KeenProjectId:       qp.ReadString("What is your keen.io project id? (Optional, only needed if you want to record usage stats)"),
 		KeenEventCollection: qp.ReadString("What is your keen.io event collection?  (Optional, only needed if you want to record usage stats)"),
-		Environment:         environment,
+		Environment:         config.GetEnvironment(projectKey, remoteBranch),
 	}
 
 	yamlWriter.Save(settings)
 	return settings
 }
 
-func applySettingsToCubeCtlConfig(settings *envconfig.ApplicationSettings) {
+func applySettingsToCubeCtlConfig(settings *config.ApplicationSettings) {
 	kubectlapi.ConfigSetAuthInfo(settings.Environment, settings.Username, settings.Password)
 	kubectlapi.ConfigSetCluster(settings.Environment, settings.ClusterIp)
 	kubectlapi.ConfigSetContext(settings.Environment, settings.Username)

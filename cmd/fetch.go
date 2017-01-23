@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/continuouspipe/remote-environment-client/benchmark"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
@@ -23,11 +24,17 @@ with the default container specified during setup but you can specify another co
 		validator := config.NewMandatoryChecker()
 		validateConfig(validator, settings)
 
+		benchmark := benchmark.NewCmdBenchmark()
+		benchmark.Start("fetch")
+
 		handler := &FetchHandle{cmd}
 		podsFinder := pods.NewKubePodsFind()
 		podsFilter := pods.NewKubePodsFilter()
 		rsyncFetch := sync.NewRsyncFetch()
 		handler.Handle(args, settings, podsFinder, podsFilter, rsyncFetch)
+
+		_, err := benchmark.StopAndLog("fetch")
+		checkErr(err)
 	},
 }
 

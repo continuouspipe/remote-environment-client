@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/viper"
 	"html/template"
 	"os"
+	"strings"
 )
 
 var AppName = os.Args[0]
@@ -75,6 +76,14 @@ func NewApplicationSettings() *ApplicationSettings {
 	return s
 }
 
+func GetEnvironment(projectKey string, remoteBranch string) string {
+	environment := strings.Replace(remoteBranch, "/", "-", -1)
+	environment = strings.Replace(environment, "\\", "-", -1)
+	environment = projectKey + "-" + environment
+	return environment
+
+}
+
 type Reader interface {
 	GetString(key string) string
 }
@@ -133,13 +142,13 @@ type MandatoryChecker struct {
 func NewMandatoryChecker() *MandatoryChecker {
 	checker := &MandatoryChecker{}
 	checker.settings = []string{ProjectKey,
-		RemoteBranch,
-		RemoteName,
-		ClusterIp,
-		Service,
-		Username,
-		Password,
-		KubeConfigKey}
+								RemoteBranch,
+								RemoteName,
+								ClusterIp,
+								Service,
+								Username,
+								Password,
+								KubeConfigKey}
 	return checker
 }
 

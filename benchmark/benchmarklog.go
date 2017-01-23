@@ -27,11 +27,17 @@ func NewCmdBenchmark() *CmdBenchmark {
 }
 
 func (b *CmdBenchmark) Start(cmd string) {
+	if !b.keenSettingsAvailable() {
+		return
+	}
 	b.currentCommand = cmd
 	b.startTime = time.Now().Format(time.RFC3339)
 }
 
 func (b *CmdBenchmark) StopAndLog(cmd string) (bool, error) {
+	if !b.keenSettingsAvailable() {
+		return false, nil
+	}
 	if cmd != b.currentCommand {
 		return false, fmt.Errorf("stop the benchmark in progress %s or start a new one for %s", b.currentCommand, cmd)
 	}
@@ -45,4 +51,8 @@ func (b *CmdBenchmark) StopAndLog(cmd string) (bool, error) {
 	b.currentCommand = ""
 	b.startTime = ""
 	return res, nil
+}
+
+func (b *CmdBenchmark) keenSettingsAvailable() bool {
+	return len(b.sender.ProjectId) > 0 && len(b.sender.WriteKey) > 0 && len(b.sender.EventCollection) > 0
 }

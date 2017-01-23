@@ -46,6 +46,8 @@ func Execute() {
 func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", ".cp-remote-env-settings.yml", "config file (default is .cp-remote-env-settings.yml in the directory cp-remote is run from.)")
 	cobra.OnInitialize(initConfig)
+
+	RootCmd.AddCommand(NewBashCmd())
 }
 
 func initConfig() {

@@ -45,6 +45,6 @@ func init() {
 	logging.stderrThreshold = errorLog
 
 	//set maximum level of verbose
-	logging.setVState(10, nil, false)
+	logging.setVState(5, nil, false)
 	go logging.flushDaemon()
 }

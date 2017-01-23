@@ -19,6 +19,7 @@ func CommandExec(name string, arg ...string) (string, error) {
 func SysCallExec(name string, arg ...string) {
 	appBinPath, lookErr := exec.LookPath(name)
 	if lookErr != nil {
+		cplogs.V(5).Infof("path to binary file %s not found", name)
 		panic(lookErr)
 	}
 
@@ -27,8 +28,12 @@ func SysCallExec(name string, arg ...string) {
 	//syscall.Exec requires the first argument to be the app-name
 	allArgs := append([]string{name}, arg...)
 
+	cplogs.V(5).Infof("executing command path: %#v with arguments: %#v", appBinPath, allArgs)
+	cplogs.Flush()
 	execErr := syscall.Exec(appBinPath, allArgs, env)
 	if execErr != nil {
+		cplogs.V(3).Infof("command error: %#v", execErr.Error())
+		cplogs.Flush()
 		panic(execErr)
 	}
 }
@@ -43,7 +48,7 @@ func executeCmd(cmd *exec.Cmd) (string, error) {
 		return "", err
 	}
 	sout := string(out[:])
-	cplogs.V(5).Infof("command output as string: %s", sout)
+	cplogs.V(7).Infof("command output as string: %s", sout)
 	cplogs.Flush()
 	//remove newline and space from string
 	return strings.Trim(sout, "\n "), nil

@@ -1,7 +1,6 @@
 package pods
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -24,5 +23,5 @@ func (p KubePodsFilter) ByService(pods *v1.PodList, service string) (*v1.Pod, er
 			return &pod, nil
 		}
 	}
-	return nil, errors.New(fmt.Sprintf("Pods were found but not for the service name (%s) specified", service))
+	return nil, fmt.Errorf(fmt.Sprintf("Pods were found but not for the service name (%s) specified", service))
 }
