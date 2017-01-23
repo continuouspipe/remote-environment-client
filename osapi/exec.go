@@ -2,9 +2,9 @@ package osapi
 
 import (
 	"os"
+	"os/exec"
 	"strings"
 	"syscall"
-	"os/exec"
 
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 )

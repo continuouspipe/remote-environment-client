@@ -1,8 +1,8 @@
 package test
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 )
 
 func AssertSame(t *testing.T, expected interface{}, actual interface{}) {

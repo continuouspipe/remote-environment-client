@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/continuouspipe/remote-environment-client/update"
+	"github.com/spf13/cobra"
 )
 
 var checkUpdates = &cobra.Command{

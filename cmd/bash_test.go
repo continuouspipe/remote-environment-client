@@ -3,9 +3,9 @@ package cmd
 import (
 	"testing"
 
-	"k8s.io/client-go/pkg/api/v1"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/test"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 func TestSysCallIsCalledToOpenBashSession(t *testing.T) {

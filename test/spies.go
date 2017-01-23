@@ -1,8 +1,8 @@
 package test
 
 import (
-	"github.com/continuouspipe/remote-environment-client/config"
 	"fmt"
+	"github.com/continuouspipe/remote-environment-client/config"
 )
 
 //A map that stores a list of function arguments [argumentName] => value (any type)

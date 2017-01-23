@@ -3,13 +3,13 @@ package sync
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"sync"
 	"time"
-	"regexp"
 
-	"github.com/fsnotify/fsnotify"
-	"github.com/continuouspipe/remote-environment-client/path/filepath"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/continuouspipe/remote-environment-client/path/filepath"
+	"github.com/fsnotify/fsnotify"
 )
 
 type EventsObserver interface {
@@ -28,11 +28,11 @@ type RecursiveDirectoryMonitor struct {
 func GetRecursiveDirectoryMonitor() *RecursiveDirectoryMonitor {
 	m := &RecursiveDirectoryMonitor{}
 	m.Exclusions = []string{`/\.[^/]*$`,
-							`\.idea`,
-							`\.git`,
-							`___jb_old___`,
-							`___jb_tmp___`,
-							`cp-remote-logs`}
+		`\.idea`,
+		`\.git`,
+		`___jb_old___`,
+		`___jb_tmp___`,
+		`cp-remote-logs`}
 	return m
 }
 

@@ -133,13 +133,13 @@ type MandatoryChecker struct {
 func NewMandatoryChecker() *MandatoryChecker {
 	checker := &MandatoryChecker{}
 	checker.settings = []string{ProjectKey,
-								RemoteBranch,
-								RemoteName,
-								ClusterIp,
-								Service,
-								Username,
-								Password,
-								KubeConfigKey}
+		RemoteBranch,
+		RemoteName,
+		ClusterIp,
+		Service,
+		Username,
+		Password,
+		KubeConfigKey}
 	return checker
 }
 

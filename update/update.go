@@ -1,30 +1,30 @@
 package update
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
-	"encoding/json"
 	"net/url"
 	"runtime"
 
 	envconfig "github.com/continuouspipe/remote-environment-client/config"
-	"github.com/sanbornm/go-selfupdate/selfupdate"
 	"github.com/continuouspipe/remote-environment-client/util"
+	"github.com/sanbornm/go-selfupdate/selfupdate"
 )
 
 var selfUpdater = &selfupdate.Updater{
 	// Manually update the const, or set it using `go build -ldflags="-X main.VERSION=<newver>" -o cp-remote remote-environment-client/main.go`
 	CurrentVersion: envconfig.CurrentVersion,
 	// The server hosting `$CmdName/$GOOS-$ARCH.json` which contains the checksum for the binary
-	ApiURL:         "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/",
+	ApiURL: "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/",
 	// The server hosting the zip file containing the binary application which is a fallback for the patch method
-	BinURL:         "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/",
+	BinURL: "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/",
 	// The server hosting the binary patch diff for incremental updates
-	DiffURL:        "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/",
+	DiffURL: "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/",
 	// The directory created by the app when run which stores the cktime file
-	Dir:            "update/",
+	Dir: "update/",
 	// The app name which is appended to the ApiURL to look for an update
-	CmdName:        "gh-pages",
+	CmdName: "gh-pages",
 }
 
 func CheckForLatestVersion() error {

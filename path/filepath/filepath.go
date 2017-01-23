@@ -1,8 +1,8 @@
 package filepath
 
 import (
-	"path/filepath"
 	"os"
+	"path/filepath"
 )
 
 // getSubFolders recursively retrieves all subfolders of the specified path.

@@ -1,14 +1,14 @@
 package sync
 
 import (
-	"os"
-	"fmt"
-	"os/exec"
 	"bufio"
+	"fmt"
+	"os"
+	"os/exec"
 
-	"k8s.io/client-go/pkg/api/v1"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 const SyncExcluded = ".cp-remote-ignore"

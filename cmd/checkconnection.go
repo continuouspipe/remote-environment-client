@@ -3,11 +3,11 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
-	"github.com/continuouspipe/remote-environment-client/config"
 )
 
 var checkconnectionCmd = &cobra.Command{

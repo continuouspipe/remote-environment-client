@@ -1,8 +1,8 @@
 package util
 
 import (
-	"fmt"
 	"bufio"
+	"fmt"
 	"os"
 )
 

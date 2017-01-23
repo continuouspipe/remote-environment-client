@@ -1,8 +1,8 @@
 package pods
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"strings"
 
 	"k8s.io/client-go/pkg/api/v1"

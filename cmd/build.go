@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/continuouspipe/remote-environment-client/config"
-	"github.com/continuouspipe/remote-environment-client/git"
 	"fmt"
+	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/continuouspipe/remote-environment-client/git"
+	"github.com/spf13/cobra"
 )
 
 var buildCmd = &cobra.Command{
@@ -58,7 +58,7 @@ func (h *BuildHandle) Handle(args []string) error {
 	h.pushToLocalBranch()
 	fmt.Println("Continuous Pipe will now build your developer environment")
 	fmt.Println("You can see when it is complete and find its IP address at https://ui.continuouspipe.io/")
-	fmt.Println("Please wait unti the build is complete to use any of this tool's other commands.")
+	fmt.Println("Please wait until the build is complete to use any of this tool's other commands.")
 
 	return nil
 }

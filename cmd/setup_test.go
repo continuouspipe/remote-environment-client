@@ -22,20 +22,20 @@ func TestUserApplicationSettingsAreStored(t *testing.T) {
 	}
 
 	expectedSettings := &config.ApplicationSettings{
-		ProjectKey:            "my-project",
-		RemoteBranch:          "feature/MYPROJ-312-initial-commit",
+		ProjectKey:   "my-project",
+		RemoteBranch: "feature/MYPROJ-312-initial-commit",
 		//this is the default expected value for RemoteName
-		RemoteName:            "origin",
-		DefaultService:        "web",
-		ClusterIp:             "127.0.0.1",
-		Username:              "root",
-		Password:              "2e9fik2s9-fds903",
-		AnybarPort:            "6542",
-		KeenWriteKey:          "sk29dj22d882",
-		KeenProjectId:         "cc3d902idi01",
-		KeenEventCollection:   "event-collection",
+		RemoteName:          "origin",
+		DefaultService:      "web",
+		ClusterIp:           "127.0.0.1",
+		Username:            "root",
+		Password:            "2e9fik2s9-fds903",
+		AnybarPort:          "6542",
+		KeenWriteKey:        "sk29dj22d882",
+		KeenProjectId:       "cc3d902idi01",
+		KeenEventCollection: "event-collection",
 		//we expect / to be converted to - and namespace being a concatenation of ProjectKey and RemoteBranch
-		Environment:           "my-project-feature-MYPROJ-312-initial-commit",
+		Environment: "my-project-feature-MYPROJ-312-initial-commit",
 	}
 
 	firstCall := spyYamlWriter.FirstCallsFor("Save")

@@ -3,10 +3,10 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
 	"github.com/continuouspipe/remote-environment-client/config"
-	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
+	"github.com/spf13/cobra"
 )
 
 var execCmd = &cobra.Command{

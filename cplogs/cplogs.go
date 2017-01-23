@@ -6,8 +6,8 @@ package cplogs
 
 import (
 	"flag"
-	"os"
 	"fmt"
+	"os"
 	"time"
 )
 

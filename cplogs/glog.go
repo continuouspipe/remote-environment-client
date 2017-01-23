@@ -98,7 +98,7 @@ type severity int32 // sync/atomic int32
 // A message written to a high-severity log file is also written to each
 // lower-severity log file.
 const (
-	infoLog     severity = iota
+	infoLog severity = iota
 	warningLog
 	errorLog
 	fatalLog
@@ -338,7 +338,7 @@ func (t *traceLocation) match(file string, line int) bool {
 		return false
 	}
 	if i := strings.LastIndex(file, "/"); i >= 0 {
-		file = file[i + 1:]
+		file = file[i+1:]
 	}
 	return t.file == file
 }
@@ -540,7 +540,7 @@ func (l *loggingT) header(s severity, depth int) (*buffer, string, int) {
 	} else {
 		slash := strings.LastIndex(file, "/")
 		if slash >= 0 {
-			file = file[slash + 1:]
+			file = file[slash+1:]
 		}
 	}
 	return l.formatHeader(s, file, line), file, line
@@ -580,9 +580,9 @@ func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
 	buf.WriteString(file)
 	buf.tmp[0] = ':'
 	n := buf.someDigits(1, line)
-	buf.tmp[n + 1] = ']'
-	buf.tmp[n + 2] = ' '
-	buf.Write(buf.tmp[:n + 3])
+	buf.tmp[n+1] = ']'
+	buf.tmp[n+2] = ' '
+	buf.Write(buf.tmp[:n+3])
 	return buf
 }
 
@@ -592,9 +592,9 @@ const digits = "0123456789"
 
 // twoDigits formats a zero-prefixed two-digit integer at buf.tmp[i].
 func (buf *buffer) twoDigits(i, d int) {
-	buf.tmp[i + 1] = digits[d % 10]
+	buf.tmp[i+1] = digits[d%10]
 	d /= 10
-	buf.tmp[i] = digits[d % 10]
+	buf.tmp[i] = digits[d%10]
 }
 
 // nDigits formats an n-digit integer at buf.tmp[i],
@@ -603,11 +603,11 @@ func (buf *buffer) twoDigits(i, d int) {
 func (buf *buffer) nDigits(n, i, d int, pad byte) {
 	j := n - 1
 	for ; j >= 0 && d > 0; j-- {
-		buf.tmp[i + j] = digits[d % 10]
+		buf.tmp[i+j] = digits[d%10]
 		d /= 10
 	}
 	for ; j >= 0; j-- {
-		buf.tmp[i + j] = pad
+		buf.tmp[i+j] = pad
 	}
 }
 
@@ -618,7 +618,7 @@ func (buf *buffer) someDigits(i, d int) int {
 	j := len(buf.tmp)
 	for {
 		j--
-		buf.tmp[j] = digits[d % 10]
+		buf.tmp[j] = digits[d%10]
 		d /= 10
 		if d == 0 {
 			break
@@ -640,7 +640,7 @@ func (l *loggingT) print(s severity, args ...interface{}) {
 func (l *loggingT) printDepth(s severity, depth int, args ...interface{}) {
 	buf, file, line := l.header(s, depth)
 	fmt.Fprint(buf, args...)
-	if buf.Bytes()[buf.Len() - 1] != '\n' {
+	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
 	l.output(s, buf, file, line, false)
@@ -649,7 +649,7 @@ func (l *loggingT) printDepth(s severity, depth int, args ...interface{}) {
 func (l *loggingT) printf(s severity, format string, args ...interface{}) {
 	buf, file, line := l.header(s, 0)
 	fmt.Fprintf(buf, format, args...)
-	if buf.Bytes()[buf.Len() - 1] != '\n' {
+	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
 	l.output(s, buf, file, line, false)
@@ -661,7 +661,7 @@ func (l *loggingT) printf(s severity, format string, args ...interface{}) {
 func (l *loggingT) printWithFileLine(s severity, file string, line int, alsoToStderr bool, args ...interface{}) {
 	buf := l.formatHeader(s, file, line)
 	fmt.Fprint(buf, args...)
-	if buf.Bytes()[buf.Len() - 1] != '\n' {
+	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
 	l.output(s, buf, file, line, alsoToStderr)
@@ -963,10 +963,10 @@ func (l *loggingT) setV(pc uintptr) Level {
 	file, _ := fn.FileLine(pc)
 	// The file is something like /a/b/c/d.go. We want just the d.
 	if strings.HasSuffix(file, ".go") {
-		file = file[:len(file) - 3]
+		file = file[:len(file)-3]
 	}
 	if slash := strings.LastIndex(file, "/"); slash >= 0 {
-		file = file[slash + 1:]
+		file = file[slash+1:]
 	}
 	for _, filter := range l.vmodule.filter {
 		if filter.match(file) {

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	envconfig "github.com/continuouspipe/remote-environment-client/config"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	envconfig "github.com/continuouspipe/remote-environment-client/config"
 )
 
 var cfgFile string

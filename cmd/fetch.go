@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/continuouspipe/remote-environment-client/config"
-	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
+	"github.com/continuouspipe/remote-environment-client/sync"
+	"github.com/spf13/cobra"
 )
 
 var fetchCmd = &cobra.Command{
