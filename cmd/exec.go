@@ -37,7 +37,7 @@ the exec command. The command and its arguments need to follow --`,
 
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
-			res, err := handler.Handle(args, settings, podsFinder, podsFilter, local)
+			res, err := handler.Handle(args, podsFinder, podsFilter, local)
 			checkErr(err)
 			fmt.Println(res)
 		},
@@ -90,7 +90,7 @@ func (h *ExecHandle) Validate() error {
 }
 
 // Handle executes a command inside a pod
-func (h *ExecHandle) Handle(args []string, settings config.Reader, podsFinder pods.Finder, podsFilter pods.Filter, spawn exec.Spawner) (string, error) {
+func (h *ExecHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, spawn exec.Spawner) (string, error) {
 	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
 
 	allPods, err := podsFinder.FindAll(h.kubeConfigKey, environment)

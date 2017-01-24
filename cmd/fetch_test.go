@@ -9,7 +9,6 @@ import (
 
 func TestFetch(t *testing.T) {
 	//get mocked dependencies
-	configReader := getMockConfigReaderInitialized()
 	mockPodsFinder := test.GetMockPodsFinder()
 	mockPodsFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.PodList, error) {
 		return &v1.PodList{}, nil
@@ -24,7 +23,11 @@ func TestFetch(t *testing.T) {
 
 	//test subject called
 	handler := &FetchHandle{}
-	handler.Handle([]string{}, configReader, mockPodsFinder, mockPodFilter, spyFetcher)
+	handler.kubeConfigKey = "my-config-key"
+	handler.ProjectKey = "proj"
+	handler.RemoteBranch = "feature-testing"
+	handler.Service = "web"
+	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spyFetcher)
 
 	//expectations
 	firstCall := spyFetcher.FirstCallsFor("Fetch")
@@ -38,7 +41,7 @@ func TestFetch(t *testing.T) {
 		t.Fatalf("Expected kube config to be a string, given %T", firstCall.Arguments["kubeConfigKey"])
 	}
 	if str, ok := firstCall.Arguments["environment"].(string); ok {
-		test.AssertSame(t, "feature-testing", str)
+		test.AssertSame(t, "proj-feature-testing", str)
 	} else {
 		t.Fatalf("Expected feature testing to be a string, given %T", firstCall.Arguments["environment"])
 	}

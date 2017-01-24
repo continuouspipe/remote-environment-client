@@ -17,7 +17,7 @@ type Function struct {
 //Generic struct that can be embedded by any struct that wants to keep track to what function was called and with which args
 type Spy struct {
 	calledFunctions []Function
-	commandExec     func() string
+	commandExec     func() (string, error)
 }
 
 //Returns the Function call element for the given functionName, this is useful when a type has received multiple functions
@@ -62,7 +62,7 @@ func (m *SpyLocalExecutor) SysCallExec(kubeConfigKey string, environment string,
 	m.calledFunctions = append(m.calledFunctions, *function)
 }
 
-func (m *SpyLocalExecutor) CommandExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) string {
+func (m *SpyLocalExecutor) CommandExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) (string, error) {
 	args := make(Arguments)
 	args["kubeConfigKey"] = kubeConfigKey
 	args["environment"] = environment
@@ -75,7 +75,7 @@ func (m *SpyLocalExecutor) CommandExec(kubeConfigKey string, environment string,
 	return m.commandExec()
 }
 
-func (m *SpyLocalExecutor) SpyCommandExec(mocked func() string) {
+func (m *SpyLocalExecutor) SpyCommandExec(mocked func() (string, error)) {
 	m.commandExec = mocked
 }
 
@@ -88,14 +88,14 @@ func GetSpyRsyncFetch() *SpyRsyncFetch {
 	return &SpyRsyncFetch{}
 }
 
-func (r *SpyRsyncFetch) Fetch(kubeConfigKey string, environment string, pod string) bool {
+func (r *SpyRsyncFetch) Fetch(kubeConfigKey string, environment string, pod string) error {
 	args := make(Arguments)
 	args["kubeConfigKey"] = kubeConfigKey
 	args["environment"] = environment
 	args["pod"] = pod
 	function := &Function{Name: "Fetch", Arguments: args}
 	r.calledFunctions = append(r.calledFunctions, *function)
-	return true
+	return nil
 }
 
 //Spy for YamlWriter

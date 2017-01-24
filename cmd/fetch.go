@@ -51,7 +51,7 @@ with the default container specified during setup but you can specify another co
 
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
-			checkErr(handler.Handle(args, settings, podsFinder, podsFilter, rsyncFetch))
+			checkErr(handler.Handle(args, podsFinder, podsFilter, rsyncFetch))
 
 			_, err := benchmark.StopAndLog()
 			checkErr(err)
@@ -107,7 +107,7 @@ func (h *FetchHandle) Validate() error {
 }
 
 // Copies all the files and folders from the remote development environment into the current directory
-func (h *FetchHandle) Handle(args []string, settings config.Reader, podsFinder pods.Finder, podsFilter pods.Filter, fetcher sync.Fetcher) error {
+func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, fetcher sync.Fetcher) error {
 	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
 
 	allPods, err := podsFinder.FindAll(h.kubeConfigKey, environment)

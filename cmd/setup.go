@@ -19,7 +19,12 @@ Your answers will be stored in a .cp-remote-env-settings file in the project roo
 will probably want to add this to your .gitignore file.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			handler := &SetupHandle{cmd}
-			handler.Handle(args)
+
+			settings := handler.Handle(args)
+
+			fmt.Printf("\nRemote settings written to %s\n", viper.ConfigFileUsed())
+			fmt.Printf("Created the kubernetes config key %s\n", settings.Environment)
+			fmt.Println(kubectlapi.ClusterInfo(settings.Environment))
 		},
 	}
 }
@@ -28,16 +33,14 @@ type SetupHandle struct {
 	Command *cobra.Command
 }
 
-func (h *SetupHandle) Handle(args []string) {
+func (h *SetupHandle) Handle(args []string) *config.ApplicationSettings {
 	qp := util.NewQuestionPrompt()
 	yamlWriter := config.NewYamlWriter()
 
 	settings := h.storeUserSettings(qp, yamlWriter)
 	applySettingsToCubeCtlConfig(settings)
 
-	fmt.Printf("\nRemote settings written to %s\n", viper.ConfigFileUsed())
-	fmt.Printf("Created the kubernetes config key %s\n", settings.Environment)
-	fmt.Println(kubectlapi.ClusterInfo(settings.Environment))
+	return settings
 }
 
 func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter config.Writer) *config.ApplicationSettings {

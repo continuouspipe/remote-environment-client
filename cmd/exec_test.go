@@ -9,7 +9,6 @@ import (
 
 func TestCommandsAreSpawned(t *testing.T) {
 	//get mocked dependencies
-	configReader := getMockConfigReaderInitialized()
 	mockPodsFinder := test.GetMockPodsFinder()
 	mockPodsFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.PodList, error) {
 		return &v1.PodList{}, nil
@@ -21,13 +20,17 @@ func TestCommandsAreSpawned(t *testing.T) {
 		return mockPod, nil
 	})
 	spyLocalExecutor := test.GetSpyLocalExecutor()
-	spyLocalExecutor.SpyCommandExec(func() string {
-		return "some retult back.."
+	spyLocalExecutor.SpyCommandExec(func() (string, error) {
+		return "some retult back..", nil
 	})
 
 	//test subject called
-	execHandle := &ExecHandle{}
-	out := execHandle.Handle([]string{"ls", "-a", "-l", "-l"}, configReader, mockPodsFinder, mockPodFilter, spyLocalExecutor)
+	handler := &ExecHandle{}
+	handler.kubeConfigKey = "my-config-key"
+	handler.ProjectKey = "proj"
+	handler.RemoteBranch = "feature-testing"
+	handler.Service = "web"
+	out, _ := handler.Handle([]string{"ls", "-a", "-l", "-l"}, mockPodsFinder, mockPodFilter, spyLocalExecutor)
 
 	//expectations
 	test.AssertSame(t, "some retult back..", out)
@@ -42,7 +45,7 @@ func TestCommandsAreSpawned(t *testing.T) {
 		t.Fatalf("Expected kube config to be a string, given %T", firstCall.Arguments["kubeConfigKey"])
 	}
 	if str, ok := firstCall.Arguments["environment"].(string); ok {
-		test.AssertSame(t, "feature-testing", str)
+		test.AssertSame(t, "proj-feature-testing", str)
 	} else {
 		t.Fatalf("Expected feature testing to be a string, given %T", firstCall.Arguments["environment"])
 	}

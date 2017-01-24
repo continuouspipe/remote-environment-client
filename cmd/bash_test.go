@@ -3,14 +3,12 @@ package cmd
 import (
 	"testing"
 
-	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/test"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
 func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	//get mocked dependencies
-	configReader := getMockConfigReaderInitialized()
 	mockPodsFinder := test.GetMockPodsFinder()
 	mockPodsFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.PodList, error) {
 		return &v1.PodList{}, nil
@@ -24,8 +22,12 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	spyLocalExecutor := test.GetSpyLocalExecutor()
 
 	//test subject called
-	bashHandle := &BashHandle{}
-	bashHandle.Handle([]string{}, configReader, mockPodsFinder, mockPodFilter, spyLocalExecutor)
+	handler := &BashHandle{}
+	handler.kubeConfigKey = "my-config-key"
+	handler.ProjectKey = "proj"
+	handler.RemoteBranch = "feature-testing"
+	handler.Service = "web"
+	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spyLocalExecutor)
 
 	//expectations
 	firstCall := spyLocalExecutor.FirstCallsFor("SysCallExec")
@@ -39,7 +41,7 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 		t.Fatalf("Expected kube config to be a string, given %T", firstCall.Arguments["kubeConfigKey"])
 	}
 	if str, ok := firstCall.Arguments["environment"].(string); ok {
-		test.AssertSame(t, "feature-testing", str)
+		test.AssertSame(t, "proj-feature-testing", str)
 	} else {
 		t.Fatalf("Expected feature testing to be a string, given %T", firstCall.Arguments["environment"])
 	}
@@ -48,21 +50,4 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	} else {
 		t.Fatalf("Expected pod to be a string, given %T", firstCall.Arguments["pod"])
 	}
-}
-func getMockConfigReaderInitialized() *test.MockConfigReader {
-	configReader := test.GetMockConfigReader()
-	configReader.MockGetString(func(key string) string {
-		switch key {
-		case config.KubeConfigKey:
-			return "my-config-key"
-
-		case config.Environment:
-			return "feature-testing"
-
-		case config.Service:
-			return "web"
-		}
-		return ""
-	})
-	return configReader
 }
