@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/fatih/color"
@@ -10,27 +9,23 @@ import (
 	"github.com/spf13/viper"
 )
 
-var checkconnectionCmd = &cobra.Command{
-	Use:   "checkconnection",
-	Short: "Check the connection to the remote environment",
-	Long: `The checkconnection command can be used to check that the connection details
-for the Kubernetes cluster are correct and that if they are pods can be found for the environment. 
+func NewCheckConnectionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "checkconnection",
+		Short: "Check the connection to the remote environment",
+		Long: `The checkconnection command can be used to check that the connection details
+for the Kubernetes cluster are correct and that if they are pods can be found for the environment.
 It can be used with the environment option to check another environment`,
-	Run: func(cmd *cobra.Command, args []string) {
-		settings := config.NewApplicationSettings()
-		validator := config.NewMandatoryChecker()
-		validateConfig(validator, settings)
+		Run: func(cmd *cobra.Command, args []string) {
+			settings := config.NewApplicationSettings()
+			validator := config.NewMandatoryChecker()
+			validateConfig(validator, settings)
 
-		handler := &CheckConnectionHandle{cmd}
-		podsFinder := pods.NewKubePodsFind()
-		handler.Handle(args, podsFinder)
-	},
-}
-
-func init() {
-	RootCmd.AddCommand(checkconnectionCmd)
-
-	checkconnectionCmd.PersistentFlags().StringP("environment", "e", "", "The environment to use")
+			handler := &CheckConnectionHandle{cmd}
+			podsFinder := pods.NewKubePodsFind()
+			handler.Handle(args, podsFinder)
+		},
+	}
 }
 
 type CheckConnectionHandle struct {

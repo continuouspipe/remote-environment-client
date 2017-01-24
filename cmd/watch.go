@@ -4,42 +4,39 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/spf13/cobra"
 )
 
-var watchCmd = &cobra.Command{
-	Use:   "watch",
-	Short: "Watch local changes and synchronize with the remote environment",
-	Long: `The watch command will sync changes you make locally to a container that's part
+func NewWatchCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "watch",
+		Short: "Watch local changes and synchronize with the remote environment",
+		Long: `The watch command will sync changes you make locally to a container that's part
 of the remote environment. This will use the default container specified during
 setup but you can specify another container to sync with.`,
-	Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, args []string) {
 
-		fmt.Println("Watching for changes. Quit anytime with Ctrl-C.")
+			fmt.Println("Watching for changes. Quit anytime with Ctrl-C.")
 
-		settings := config.NewApplicationSettings()
-		validator := config.NewMandatoryChecker()
-		validateConfig(validator, settings)
-		dirWatcher := sync.GetRecursiveDirectoryMonitor()
-		podsFinder := pods.NewKubePodsFind()
-		podsFilter := pods.NewKubePodsFilter()
+			settings := config.NewApplicationSettings()
+			validator := config.NewMandatoryChecker()
+			validateConfig(validator, settings)
+			dirWatcher := sync.GetRecursiveDirectoryMonitor()
+			podsFinder := pods.NewKubePodsFind()
+			podsFilter := pods.NewKubePodsFilter()
 
-		handler := &WatchHandle{cmd}
-		res, err := handler.AddDefaultCpRemoteExcludeFile(dirWatcher.Exclusions)
-		checkErr(err)
-		if res == true {
-			fmt.Printf("\n%s was missing and has been created with the default ignore settings.\n", sync.SyncExcluded)
-		}
-		handler.Handle(args, settings, dirWatcher, podsFinder, podsFilter)
-	},
-}
-
-func init() {
-	RootCmd.AddCommand(watchCmd)
+			handler := &WatchHandle{cmd}
+			res, err := handler.AddDefaultCpRemoteExcludeFile(dirWatcher.Exclusions)
+			checkErr(err)
+			if res == true {
+				fmt.Printf("\n%s was missing and has been created with the default ignore settings.\n", sync.SyncExcluded)
+			}
+			handler.Handle(args, settings, dirWatcher, podsFinder, podsFilter)
+		},
+	}
 }
 
 type WatchHandle struct {

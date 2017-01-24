@@ -9,37 +9,35 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var buildCmd = &cobra.Command{
-	Use:   "build",
-	Short: "Create/Update the remote environment",
-	Long: `The build command will push changes the branch you have checked out locally to your remote 
-environment branch. ContinuousPipe will then build the environment. You can use the 
-https://ui.continuouspipe.io/ to see when the environment has finished building and to 
+func NewBuildCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "build",
+		Short: "Create/Update the remote environment",
+		Long: `The build command will push changes the branch you have checked out locally to your remote
+environment branch. ContinuousPipe will then build the environment. You can use the
+https://ui.continuouspipe.io/ to see when the environment has finished building and to
 find its IP address.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		settings := config.NewApplicationSettings()
-		validator := config.NewMandatoryChecker()
-		validateConfig(validator, settings)
+		Run: func(cmd *cobra.Command, args []string) {
+			settings := config.NewApplicationSettings()
+			validator := config.NewMandatoryChecker()
+			validateConfig(validator, settings)
 
-		remoteName := settings.GetString(config.RemoteName)
-		remoteBranch := settings.GetString(config.RemoteBranch)
+			remoteName := settings.GetString(config.RemoteName)
+			remoteBranch := settings.GetString(config.RemoteBranch)
 
-		benchmark := benchmark.NewCmdBenchmark()
-		benchmark.Start("build")
+			benchmrk := benchmark.NewCmdBenchmark()
+			benchmrk.Start("build")
 
-		handler := &BuildHandle{
-			cmd,
-			remoteName,
-			remoteBranch,
-		}
-		handler.Handle(args)
-		_, err := benchmark.StopAndLog()
-		checkErr(err)
-	},
-}
-
-func init() {
-	RootCmd.AddCommand(buildCmd)
+			handler := &BuildHandle{
+				cmd,
+				remoteName,
+				remoteBranch,
+			}
+			handler.Handle(args)
+			_, err := benchmrk.StopAndLog()
+			checkErr(err)
+		},
+	}
 }
 
 type BuildHandle struct {

@@ -5,18 +5,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var checkUpdates = &cobra.Command{
-	Use:   "checkupdates",
-	Short: "Check for latest version",
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		handler := &CheckUpdates{cmd}
-		handler.Handle(args)
-	},
-}
-
-func init() {
-	RootCmd.AddCommand(checkUpdates)
+func NewCheckUpdatesCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "checkupdates",
+		Short: "Check for latest version",
+		Long:  ``,
+		Run: func(cmd *cobra.Command, args []string) {
+			handler := &CheckUpdates{cmd}
+			handler.Handle(args)
+		},
+	}
 }
 
 type CheckUpdates struct {

@@ -2,36 +2,33 @@ package cmd
 
 import (
 	"fmt"
-
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/spf13/cobra"
 )
 
-var execCmd = &cobra.Command{
-	Use:   "exec",
-	Short: "Execute a command on a container",
-	Long: `To execute a command on a container without first getting a bash session use
+func NewExecCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "exec",
+		Short: "Execute a command on a container",
+		Long: `To execute a command on a container without first getting a bash session use
 the exec command. The command and its arguments need to follow --`,
-	Run: func(cmd *cobra.Command, args []string) {
-		settings := config.NewApplicationSettings()
-		validator := config.NewMandatoryChecker()
-		validateConfig(validator, settings)
+		Run: func(cmd *cobra.Command, args []string) {
+			settings := config.NewApplicationSettings()
+			validator := config.NewMandatoryChecker()
+			validateConfig(validator, settings)
 
-		handler := &ExecHandle{cmd}
-		podsFinder := pods.NewKubePodsFind()
-		podsFilter := pods.NewKubePodsFilter()
-		local := exec.NewLocal()
+			handler := &ExecHandle{cmd}
+			podsFinder := pods.NewKubePodsFind()
+			podsFilter := pods.NewKubePodsFilter()
+			local := exec.NewLocal()
 
-		res, err := handler.Handle(args, settings, podsFinder, podsFilter, local)
-		checkErr(err)
-		fmt.Println(res)
-	},
-}
-
-func init() {
-	RootCmd.AddCommand(execCmd)
+			res, err := handler.Handle(args, settings, podsFinder, podsFilter, local)
+			checkErr(err)
+			fmt.Println(res)
+		},
+	}
 }
 
 type ExecHandle struct {

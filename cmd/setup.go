@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/util"
@@ -10,17 +9,19 @@ import (
 	"github.com/spf13/viper"
 )
 
-var setupCmd = &cobra.Command{
-	Use:   "setup",
-	Short: "Setup the remote environment client and settings",
-	Long: `This will ask a series of questions to get the details for the project set up. 
-	    
-Your answers will be stored in a .cp-remote-env-settings file in the project root. You 
+func NewSetupCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "setup",
+		Short: "Setup the remote environment client and settings",
+		Long: `This will ask a series of questions to get the details for the project set up.
+
+Your answers will be stored in a .cp-remote-env-settings file in the project root. You
 will probably want to add this to your .gitignore file.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		handler := &SetupHandle{cmd}
-		handler.Handle(args)
-	},
+		Run: func(cmd *cobra.Command, args []string) {
+			handler := &SetupHandle{cmd}
+			handler.Handle(args)
+		},
+	}
 }
 
 type SetupHandle struct {
@@ -66,8 +67,4 @@ func applySettingsToCubeCtlConfig(settings *config.ApplicationSettings) {
 	kubectlapi.ConfigSetAuthInfo(settings.Environment, settings.Username, settings.Password)
 	kubectlapi.ConfigSetCluster(settings.Environment, settings.ClusterIp)
 	kubectlapi.ConfigSetContext(settings.Environment, settings.Username)
-}
-
-func init() {
-	RootCmd.AddCommand(setupCmd)
 }

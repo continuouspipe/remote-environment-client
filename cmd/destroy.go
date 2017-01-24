@@ -2,34 +2,31 @@ package cmd
 
 import (
 	"fmt"
-
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/git"
 	"github.com/spf13/cobra"
 )
 
-var destroyCmd = &cobra.Command{
-	Use:   "destroy",
-	Short: "Destroy the remote environment",
-	Long: `The destroy command will delete the remote branch used for your remote
+func NewDestroyCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "destroy",
+		Short: "Destroy the remote environment",
+		Long: `The destroy command will delete the remote branch used for your remote
 environment, ContinuousPipe will then remove the environment.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		settings := config.NewApplicationSettings()
-		validator := config.NewMandatoryChecker()
-		validateConfig(validator, settings)
+		Run: func(cmd *cobra.Command, args []string) {
+			settings := config.NewApplicationSettings()
+			validator := config.NewMandatoryChecker()
+			validateConfig(validator, settings)
 
-		fmt.Println("Destroying remote environment")
-		fmt.Println("Deleting remote branch")
+			fmt.Println("Destroying remote environment")
+			fmt.Println("Deleting remote branch")
 
-		handler := &DestroyHandle{cmd}
-		handler.Handle(args, settings)
+			handler := &DestroyHandle{cmd}
+			handler.Handle(args, settings)
 
-		fmt.Println("Continuous Pipe will now destroy the remote environment")
-	},
-}
-
-func init() {
-	RootCmd.AddCommand(destroyCmd)
+			fmt.Println("Continuous Pipe will now destroy the remote environment")
+		},
+	}
 }
 
 type DestroyHandle struct {

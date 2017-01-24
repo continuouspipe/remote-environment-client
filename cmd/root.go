@@ -3,12 +3,13 @@ package cmd
 import (
 	"fmt"
 	"os"
-
-	envconfig "github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
+	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 var cfgFile string
@@ -49,6 +50,21 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	RootCmd.AddCommand(NewBashCmd())
+	RootCmd.AddCommand(NewBuildCmd())
+	RootCmd.AddCommand(NewCheckConnectionCmd())
+	RootCmd.AddCommand(NewCheckUpdatesCmd())
+	RootCmd.AddCommand(NewDestroyCmd())
+	RootCmd.AddCommand(NewExecCmd())
+	RootCmd.AddCommand(NewFetchCmd())
+	RootCmd.AddCommand(NewForwardCmd())
+	RootCmd.AddCommand(NewSetupCmd())
+	RootCmd.AddCommand(NewVersionCmd())
+	RootCmd.AddCommand(NewWatchCmd())
+
+	//adding kubectl commands as hidden
+	kubeCtlCommand := kubectlcmd.NewKubectlCommand(kubectlcmdutil.NewFactory(nil), os.Stdin, os.Stdout, os.Stderr)
+	kubeCtlCommand.Hidden = true
+	RootCmd.AddCommand(kubeCtlCommand)
 }
 
 func initConfig() {
@@ -67,7 +83,7 @@ func initConfig() {
 	}
 }
 
-func validateConfig(validator envconfig.Validator, reader envconfig.Reader) {
+func validateConfig(validator config.Validator, reader config.Reader) {
 	i, missing := validator.Validate(reader)
 	if i > 0 {
 		exitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the setup command.", missing))
