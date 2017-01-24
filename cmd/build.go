@@ -7,10 +7,13 @@ import (
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/git"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 func NewBuildCmd() *cobra.Command {
-	return &cobra.Command{
+	settings := config.NewApplicationSettings()
+	handler := &BuildHandle{}
+	command := &cobra.Command{
 		Use:     "build",
 		Aliases: []string{"bu"},
 		Short:   "Create/Update the remote environment",
@@ -19,26 +22,20 @@ environment branch. ContinuousPipe will then build the environment. You can use 
 https://ui.continuouspipe.io/ to see when the environment has finished building and to
 find its IP address.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			settings := config.NewApplicationSettings()
 			validator := config.NewMandatoryChecker()
 			validateConfig(validator, settings)
-
-			remoteName := settings.GetString(config.RemoteName)
-			remoteBranch := settings.GetString(config.RemoteBranch)
 
 			benchmrk := benchmark.NewCmdBenchmark()
 			benchmrk.Start("build")
 
-			handler := &BuildHandle{
-				cmd,
-				remoteName,
-				remoteBranch,
-			}
-			handler.Handle(args)
+			checkErr(handler.Complete(cmd, args, settings))
+			checkErr(handler.Validate())
+			checkErr(handler.Handle())
 			_, err := benchmrk.StopAndLog()
 			checkErr(err)
 		},
 	}
+	return command
 }
 
 type BuildHandle struct {
@@ -47,12 +44,38 @@ type BuildHandle struct {
 	remoteBranch string
 }
 
-func (h *BuildHandle) Handle(args []string) error {
-	remoteExists := h.hasRemote()
+// Complete verifies command line arguments and loads data from the command environment
+func (h *BuildHandle) Complete(cmd *cobra.Command, argsIn []string, settingsReader config.Reader) error {
+	h.Command = cmd
+	h.remoteName = settingsReader.GetString(config.RemoteName)
+	h.remoteBranch = settingsReader.GetString(config.RemoteBranch)
+	return nil
+}
+
+// Validate checks that the provided build options are specified.
+func (h *BuildHandle) Validate() error {
+	if len(strings.Trim(h.remoteName, " ")) == 0 {
+		return fmt.Errorf("the remote name specified is invalid")
+	}
+	if len(strings.Trim(h.remoteBranch, " ")) == 0 {
+		return fmt.Errorf("the remote branch specified is invalid")
+	}
+	return nil
+}
+
+func (h *BuildHandle) Handle() error {
+	remoteExists, err := h.hasRemote()
+	if err != nil {
+		return err
+	}
 	cplogs.V(5).Infof("remoteExists value is %s", remoteExists)
 
 	if remoteExists == true {
-		if localChanges := h.hasLocalChanges(); localChanges == false {
+		localChanges, err := h.hasLocalChanges()
+		if err != nil {
+			return err
+		}
+		if localChanges == false {
 			h.commitAnEmptyChange()
 		}
 	}
@@ -66,48 +89,57 @@ func (h *BuildHandle) Handle(args []string) error {
 	return nil
 }
 
-func (h *BuildHandle) pushToLocalBranch() {
+func (h *BuildHandle) pushToLocalBranch() error {
 	revparse := git.NewRevParse()
 	push := git.NewPush()
 
 	lbn, err := revparse.GetLocalBranchName()
 	cplogs.V(5).Infof("local branch name value is %s", lbn)
-	checkErr(err)
+	if err != nil {
+		return err
+	}
 
 	push.Push(lbn, h.remoteName, h.remoteBranch)
 }
 
-func (h *BuildHandle) hasLocalChanges() bool {
+func (h *BuildHandle) hasLocalChanges() (bool, error) {
 	revparse := git.NewRevParse()
 	lbn, err := revparse.GetLocalBranchName()
 	cplogs.V(5).Infof("local branch name value is %s", lbn)
-	checkErr(err)
+	if err != nil {
+		return false, err
+	}
 
 	list := git.NewRevList()
 	changes, err := list.GetLocalBranchAheadCount(lbn, h.remoteName, h.remoteBranch)
 	cplogs.V(5).Infof("amount of changes found is %s", changes)
-	checkErr(err)
+	if err != nil {
+		return false, err
+	}
 
 	if changes > 0 {
-		return true
+		return true, nil
 	}
-	return false
+
+	return false, nil
 }
 
-func (h *BuildHandle) hasRemote() bool {
+func (h *BuildHandle) hasRemote() (bool, error) {
 	lsRemote := git.NewLsRemote()
 	list, err := lsRemote.GetList(h.remoteName, h.remoteBranch)
 	cplogs.V(5).Infof("list of remote branches that matches remote name and branch are %s", list)
-	checkErr(err)
-	if len(list) == 0 {
-		return false
+	if err != nil {
+		return false, err
 	}
-	return true
+	if len(list) == 0 {
+		return false, err
+	}
+	return true, err
 }
 
-func (h *BuildHandle) commitAnEmptyChange() {
+func (h *BuildHandle) commitAnEmptyChange() error {
 	commit := git.NewCommit()
 	fmt.Println("No changes so making an empty commit to force rebuild")
 	_, err := commit.Commit("Add empty commit to force rebuild on continuous pipe")
-	checkErr(err)
+	return err
 }

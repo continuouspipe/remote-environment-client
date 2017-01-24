@@ -16,7 +16,7 @@ var fetchExample = `
 cp-remote-go fe
 
 # fetch files and folders overriding the configuration settings
-cp-remote-go fe -p techup -r dev-user -s web -- ls -all
+cp-remote-go fe -p techup -r dev-user -s web
 `
 
 func NewFetchCmd() *cobra.Command {
