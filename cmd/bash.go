@@ -34,8 +34,8 @@ during setup but you can specify another container to connect to. `,
 		Example: fmt.Sprintf("%s bash", config.AppName),
 	}
 
-	bashcmd.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "pk", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
-	bashcmd.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "rb", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
+	bashcmd.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
+	bashcmd.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
 	bashcmd.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
 
 	return bashcmd

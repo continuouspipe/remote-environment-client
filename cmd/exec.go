@@ -14,7 +14,7 @@ var execExample = `
 cp-remote-go ex -- ls -all
 
 # execute -l -all on the web pod overriding the project-key and remote-branch
-cp-remote-go ex -pk techup -rb dev-user -s web -- ls -all
+cp-remote-go ex -p techup -r dev-user -s web -- ls -all
 `
 
 func NewExecCmd() *cobra.Command {
@@ -42,8 +42,8 @@ the exec command. The command and its arguments need to follow --`,
 			fmt.Println(res)
 		},
 	}
-	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "pk", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
-	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "rb", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
+	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
+	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
 	return command
 }

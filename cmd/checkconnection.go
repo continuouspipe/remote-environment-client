@@ -30,8 +30,8 @@ It can be used with the environment option to check another environment`,
 		},
 	}
 
-	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "pk", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
-	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "rb", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
+	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
+	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
 
 	return command
 }
