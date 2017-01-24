@@ -12,7 +12,7 @@ import (
 )
 
 //low timeout but we want to see the logs if something went wrong
-const flushInterval = 2 * time.Second
+const flushInterval = 5 * time.Second
 
 const defaultLogDir = "./cp-remote-logs/"
 

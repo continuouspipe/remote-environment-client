@@ -41,6 +41,7 @@ with the default container specified during setup but you can specify another co
 		_, err = benchmark.StopAndLog()
 		checkErr(err)
 		fmt.Printf("Fetch complete, files and folders retrieved has been logged in %s\n", cplogs.GetLogInfoFile())
+		cplogs.Flush()
 	},
 }
 
