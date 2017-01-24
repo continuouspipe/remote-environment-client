@@ -59,7 +59,7 @@ func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, se
 	return nil
 }
 
-// Validate checks that the provided bash options are specified.
+// Validate checks that the provided checkconnection options are specified.
 func (h *CheckConnectionHandle) Validate() error {
 	if len(strings.Trim(h.ProjectKey, " ")) == 0 {
 		return fmt.Errorf("the project key specified is invalid")
@@ -70,6 +70,7 @@ func (h *CheckConnectionHandle) Validate() error {
 	return nil
 }
 
+// Finds the pods and prints them
 func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) error {
 	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
 

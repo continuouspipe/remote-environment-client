@@ -78,9 +78,7 @@ func initConfig() {
 	}
 
 	viper.AddConfigPath(pwd)
-	if err := viper.ReadInConfig(); err == nil {
-		//fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
+	checkErr(viper.ReadInConfig())
 }
 
 func validateConfig(validator config.Validator, reader config.Reader) {

@@ -92,7 +92,7 @@ func (h *FetchHandle) Complete(cmd *cobra.Command, argsIn []string, settingsRead
 	return nil
 }
 
-// Validate checks that the provided bash options are specified.
+// Validate checks that the provided fetch options are specified.
 func (h *FetchHandle) Validate() error {
 	if len(strings.Trim(h.ProjectKey, " ")) == 0 {
 		return fmt.Errorf("the project key specified is invalid")
@@ -106,6 +106,7 @@ func (h *FetchHandle) Validate() error {
 	return nil
 }
 
+// Copies all the files and folders from the remote development environment into the current directory
 func (h *FetchHandle) Handle(args []string, settings config.Reader, podsFinder pods.Finder, podsFilter pods.Filter, fetcher sync.Fetcher) error {
 	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
 

@@ -63,6 +63,9 @@ func (h *BuildHandle) Validate() error {
 	return nil
 }
 
+// Handle triggers a build on CP doing an empty commit on the given branch
+// The empty commit will create a remote branch if it does not exist yet
+// If there is a local commit ready to be pushed, it pushes those changes
 func (h *BuildHandle) Handle() error {
 	remoteExists, err := h.hasRemote()
 	if err != nil {
@@ -100,6 +103,7 @@ func (h *BuildHandle) pushToLocalBranch() error {
 	}
 
 	push.Push(lbn, h.remoteName, h.remoteBranch)
+	return nil
 }
 
 func (h *BuildHandle) hasLocalChanges() (bool, error) {

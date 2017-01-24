@@ -75,7 +75,7 @@ func (h *ExecHandle) Complete(cmd *cobra.Command, argsIn []string, settingsReade
 	return nil
 }
 
-// Validate checks that the provided bash options are specified.
+// Validate checks that the provided exec options are specified.
 func (h *ExecHandle) Validate() error {
 	if len(strings.Trim(h.ProjectKey, " ")) == 0 {
 		return fmt.Errorf("the project key specified is invalid")
