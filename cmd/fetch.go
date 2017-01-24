@@ -6,6 +6,8 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/spf13/cobra"
+	"fmt"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 )
 
 var fetchCmd = &cobra.Command{
@@ -24,6 +26,8 @@ with the default container specified during setup but you can specify another co
 		validator := config.NewMandatoryChecker()
 		validateConfig(validator, settings)
 
+		fmt.Println("Fetch in progress")
+
 		benchmark := benchmark.NewCmdBenchmark()
 		benchmark.Start("fetch")
 
@@ -36,6 +40,7 @@ with the default container specified during setup but you can specify another co
 		checkErr(err)
 		_, err = benchmark.StopAndLog()
 		checkErr(err)
+		fmt.Printf("Fetch complete, files and folders retrieved has been logged in %s\n", cplogs.GetLogInfoFile())
 	},
 }
 

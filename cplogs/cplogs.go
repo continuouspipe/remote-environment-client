@@ -25,6 +25,10 @@ func createLogDirs() {
 	logDirs = append(logDirs, os.TempDir())
 }
 
+func GetLogInfoFile() string {
+	return logDir + program + ".INFO"
+}
+
 func init() {
 	//required by glog.go
 	flag.Parse()

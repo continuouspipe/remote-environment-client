@@ -26,7 +26,7 @@ func (b *BenchmarkPayload) GetJsonPayload() ([]byte, error) {
 	payload := make(map[string]string)
 	payload["project"] = b.settings.GetString(config.ProjectKey)
 	payload["namespace"] = b.settings.GetString(config.Environment)
-	payload["command"] = b.settings.GetString(b.Command)
+	payload["command"] = b.Command
 	payload["start-time"] = b.StartTime
 	payload["end-time"] = endTime
 	out, err := json.Marshal(payload)

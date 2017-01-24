@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"net/http"
+	"bufio"
 )
 
 type PayloadProvider interface {
@@ -30,12 +31,11 @@ func (k *Sender) Send(payload PayloadProvider) (bool, error) {
 		return false, err
 	}
 
-	fmt.Printf("sending body %s", string(out[:]))
-
 	reader := bytes.NewReader(out)
 
-	cplogs.V(5).Infof("sending GET request to %s, payload %s", k.getEndpointUrl(), reader)
-	req, err := http.NewRequest("GET", k.getEndpointUrl(), reader)
+	cplogs.V(5).Infof("sending POST request with payload %s", reader)
+	cplogs.V(7).Infof("sending POST request to %s, payload %s", k.getEndpointUrl(), reader)
+	req, err := http.NewRequest("POST", k.getEndpointUrl(), reader)
 	if err != nil {
 		cplogs.V(4).Infof("could not create request for GET request for url: %s", k.getEndpointUrl())
 		return false, err
@@ -52,7 +52,14 @@ func (k *Sender) Send(payload PayloadProvider) (bool, error) {
 	if resp.StatusCode == 200 || resp.StatusCode == 201 {
 		return true, nil
 	}
-	err = fmt.Errorf("we didn't receive the expected status code OK or Create from keen.io. Status code %d, body %s", resp.StatusCode, resp.Body)
+
+	respBody := ""
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		respBody = respBody + "\n" + scanner.Text()
+	}
+
+	err = fmt.Errorf("we didn't receive the expected status code OK or Create from keen.io. Status code %d, body %s", resp.StatusCode, respBody)
 	return false, err
 }
 
