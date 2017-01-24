@@ -14,6 +14,32 @@ import (
 
 var cfgFile string
 
+var usageTemplate = `Usage:{{if .Runnable}}
+  {{if .HasAvailableFlags}}{{appendIfNotPresent .UseLine "[flags]"}}{{else}}{{.UseLine}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+  {{ .CommandPath}} [command]{{end}}{{if gt .Aliases 0}}
+
+Aliases:
+  {{.NameAndAliases}}
+{{end}}{{if .HasExample}}
+
+Examples:
+{{ .Example }}{{end}}{{ if .HasAvailableSubCommands}}
+
+Available Commands:{{range .Commands}}{{if .IsAvailableCommand}}
+  {{rpad .NameAndAliases .NamePadding }}` + "\t" + `{{.Short}}{{end}}{{end}}{{end}}{{ if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimRightSpace}}{{end}}{{ if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimRightSpace}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsHelpCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{ if .HasAvailableSubCommands }}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
+
 type Handler interface {
 	Handle(cmd *cobra.Command, args []string)
 }
@@ -64,7 +90,10 @@ func init() {
 	//adding kubectl commands as hidden
 	kubeCtlCommand := kubectlcmd.NewKubectlCommand(kubectlcmdutil.NewFactory(nil), os.Stdin, os.Stdout, os.Stderr)
 	kubeCtlCommand.Hidden = true
+
 	RootCmd.AddCommand(kubeCtlCommand)
+
+	RootCmd.SetUsageTemplate(usageTemplate)
 }
 
 func initConfig() {
