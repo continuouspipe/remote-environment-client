@@ -12,8 +12,9 @@ import (
 
 func NewWatchCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "watch",
-		Short: "Watch local changes and synchronize with the remote environment",
+		Use:     "watch",
+		Aliases: []string{"wa"},
+		Short:   "Watch local changes and synchronize with the remote environment",
 		Long: `The watch command will sync changes you make locally to a container that's part
 of the remote environment. This will use the default container specified during
 setup but you can specify another container to sync with.`,

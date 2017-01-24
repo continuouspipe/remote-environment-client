@@ -13,6 +13,7 @@ import (
 func NewFetchCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "fetch",
+		Aliases: []string{"fe"},
 		Short: "Sync remote changes to the local filesystem",
 		Long: `When the remote environment is rebuilt it may contain changes that you do not
 have on the local filesystem. For example, for a PHP project part of building the remote

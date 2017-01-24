@@ -14,8 +14,9 @@ func NewBashCmd() *cobra.Command {
 	handler := &BashHandle{}
 
 	bashcmd := &cobra.Command{
-		Use:   "bash",
-		Short: "Open a bash session in the remote environment container",
+		Use:     "bash",
+		Aliases: []string{"ba"},
+		Short:   "Open a bash session in the remote environment container",
 		Long: `This will remotely connect to a bash session onto the default container specified
 during setup but you can specify another container to connect to. `,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -33,8 +34,8 @@ during setup but you can specify another container to connect to. `,
 		Example: fmt.Sprintf("%s bash", config.AppName),
 	}
 
-	bashcmd.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "k", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
-	bashcmd.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "e", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
+	bashcmd.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "pk", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
+	bashcmd.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "rb", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
 	bashcmd.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
 
 	return bashcmd

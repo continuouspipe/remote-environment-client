@@ -11,6 +11,7 @@ import (
 func NewVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
+		Aliases: []string{"ve"},
 		Short: "Show current version number",
 		Long:  ``,
 		Run: func(cmd *cobra.Command, args []string) {

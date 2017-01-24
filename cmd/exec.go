@@ -6,45 +6,98 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
+var execExample = `
+# execute -l -all on the web pod
+cp-remote-go ex -- ls -all
+
+# execute -l -all on the web pod overriding the project-key and remote-branch
+cp-remote-go ex -pk techup -rb dev-user -s web -- ls -all
+`
+
 func NewExecCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "exec",
-		Short: "Execute a command on a container",
+	settings := config.NewApplicationSettings()
+	handler := &ExecHandle{}
+	command := &cobra.Command{
+		Use:     "exec",
+		Aliases: []string{"ex"},
+		Short:   "Execute a command on a container",
 		Long: `To execute a command on a container without first getting a bash session use
 the exec command. The command and its arguments need to follow --`,
+		Example: execExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			settings := config.NewApplicationSettings()
 			validator := config.NewMandatoryChecker()
 			validateConfig(validator, settings)
 
-			handler := &ExecHandle{cmd}
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
 			local := exec.NewLocal()
 
+			checkErr(handler.Complete(cmd, args, settings))
+			checkErr(handler.Validate())
 			res, err := handler.Handle(args, settings, podsFinder, podsFilter, local)
 			checkErr(err)
 			fmt.Println(res)
 		},
 	}
+	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "pk", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
+	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "rb", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
+	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
+	return command
 }
 
 type ExecHandle struct {
-	Command *cobra.Command
+	Command       *cobra.Command
+	ProjectKey    string
+	RemoteBranch  string
+	Service       string
+	kubeConfigKey string
 }
 
+// Complete verifies command line arguments and loads data from the command environment
+func (h *ExecHandle) Complete(cmd *cobra.Command, argsIn []string, settingsReader config.Reader) error {
+	h.Command = cmd
+
+	h.kubeConfigKey = settingsReader.GetString(config.KubeConfigKey)
+
+	if h.ProjectKey == "" {
+		h.ProjectKey = settingsReader.GetString(config.ProjectKey)
+	}
+	if h.RemoteBranch == "" {
+		h.RemoteBranch = settingsReader.GetString(config.RemoteBranch)
+	}
+	if h.Service == "" {
+		h.Service = settingsReader.GetString(config.Service)
+	}
+
+	return nil
+}
+
+// Validate checks that the provided bash options are specified.
+func (h *ExecHandle) Validate() error {
+	if len(strings.Trim(h.ProjectKey, " ")) == 0 {
+		return fmt.Errorf("the project key specified is invalid")
+	}
+	if len(strings.Trim(h.RemoteBranch, " ")) == 0 {
+		return fmt.Errorf("the remote branch specified is invalid")
+	}
+	if len(strings.Trim(h.Service, " ")) == 0 {
+		return fmt.Errorf("the service specified is invalid")
+	}
+	return nil
+}
+
+// Handle executes a command inside a pod
 func (h *ExecHandle) Handle(args []string, settings config.Reader, podsFinder pods.Finder, podsFilter pods.Filter, spawn exec.Spawner) (string, error) {
-	kubeConfigKey := settings.GetString(config.KubeConfigKey)
-	environment := settings.GetString(config.Environment)
-	service := settings.GetString(config.Service)
+	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
 
-	allPods, err := podsFinder.FindAll(kubeConfigKey, environment)
+	allPods, err := podsFinder.FindAll(h.kubeConfigKey, environment)
 	checkErr(err)
 
-	pod, err := podsFilter.ByService(allPods, service)
+	pod, err := podsFilter.ByService(allPods, h.Service)
 	checkErr(err)
 
-	return spawn.CommandExec(kubeConfigKey, environment, pod.GetName(), args...)
+	return spawn.CommandExec(h.kubeConfigKey, environment, pod.GetName(), args...)
 }

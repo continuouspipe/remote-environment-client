@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	portforward_example = fmt.Sprintf(`
+	portforwardExample = fmt.Sprintf(`
 		# Listen on ports 5000 and 6000 locally, forwarding data to/from ports 5000 and 6000 in the pod
 		%s forward 5000 6000
 
@@ -26,8 +26,9 @@ var (
 
 func NewForwardCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "forward",
-		Short: "Forward a port to a container",
+		Use:     "forward",
+		Aliases: []string{"fo"},
+		Short:   "Forward a port to a container",
 		Long: `The forward command will set up port forwarding from the local environment
 to a container on the remote environment that has a port exposed. This is useful for tasks
 such as connecting to a database using a local client. You need to specify the container and
@@ -45,7 +46,7 @@ the port number to forward.`,
 			podsFilter := pods.NewKubePodsFilter()
 			handler.Handle(args, podsFinder, podsFilter)
 		},
-		Example: portforward_example,
+		Example: portforwardExample,
 	}
 }
 

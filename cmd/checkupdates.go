@@ -8,6 +8,7 @@ import (
 func NewCheckUpdatesCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "checkupdates",
+		Aliases: []string{"ckup"},
 		Short: "Check for latest version",
 		Long:  ``,
 		Run: func(cmd *cobra.Command, args []string) {
