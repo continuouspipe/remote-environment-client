@@ -21,7 +21,11 @@ var (
 		%s forward :5000
 
 		# Listen on a random port locally, forwarding to 5000 in the pod
-		%s forward 0:5000`, config.AppName, config.AppName, config.AppName, config.AppName)
+		%s forward 0:5000
+
+		# Overriding the project-key and remote-branch
+		%s forward -p techup -r dev-user -s mysql 5000
+		`, config.AppName, config.AppName, config.AppName, config.AppName, config.AppName)
 )
 
 func NewForwardCmd() *cobra.Command {
@@ -45,6 +49,9 @@ the port number to forward.`,
 		},
 		Example: portforwardExample,
 	}
+	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
+	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
+	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
 	return command
 }
 
