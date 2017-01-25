@@ -1,9 +1,6 @@
 package test
 
-import (
-	"fmt"
-	"github.com/continuouspipe/remote-environment-client/config"
-)
+import "github.com/continuouspipe/remote-environment-client/config"
 
 //A map that stores a list of function arguments [argumentName] => value (any type)
 type Arguments map[string]interface{}
@@ -47,7 +44,7 @@ type SpyLocalExecutor struct {
 	Spy
 }
 
-func GetSpyLocalExecutor() *SpyLocalExecutor {
+func NewSpyLocalExecutor() *SpyLocalExecutor {
 	return &SpyLocalExecutor{}
 }
 
@@ -84,7 +81,7 @@ type SpyRsyncFetch struct {
 	Spy
 }
 
-func GetSpyRsyncFetch() *SpyRsyncFetch {
+func NewSpyRsyncFetch() *SpyRsyncFetch {
 	return &SpyRsyncFetch{}
 }
 
@@ -103,20 +100,64 @@ type SpyYamlWriter struct {
 	Spy
 }
 
-func GetSpyYamlWriter() *SpyYamlWriter {
+func NewSpyYamlWriter() *SpyYamlWriter {
 	return &SpyYamlWriter{}
 }
 
 func (m *SpyYamlWriter) Save(settings *config.ApplicationSettings) bool {
-
 	copySettings := *settings
 
 	args := make(Arguments)
 	args["settings"] = &copySettings
 
-	fmt.Println(args["settings"])
-
 	function := &Function{Name: "Save", Arguments: args}
 	m.calledFunctions = append(m.calledFunctions, *function)
 	return true
+}
+
+//Spy for Commit
+type SpyCommit struct {
+	Spy
+}
+
+func NewSpyCommit() *SpyCommit {
+	return &SpyCommit{}
+}
+
+func (s *SpyCommit) Commit(message string) (string, error) {
+	args := make(Arguments)
+	args["message"] = message
+	function := &Function{Name: "Commit", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
+	return "", nil
+}
+
+//Spy for Push
+type SpyPush struct {
+	Spy
+}
+
+func NewSpyPush() *SpyPush {
+	return &SpyPush{}
+}
+
+func (s *SpyPush) Push(localBranch string, remoteName string, remoteBranch string) (string, error) {
+	args := make(Arguments)
+	args["localBranch"] = localBranch
+	args["remoteName"] = remoteName
+	args["remoteBranch"] = remoteBranch
+
+	function := &Function{Name: "Push", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
+	return "", nil
+}
+
+func (s *SpyPush) DeleteRemote(remoteName string, remoteBranch string) (string, error) {
+	args := make(Arguments)
+	args["remoteName"] = remoteName
+	args["remoteBranch"] = remoteBranch
+
+	function := &Function{Name: "DeleteRemote", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
+	return "", nil
 }

@@ -7,7 +7,7 @@ type MockConfigReader struct {
 	getString func(string) string
 }
 
-func GetMockConfigReader() *MockConfigReader {
+func NewMockConfigReader() *MockConfigReader {
 	return &MockConfigReader{}
 }
 
@@ -24,7 +24,7 @@ type MockPodsFinder struct {
 	findAll func(kubeConfigKey string, environment string) (*v1.PodList, error)
 }
 
-func GetMockPodsFinder() *MockPodsFinder {
+func NewMockPodsFinder() *MockPodsFinder {
 	return &MockPodsFinder{}
 }
 
@@ -41,7 +41,7 @@ type MockPodsFilter struct {
 	byService func(podList *v1.PodList, service string) (*v1.Pod, error)
 }
 
-func GetMockPodsFilter() *MockPodsFilter {
+func NewMockPodsFilter() *MockPodsFilter {
 	return &MockPodsFilter{}
 }
 
@@ -56,7 +56,7 @@ func (m *MockPodsFilter) MockByService(mocked func(podList *v1.PodList, service 
 //Mock for QuestionPrompt
 type MockQuestionPrompt struct{}
 
-func GetMockQuestionPrompt() *MockQuestionPrompt {
+func NewMockQuestionPrompt() *MockQuestionPrompt {
 	return &MockQuestionPrompt{}
 }
 
@@ -90,4 +90,38 @@ func (qp MockQuestionPrompt) ApplyDefault(question string, predef string) string
 
 func (qp MockQuestionPrompt) RepeatIfEmpty(question string) string {
 	return qp.ReadString(question)
+}
+
+//Mock for LsRemote
+type MockLsRemote struct {
+	getList func(remoteName string, remoteBranch string) (string, error)
+}
+
+func NewMockLsRemote() *MockLsRemote {
+	return &MockLsRemote{}
+}
+
+func (m *MockLsRemote) MockGetList(mocked func(remoteName string, remoteBranch string) (string, error)) {
+	m.getList = mocked
+}
+
+func (m *MockLsRemote) GetList(remoteName string, remoteBranch string) (string, error) {
+	return m.getList(remoteName, remoteBranch)
+}
+
+//Mock for RevParse
+type MockRevParse struct {
+	getLocalBranchName func() (string, error)
+}
+
+func NewMockRevParse() *MockRevParse {
+	return &MockRevParse{}
+}
+
+func (m *MockRevParse) MockGetLocalBranchName(mocked func() (string, error)) {
+	m.getLocalBranchName = mocked
+}
+
+func (m *MockRevParse) GetLocalBranchName() (string, error) {
+	return m.getLocalBranchName()
 }

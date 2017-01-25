@@ -9,8 +9,8 @@ import (
 
 func TestUserApplicationSettingsAreStored(t *testing.T) {
 	//get mocked dependencies
-	mockedQuestionPrompt := test.GetMockQuestionPrompt()
-	spyYamlWriter := test.GetSpyYamlWriter()
+	mockedQuestionPrompt := test.NewMockQuestionPrompt()
+	spyYamlWriter := test.NewSpyYamlWriter()
 
 	//test subject called
 	setupHandle := &SetupHandle{}

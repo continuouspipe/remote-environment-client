@@ -9,17 +9,17 @@ import (
 
 func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	//get mocked dependencies
-	mockPodsFinder := test.GetMockPodsFinder()
+	mockPodsFinder := test.NewMockPodsFinder()
 	mockPodsFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.PodList, error) {
 		return &v1.PodList{}, nil
 	})
-	mockPodFilter := test.GetMockPodsFilter()
+	mockPodFilter := test.NewMockPodsFilter()
 	mockPodFilter.MockByService(func(podList *v1.PodList, service string) (*v1.Pod, error) {
 		mockPod := &v1.Pod{}
 		mockPod.SetName("web-123456")
 		return mockPod, nil
 	})
-	spyLocalExecutor := test.GetSpyLocalExecutor()
+	spyLocalExecutor := test.NewSpyLocalExecutor()
 
 	//test subject called
 	handler := &BashHandle{}

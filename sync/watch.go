@@ -138,7 +138,7 @@ func (w RecursiveDirectoryMonitor) AddRecursiveWatch(watcher *fsnotify.Watcher, 
 	folders, err := filepath.GetSubFolders(path)
 	for _, v := range folders {
 
-		//check if the folder matches the exclusion list, if so ignore the event
+		//check if the folder matches the exclusion list, if so don't watch
 		match := w.matchExclusionList(v)
 		if match == true {
 			cplogs.V(5).Infof("skipped path as matches exlusion list, path %s", v)

@@ -13,6 +13,12 @@ import (
 func NewBuildCmd() *cobra.Command {
 	settings := config.NewApplicationSettings()
 	handler := &BuildHandle{}
+	handler.commit = git.NewCommit()
+	handler.lsRemote = git.NewLsRemote()
+	handler.push = git.NewPush()
+	handler.revList = git.NewRevList()
+	handler.revParse = git.NewRevParse()
+
 	command := &cobra.Command{
 		Use:     "build",
 		Aliases: []string{"bu"},
@@ -40,6 +46,11 @@ find its IP address.`,
 
 type BuildHandle struct {
 	Command      *cobra.Command
+	commit       git.CommitExecutor
+	lsRemote     git.LsRemoteExecutor
+	push         git.PushExecutor
+	revList      git.RevListExecutor
+	revParse     git.RevParseExecutor
 	remoteName   string
 	remoteBranch string
 }
@@ -93,29 +104,24 @@ func (h *BuildHandle) Handle() error {
 }
 
 func (h *BuildHandle) pushToLocalBranch() error {
-	revparse := git.NewRevParse()
-	push := git.NewPush()
-
-	lbn, err := revparse.GetLocalBranchName()
+	lbn, err := h.revParse.GetLocalBranchName()
 	cplogs.V(5).Infof("local branch name value is %s", lbn)
 	if err != nil {
 		return err
 	}
 
-	push.Push(lbn, h.remoteName, h.remoteBranch)
+	h.push.Push(lbn, h.remoteName, h.remoteBranch)
 	return nil
 }
 
 func (h *BuildHandle) hasLocalChanges() (bool, error) {
-	revparse := git.NewRevParse()
-	lbn, err := revparse.GetLocalBranchName()
+	lbn, err := h.revParse.GetLocalBranchName()
 	cplogs.V(5).Infof("local branch name value is %s", lbn)
 	if err != nil {
 		return false, err
 	}
 
-	list := git.NewRevList()
-	changes, err := list.GetLocalBranchAheadCount(lbn, h.remoteName, h.remoteBranch)
+	changes, err := h.revList.GetLocalBranchAheadCount(lbn, h.remoteName, h.remoteBranch)
 	cplogs.V(5).Infof("amount of changes found is %s", changes)
 	if err != nil {
 		return false, err
@@ -129,8 +135,7 @@ func (h *BuildHandle) hasLocalChanges() (bool, error) {
 }
 
 func (h *BuildHandle) hasRemote() (bool, error) {
-	lsRemote := git.NewLsRemote()
-	list, err := lsRemote.GetList(h.remoteName, h.remoteBranch)
+	list, err := h.lsRemote.GetList(h.remoteName, h.remoteBranch)
 	cplogs.V(5).Infof("list of remote branches that matches remote name and branch are %s", list)
 	if err != nil {
 		return false, err
@@ -142,8 +147,7 @@ func (h *BuildHandle) hasRemote() (bool, error) {
 }
 
 func (h *BuildHandle) commitAnEmptyChange() error {
-	commit := git.NewCommit()
 	fmt.Println("No changes so making an empty commit to force rebuild")
-	_, err := commit.Commit("Add empty commit to force rebuild on continuous pipe")
+	_, err := h.commit.Commit("Add empty commit to force rebuild on continuous pipe")
 	return err
 }
