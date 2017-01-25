@@ -10,6 +10,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"runtime/debug"
 )
 
 var cfgFile string
@@ -73,7 +74,6 @@ func Execute() {
 
 func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", ".cp-remote-env-settings.yml", "config file (default is .cp-remote-env-settings.yml in the directory cp-remote is run from.)")
-	cobra.OnInitialize(initConfig)
 
 	RootCmd.AddCommand(NewBashCmd())
 	RootCmd.AddCommand(NewBuildCmd())
@@ -94,6 +94,8 @@ func init() {
 	RootCmd.AddCommand(kubeCtlCommand)
 
 	RootCmd.SetUsageTemplate(usageTemplate)
+
+	cobra.OnInitialize(initConfig)
 }
 
 func initConfig() {
@@ -107,6 +109,14 @@ func initConfig() {
 	}
 
 	viper.AddConfigPath(pwd)
+
+	//create the config file if it does not exist
+	configFileUsed := viper.ConfigFileUsed()
+
+	_, err = os.OpenFile(configFileUsed, os.O_RDWR|os.O_CREATE, 0664)
+	checkErr(err)
+
+	//load config file
 	checkErr(viper.ReadInConfig())
 }
 
@@ -126,6 +136,7 @@ func checkErr(err error) {
 func exitWithMessage(message string) {
 	color.Set(color.FgRed)
 	fmt.Println("ERROR: " + message)
+	cplogs.Errorln(debug.Stack())
 	color.Unset()
 	cplogs.Flush()
 	os.Exit(1)
