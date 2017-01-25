@@ -10,6 +10,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/path/filepath"
 	"github.com/fsnotify/fsnotify"
 	"bufio"
+	"io/ioutil"
 )
 
 type EventsObserver interface {
@@ -207,4 +208,34 @@ func (m RecursiveDirectoryMonitor) matchExclusionList(target string) bool {
 		}
 	}
 	return false
+}
+
+func (m RecursiveDirectoryMonitor) GetCountFilesAndFoldersToWatch(path string) (int, error) {
+	count := 0
+	file, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("error introspecting path %s: %v", path, err)
+	}
+	if !file.IsDir() {
+		return 0, nil
+	}
+	folders, err := filepath.GetSubFolders(path)
+	for _, v := range folders {
+		//check if the folder matches the exclusion list, if so ignore the event
+		match := m.matchExclusionList(v)
+		if match == true {
+			continue
+		}
+
+		files, err := ioutil.ReadDir(v)
+		if err != nil {
+			return count, err
+		}
+
+		count = count + len(files)
+	}
+	return count, nil
 }

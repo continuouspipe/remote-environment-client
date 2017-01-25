@@ -7,6 +7,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/spf13/cobra"
 	"strings"
+	"os"
 )
 
 func NewWatchCmd() *cobra.Command {
@@ -21,19 +22,19 @@ of the remote environment. This will use the default container specified during
 setup but you can specify another container to sync with.`,
 		Run: func(cmd *cobra.Command, args []string) {
 
+			dirWatcher := sync.GetRecursiveDirectoryMonitor()
+
+			checkWatchersLimit(dirWatcher)
+
 			fmt.Println("Watching for changes. Quit anytime with Ctrl-C.")
 
 			validator := config.NewMandatoryChecker()
 			validateConfig(validator, settings)
-			podsFinder := pods.NewKubePodsFind()
-			podsFilter := pods.NewKubePodsFilter()
-
-			dirWatcher := sync.GetRecursiveDirectoryMonitor()
-			//if the custom file/folder exclusions are empty write the default one on disk
 
 			//try to load exclusions from file
 			checkErr(dirWatcher.LoadCustomExclusionsFromFile())
 
+			//if the custom file/folder exclusions are empty write the default one on disk
 			if len(dirWatcher.CustomExclusions) == 0 {
 				res, err := dirWatcher.WriteDefaultExclusionsToFile()
 				checkErr(err)
@@ -42,9 +43,12 @@ setup but you can specify another container to sync with.`,
 				}
 			}
 
+			podsFinder := pods.NewKubePodsFind()
+			podsFilter := pods.NewKubePodsFilter()
+
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
-			handler.Handle(args, settings, dirWatcher, podsFinder, podsFilter)
+			checkErr(handler.Handle(args, settings, dirWatcher, podsFinder, podsFilter))
 		},
 	}
 	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
@@ -94,19 +98,40 @@ func (h *WatchHandle) Validate() error {
 	return nil
 }
 
-func (h *WatchHandle) Handle(args []string, settings config.Reader, recursiveDirWatcher sync.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) {
+func (h *WatchHandle) Handle(args []string, settings config.Reader, recursiveDirWatcher sync.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
 	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
 
 	allPods, err := podsFinder.FindAll(h.kubeConfigKey, environment)
-	checkErr(err)
+	if err != nil {
+		return err
+	}
 
 	pod, err := podsFilter.ByService(allPods, h.Service)
-	checkErr(err)
+	if err != nil {
+		return err
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
 
 	observer := sync.GetDirectoryEventSyncAll()
 	observer.KubeConfigKey = h.kubeConfigKey
 	observer.Environment = environment
 	observer.Pod = *pod
-	err = recursiveDirWatcher.AnyEventCall(".", observer)
+	return recursiveDirWatcher.AnyEventCall(cwd, observer)
+}
+
+func checkWatchersLimit(dirWatcher *sync.RecursiveDirectoryMonitor) {
+	cwd, err := os.Getwd()
 	checkErr(err)
+	filesAndFoldersToWatch, err := dirWatcher.GetCountFilesAndFoldersToWatch(cwd)
+	checkErr(err)
+	limitsChecker := sync.NewWatchLimit()
+	warning, err := limitsChecker.Check(filesAndFoldersToWatch)
+	checkErr(err)
+	if len(warning) > 0 {
+		fmt.Println(warning)
+	}
 }
