@@ -113,6 +113,7 @@ func initConfig() {
 	//create the config file if it does not exist
 	configFileUsed := viper.ConfigFileUsed()
 
+
 	_, err = os.OpenFile(configFileUsed, os.O_RDWR|os.O_CREATE, 0664)
 	checkErr(err)
 
@@ -136,7 +137,9 @@ func checkErr(err error) {
 func exitWithMessage(message string) {
 	color.Set(color.FgRed)
 	fmt.Println("ERROR: " + message)
-	cplogs.Errorln(debug.Stack())
+
+	stack := debug.Stack()
+	cplogs.V(4).Info(string(stack[:]))
 	color.Unset()
 	cplogs.Flush()
 	os.Exit(1)

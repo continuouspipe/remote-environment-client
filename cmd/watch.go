@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
@@ -27,14 +25,21 @@ setup but you can specify another container to sync with.`,
 
 			validator := config.NewMandatoryChecker()
 			validateConfig(validator, settings)
-			dirWatcher := sync.GetRecursiveDirectoryMonitor()
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
 
-			res, err := handler.AddDefaultCpRemoteExcludeFile(dirWatcher.Exclusions)
-			checkErr(err)
-			if res == true {
-				fmt.Printf("\n%s was missing and has been created with the default ignore settings.\n", sync.SyncExcluded)
+			dirWatcher := sync.GetRecursiveDirectoryMonitor()
+			//if the custom file/folder exclusions are empty write the default one on disk
+
+			//try to load exclusions from file
+			checkErr(dirWatcher.LoadCustomExclusionsFromFile())
+
+			if len(dirWatcher.CustomExclusions) == 0 {
+				res, err := dirWatcher.WriteDefaultExclusionsToFile()
+				checkErr(err)
+				if res == true {
+					fmt.Printf("\n%s was missing or empty and has been created with the default ignore settings.\n", sync.SyncExcluded)
+				}
 			}
 
 			checkErr(handler.Complete(cmd, args, settings))
@@ -104,29 +109,4 @@ func (h *WatchHandle) Handle(args []string, settings config.Reader, recursiveDir
 	observer.Pod = *pod
 	err = recursiveDirWatcher.AnyEventCall(".", observer)
 	checkErr(err)
-}
-
-//if is missing create the SyncExcluded file with default settings
-func (handle *WatchHandle) AddDefaultCpRemoteExcludeFile(defaultExclusions []string) (bool, error) {
-	//if it exists already skip
-	if _, err := os.Stat(sync.SyncExcluded); err == nil {
-		return false, nil
-	}
-
-	file, err := os.OpenFile(sync.SyncExcluded, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0664)
-	if err != nil {
-		return false, err
-	}
-	defer file.Close()
-
-	w := bufio.NewWriter(file)
-	for _, line := range defaultExclusions {
-		_, err := w.WriteString(line)
-		if err != nil {
-			return false, err
-		}
-		w.WriteString("\n")
-	}
-	w.Flush()
-	return true, nil
 }
