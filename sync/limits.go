@@ -34,31 +34,37 @@ func (w WatchLimit) Check(countFilesFolders int) (string, error) {
 			return "", err
 		}
 
-		var errors string
-		if maxFiles < countFilesFolders {
-			errorMsg := "kern.maxfiles is %d, which is not enough to watch the amount of project files %d\n" +
-				"increase the number of kern.maxfiles with sysctl kern.maxfiles=xyz"
-			errors = "\n" + fmt.Sprintf(errorMsg, maxFiles, countFilesFolders) + "\n"
+		lsofCount, err := osapi.GetCurrentlyOpenedFilesCount()
+		if err != nil {
+			return "", err
 		}
-		if maxFilesPerProc < countFilesFolders {
-			errorMsg := "kern.maxfilesperproc is %d, which is not enough to watch the amount of project files %d\n" +
-				"increase the number of kern.maxfilesperproc with sysctl kern.maxfilesperproc=xyz"
-			errors = errors + fmt.Sprintf(errorMsg, maxFilesPerProc, countFilesFolders)
+
+		suggestedMax := countFilesFolders + lsofCount + 100
+
+		var errors string
+		if maxFiles-lsofCount < countFilesFolders {
+			errorMsg := "kern.maxfiles is %d, currently open files are %d, which is not enough to watch the amount of project files %d\n" +
+				"increase the number of kern.maxfiles with \nsudo sysctl kern.maxfiles=%d\nulimit -S -n %d\n\n"
+			errors = "\n" + fmt.Sprintf(errorMsg, maxFiles, lsofCount, countFilesFolders, suggestedMax, suggestedMax)
+		}
+		if maxFilesPerProc-lsofCount < countFilesFolders {
+			errorMsg := "kern.maxfilesperproc is %d, currently open files are %d, which is not enough to watch the amount of project files %d\n" +
+				"increase the number of kern.maxfilesperproc with \nsudo sysctl kern.maxfilesperproc=%d\nulimit -S -n %d"
+			errors = errors + fmt.Sprintf(errorMsg, maxFilesPerProc, lsofCount, countFilesFolders, suggestedMax, suggestedMax)
 		}
 		if len(errors) > 0 {
 			return "", fmt.Errorf(errors)
 		}
 
-		msg := "kern.maxfiles is %d, which is enough to watch the amount of project files %d.\n" +
+		msg := "kern.maxfiles is %d, currently open files are %d, which is enough to watch the amount of project files %d.\n" +
 			"Note that if you create more than %d files, then you will get an error\n" +
-			"and you will have to increase the number of kern.maxfiles with sysctl kern.maxfiles=xyz"
-		info = fmt.Sprintf(msg, maxFiles, countFilesFolders, maxFiles-countFilesFolders) + "\n"
+			"and you will have to increase the number of kern.maxfiles with \nsudo sysctl kern.maxfiles=xyz\nulimit -S -n xyz\n\n"
+		info = fmt.Sprintf(msg, maxFiles, lsofCount, countFilesFolders, maxFiles-countFilesFolders)
 
-		msg = "kern.maxfilesperproc is %d, which is enough to watch the amount of project files %d.\n" +
+		msg = "kern.maxfilesperproc is %d, currently open files are %d, which is enough to watch the amount of project files %d.\n" +
 			"Note that if you create more than %d files, then you will get an error\n" +
-			"and you will have to increase the number of kern.maxfilesperproc with sysctl kern.maxfilesperproc=xyz"
-		info = info + fmt.Sprintf(msg, maxFiles, countFilesFolders, maxFiles-countFilesFolders)
-
+			"and you will have to increase the number of kern.maxfilesperproc with \nsudo sysctl kern.maxfilesperproc=xyz\nulimit -S -n xyz"
+		info = info + fmt.Sprintf(msg, maxFiles, lsofCount, countFilesFolders, maxFiles-countFilesFolders)
 	}
 
 	return info, nil
