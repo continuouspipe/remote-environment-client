@@ -38,5 +38,5 @@ func (r RsyncFetch) Fetch(kubeConfigKey string, environment string, pod string) 
 		currentDir,
 	}
 
-	return osapi.CommandExecL("rsync", args...)
+	return osapi.CommandExecL("rsync", os.Stdout, args...)
 }

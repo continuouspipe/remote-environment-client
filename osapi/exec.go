@@ -8,6 +8,7 @@ import (
 
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"bufio"
+	"fmt"
 )
 
 //Executes a command and waits for it to finish
@@ -17,7 +18,8 @@ func CommandExec(name string, arg ...string) (string, error) {
 }
 
 //execute the command and write output into log file
-func CommandExecL(name string, arg ...string) error {
+//and optionally writes it on a file descriptor (e.g. os.Stdout)
+func CommandExecL(name string, file *os.File, arg ...string) error {
 	cmd := exec.Command(name, arg...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -32,6 +34,9 @@ func CommandExecL(name string, arg ...string) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		cplogs.V(5).Infoln(line)
+		if file != nil {
+			fmt.Fprintln(file, line)
+		}
 	}
 	return nil
 }

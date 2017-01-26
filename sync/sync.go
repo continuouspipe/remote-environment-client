@@ -45,5 +45,5 @@ func (o *DirectoryEventSyncAll) OnLastChange() error {
 
 	cplogs.V(5).Infof("rsync arguments: %s", args)
 
-	return osapi.CommandExecL("rsync", args...)
+	return osapi.CommandExecL("rsync", os.Stdout, args...)
 }
