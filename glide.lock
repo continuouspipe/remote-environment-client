@@ -1,5 +1,5 @@
-hash: 1287bc3d96c8e9e3ee62f9cecaa4bc048aa68c3d8f5ccb3aa45b751cbf65314d
-updated: 2017-01-19T16:11:21.090134592Z
+hash: 64a856224e37a281af3b43b71716f0927c978951215178bf290323d4c5964999
+updated: 2017-01-26T09:04:05.075606936Z
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -92,6 +92,8 @@ imports:
   version: d6023ce2651d8eafb5c75bb0c7167536102ec9f5
 - name: github.com/fatih/color
   version: 34e4ee095d12986a2cef5ddb9aeb3b8cfcfea17c
+- name: github.com/fsnotify/fsevents
+  version: babee2ae61e03a44a2bdffe421055226e8168958
 - name: github.com/fsnotify/fsnotify
   version: 629574ca2a5df945712d3079857300b5e4da0236
 - name: github.com/ghodss/yaml
@@ -189,7 +191,7 @@ imports:
 - name: github.com/mitchellh/go-wordwrap
   version: ad45545899c7b13c020ea92b2072220eefad42b8
 - name: github.com/mitchellh/mapstructure
-  version: ed105d635dfa9ea7133f7c79f1eb36203fc3a156
+  version: db1efb556f84b25a0a13a04aad883943538ad2e0
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/pelletier/go-buffruneio

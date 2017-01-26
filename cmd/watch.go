@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"strings"
 	"os"
+	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 )
 
 func NewWatchCmd() *cobra.Command {
@@ -21,22 +22,18 @@ func NewWatchCmd() *cobra.Command {
 of the remote environment. This will use the default container specified during
 setup but you can specify another container to sync with.`,
 		Run: func(cmd *cobra.Command, args []string) {
-
-			dirWatcher := sync.GetRecursiveDirectoryMonitor()
-
-			checkWatchersLimit(dirWatcher)
-
 			fmt.Println("Watching for changes. Quit anytime with Ctrl-C.")
 
+			dirMonitor := monitor.GetOsDirectoryMonitor()
 			validator := config.NewMandatoryChecker()
 			validateConfig(validator, settings)
 
-			//try to load exclusions from file
-			checkErr(dirWatcher.LoadCustomExclusionsFromFile())
+			exclusion := monitor.NewExclusion()
+			exclusion.LoadCustomExclusionsFromFile()
 
 			//if the custom file/folder exclusions are empty write the default one on disk
-			if len(dirWatcher.CustomExclusions) == 0 {
-				res, err := dirWatcher.WriteDefaultExclusionsToFile()
+			if len(exclusion.CustomExclusions) == 0 {
+				res, err := exclusion.WriteDefaultExclusionsToFile()
 				checkErr(err)
 				if res == true {
 					fmt.Printf("\n%s was missing or empty and has been created with the default ignore settings.\n", sync.SyncExcluded)
@@ -48,7 +45,7 @@ setup but you can specify another container to sync with.`,
 
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
-			checkErr(handler.Handle(args, settings, dirWatcher, podsFinder, podsFilter))
+			checkErr(handler.Handle(args, settings, dirMonitor, podsFinder, podsFilter))
 		},
 	}
 	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
@@ -98,7 +95,7 @@ func (h *WatchHandle) Validate() error {
 	return nil
 }
 
-func (h *WatchHandle) Handle(args []string, settings config.Reader, recursiveDirWatcher sync.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
+func (h *WatchHandle) Handle(args []string, settings config.Reader, dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
 	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
 
 	allPods, err := podsFinder.FindAll(h.kubeConfigKey, environment)
@@ -120,18 +117,5 @@ func (h *WatchHandle) Handle(args []string, settings config.Reader, recursiveDir
 	observer.KubeConfigKey = h.kubeConfigKey
 	observer.Environment = environment
 	observer.Pod = *pod
-	return recursiveDirWatcher.AnyEventCall(cwd, observer)
-}
-
-func checkWatchersLimit(dirWatcher *sync.RecursiveDirectoryMonitor) {
-	cwd, err := os.Getwd()
-	checkErr(err)
-	filesAndFoldersToWatch, err := dirWatcher.GetCountFilesAndFoldersToWatch(cwd)
-	checkErr(err)
-	limitsChecker := sync.NewWatchLimit()
-	warning, err := limitsChecker.Check(filesAndFoldersToWatch)
-	checkErr(err)
-	if len(warning) > 0 {
-		fmt.Println(warning)
-	}
+	return dirMonitor.AnyEventCall(cwd, observer)
 }

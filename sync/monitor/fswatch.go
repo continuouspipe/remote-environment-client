@@ -1,83 +1,37 @@
-package sync
+// FsWatch implements a recursive directory watcher using the fsnotify package
+// the current implementation of fsnotify support the following monitors
+//
+// Adapter					OSs
+// inotify					Linux 2.6.27 or later, Android*
+// kqueue					BSD, macOS, iOS*
+// ReadDirectoryChangesW 	Windows
+//
+// We will only use this implementation for Linux & Windows as kqueue on macOS doesn't perform well (see fsevents.go)
+package monitor
 
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"sync"
 	"time"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/path/filepath"
 	"github.com/fsnotify/fsnotify"
-	"bufio"
-	"io/ioutil"
 )
 
-type EventsObserver interface {
-	OnLastChange() error
+type FsWatch struct {
+	Exclusions ExclusionProvider
 }
 
-type DirectoryMonitor interface {
-	//when an event occurs it executes the callback with the supplied arguments
-	AnyEventCall(directory string, observer EventsObserver) error
+func NewFsWatch() *FsWatch {
+	return &FsWatch{}
 }
 
-type RecursiveDirectoryMonitor struct {
-	DefaultExclusions []string
-	CustomExclusions  []string
+func (m *FsWatch) SetExclusions(exclusion ExclusionProvider) {
+	m.Exclusions = exclusion
 }
 
-func GetRecursiveDirectoryMonitor() *RecursiveDirectoryMonitor {
-	m := &RecursiveDirectoryMonitor{}
-	m.DefaultExclusions = []string{`/\.[^/]*$`,
-								   `\.idea`,
-								   `\.git`,
-								   `___jb_old___`,
-								   `___jb_tmp___`,
-								   `cp-remote-logs`}
-	return m
-}
-
-func (m *RecursiveDirectoryMonitor) LoadCustomExclusionsFromFile() error {
-	file, err := os.OpenFile(SyncExcluded, os.O_RDWR|os.O_CREATE, 0664)
-	defer file.Close()
-	if err != nil {
-		return err
-	}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		m.CustomExclusions = append(m.CustomExclusions, scanner.Text())
-	}
-	return nil
-}
-
-func (m *RecursiveDirectoryMonitor) WriteDefaultExclusionsToFile() (bool, error) {
-	file, err := os.OpenFile(SyncExcluded, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0664)
-	defer file.Close()
-	if err != nil {
-		return false, err
-	}
-	w := bufio.NewWriter(file)
-	for _, line := range m.DefaultExclusions {
-		_, err := w.WriteString(line)
-		if err != nil {
-			return false, err
-		}
-		w.WriteString("\n")
-	}
-	w.Flush()
-	return true, nil
-}
-
-//returns the default exclusions if there aren't custom one loaded
-func (m RecursiveDirectoryMonitor) GetListExclusions() []string {
-	if len(m.CustomExclusions) > 0 {
-		return m.CustomExclusions
-	}
-	return m.DefaultExclusions
-}
-
-func (m RecursiveDirectoryMonitor) AnyEventCall(directory string, observer EventsObserver) error {
+func (m FsWatch) AnyEventCall(directory string, observer EventsObserver) error {
 	// these variables must be accessed while holding the changeLock
 	// mutex as they are shared between goroutines to communicate
 	// sync state/events.
@@ -102,7 +56,7 @@ func (m RecursiveDirectoryMonitor) AnyEventCall(directory string, observer Event
 				cplogs.V(1).Infof("filesystem event for %s(%s)\n", event.Name, event.Op)
 
 				//check if the file matches the exclusion list, if so ignore the event
-				match := m.matchExclusionList(event.Name)
+				match := m.Exclusions.MatchExclusionList(event.Name)
 				if match == true {
 					cplogs.V(2).Infof("skipped %s(%s) as is in the exclusion list", event.Name, event.Op)
 					changeLock.Unlock()
@@ -164,7 +118,7 @@ func (m RecursiveDirectoryMonitor) AnyEventCall(directory string, observer Event
 // AddRecursiveWatch handles adding watches recursively for the path provided
 // and its subdirectories.  If a non-directory is specified, this call is a no-op.
 // Recursive logic from https://github.com/bronze1man/kmg/blob/master/fsnotify/Watcher.go
-func (m RecursiveDirectoryMonitor) AddRecursiveWatch(watcher *fsnotify.Watcher, path string) error {
+func (m FsWatch) AddRecursiveWatch(watcher *fsnotify.Watcher, path string) error {
 	file, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -180,7 +134,7 @@ func (m RecursiveDirectoryMonitor) AddRecursiveWatch(watcher *fsnotify.Watcher, 
 	for _, v := range folders {
 
 		//check if the folder matches the exclusion list, if so ignore the event
-		match := m.matchExclusionList(v)
+		match := m.Exclusions.MatchExclusionList(v)
 		if match == true {
 			cplogs.V(5).Infof("skipped path as matches exlusion list, path %s", v)
 			continue
@@ -195,47 +149,4 @@ func (m RecursiveDirectoryMonitor) AddRecursiveWatch(watcher *fsnotify.Watcher, 
 		}
 	}
 	return nil
-}
-
-func (m RecursiveDirectoryMonitor) matchExclusionList(target string) bool {
-	for _, elem := range m.GetListExclusions() {
-		regex, err := regexp.Compile(elem)
-		if err != nil {
-			return false
-		}
-		if res := regex.MatchString(target); res == true {
-			return true
-		}
-	}
-	return false
-}
-
-func (m RecursiveDirectoryMonitor) GetCountFilesAndFoldersToWatch(path string) (int, error) {
-	count := 0
-	file, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("error introspecting path %s: %v", path, err)
-	}
-	if !file.IsDir() {
-		return 0, nil
-	}
-	folders, err := filepath.GetSubFolders(path)
-	for _, v := range folders {
-		//check if the folder matches the exclusion list, if so ignore the event
-		match := m.matchExclusionList(v)
-		if match == true {
-			continue
-		}
-
-		files, err := ioutil.ReadDir(v)
-		if err != nil {
-			return count, err
-		}
-
-		count = count + len(files)
-	}
-	return count, nil
 }

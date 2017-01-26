@@ -22,3 +22,4 @@ import:
   - pkg/kubectl/cmd
   - pkg/kubectl/cmd/util
 - package: github.com/pkg/sftp
+- package: github.com/fsnotify/fsevents
