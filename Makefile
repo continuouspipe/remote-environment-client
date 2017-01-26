@@ -26,5 +26,5 @@ install-package-dep:
 # copy from the github pages repositories all versions into a public/ folder before running this command
 # as go-selfupdate needs to find the previous installation in order to generate the binary diff for incremental upgrades
 package:
-	Note: In order to have the incremental upgrades working properly, rembember to copy all the current releases (including the json) into a local public/ folder
+	echo "Note: In order to have the incremental upgrades working properly, rembember to copy all the current releases (including the json) into a local public/ folder"
 	go-selfupdate ${BINARY} ${VERSION}

@@ -7,6 +7,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/spf13/cobra"
 	"strings"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 )
 
 var (
@@ -113,14 +114,18 @@ func (h *ForwardHandle) Handle() error {
 
 	allPods, err := h.podsFinder.FindAll(h.kubeConfigKey, environment)
 	if err != nil {
+		cplogs.V(5).Infof("pods not found for project key %s and remote branch %s", h.ProjectKey, h.RemoteBranch)
 		return err
 	}
 
 	pod, err := h.podsFilter.ByService(allPods, h.Service)
 	if err != nil {
+		cplogs.V(5).Infof("pods not found for service %s", h.Service)
 		return err
 	}
 
-	kubectlapi.Forward(pod.GetName(), h.ports)
+	cplogs.V(5).Infof("setting up forwarding for target pod %s and ports %s", pod.GetName(), h.ports)
+	kubectlapi.Forward(h.kubeConfigKey, environment, pod.GetName(), h.ports)
+	cplogs.Flush()
 	return nil
 }

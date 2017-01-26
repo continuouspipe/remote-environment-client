@@ -5,9 +5,11 @@ import (
 	"github.com/continuouspipe/remote-environment-client/osapi"
 )
 
-func Forward(pod string, ports string) {
+func Forward(kubeConfigKey string, environment string, pod string, ports string) {
 	args := []string{
 		config.KubeCtlName,
+		"--context=" + kubeConfigKey,
+		"--namespace=" + environment,
 		"port-forward",
 		pod,
 		ports,
