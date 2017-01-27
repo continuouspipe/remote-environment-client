@@ -3,18 +3,13 @@ VERSION=0.0.1-alpha.5
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config
 LDFLAGS=-ldflags="-X ${CONFIG_PKG}.CurrentVersion=${VERSION}"
 
-build-darwin-amd64:
-	mkdir bin 2>/dev/null; true
-	env GOOS=darwin GOARCH=amd64 go build ${LDFLAGS} -o bin/darwin-amd64
+#overwrite this to build for different arch and operative systems
+BUILDOS=darwin
+BUILDARCH=amd64
 
-build-linux-amd64:
+build:
 	mkdir bin 2>/dev/null; true
-	env GOOS=linux GOARCH=amd64 go build ${LDFLAGS} -o bin/linux-amd64
-
-build-windows-amd64:
-	mkdir bin 2>/dev/null; true
-        env GOOS=windows GOARCH=amd64 go build ${LDFLAGS} -o bin/windows-amd64
-
+	env GOOS=${BUILDOS} GOARCH=${BUILDARCH} go build ${LDFLAGS} -o bin/${BUILDOS}-${BUILDARCH}
 clean:
 	rm -f ${BINARY}
 	rm -f update/cktime

@@ -51,7 +51,7 @@ func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter con
 		ProjectKey:          projectKey,
 		RemoteBranch:        remoteBranch,
 		RemoteName:          qp.ApplyDefault("What is your github remote name? (defaults to: origin)", "origin"),
-		DefaultService:      qp.ReadString("What is the default container for the watch, bash, fetch and resync commands?"),
+		DefaultService:      qp.ApplyDefault(qp.ReadString("What is the default container for the watch, bash, fetch and resync commands? (defaults to: web)"), "web"),
 		ClusterIp:           qp.RepeatIfEmpty("What is the IP of the cluster?"),
 		Username:            qp.RepeatIfEmpty("What is the cluster username?"),
 		Password:            qp.RepeatIfEmpty("What is the cluster password?"),
