@@ -1,7 +1,5 @@
 package monitor
 
-import "runtime"
-
 type EventsObserver interface {
 	OnLastChange() error
 }
@@ -12,14 +10,10 @@ type DirectoryMonitor interface {
 	SetExclusions(exclusion ExclusionProvider)
 }
 
-func GetOsDirectoryMonitor() DirectoryMonitor {
-	var dirMonitor DirectoryMonitor
-	if runtime.GOOS == "darwin" {
-		dirMonitor = NewFsEvents()
-	} else {
-		dirMonitor = NewFsWatch()
-	}
+//this is initialised by either by fsevents_darwin or fswatch depending on the build constrains
+var dirMonitor DirectoryMonitor
 
+func GetOsDirectoryMonitor() DirectoryMonitor {
 	exclusion := NewExclusion()
 	exclusion.LoadCustomExclusionsFromFile()
 	dirMonitor.SetExclusions(exclusion)

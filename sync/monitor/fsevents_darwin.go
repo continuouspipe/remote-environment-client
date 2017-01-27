@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+func init() {
+	dirMonitor = NewFsEvents()
+}
+
 type FsEvents struct {
 	Exclusions ExclusionProvider
 }

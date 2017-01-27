@@ -1,3 +1,5 @@
+// +build !darwin
+
 // FsWatch implements a recursive directory watcher using the fsnotify package
 // the current implementation of fsnotify support the following monitors
 //
@@ -18,6 +20,10 @@ import (
 	"github.com/continuouspipe/remote-environment-client/path/filepath"
 	"github.com/fsnotify/fsnotify"
 )
+
+func init() {
+	dirMonitor = NewFsWatch()
+}
 
 type FsWatch struct {
 	Exclusions ExclusionProvider

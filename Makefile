@@ -1,10 +1,13 @@
 BINARY=cp-remote-go
-VERSION=0.0.1-alpha.5
+VERSION=0.0.1-alpha.6
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config
 LDFLAGS=-ldflags="-X ${CONFIG_PKG}.CurrentVersion=${VERSION}"
 
 build:
 	go build ${LDFLAGS} -o ${BINARY}
+
+build-linux-amd64:
+	env GOOS=linux GOARCH=amd64 go build ${LDFLAGS} -o ${BINARY}-linux-amd64
 
 clean:
 	rm -f ${BINARY}
