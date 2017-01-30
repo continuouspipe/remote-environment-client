@@ -125,7 +125,6 @@ func (h *ForwardHandle) Handle() error {
 	}
 
 	cplogs.V(5).Infof("setting up forwarding for target pod %s and ports %s", pod.GetName(), h.ports)
-	kubectlapi.Forward(h.kubeConfigKey, environment, pod.GetName(), h.ports)
 	cplogs.Flush()
-	return nil
+	return kubectlapi.Forward(h.kubeConfigKey, environment, pod.GetName(), h.ports)
 }

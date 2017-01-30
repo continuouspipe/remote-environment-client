@@ -10,7 +10,7 @@ type Spawner interface {
 }
 
 type Executor interface {
-	SysCallExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string)
+	StartProcess(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) error
 }
 
 // the local type executes and spawn commands locally
@@ -27,9 +27,9 @@ func (l Local) CommandExec(kubeConfigKey string, environment string, pod string,
 }
 
 // executes a system call (exec) on a specific pod
-func (l Local) SysCallExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) {
+func (l Local) StartProcess(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) error {
 	args := l.getAllArgs(kubeConfigKey, environment, pod, execCmdArgs...)
-	osapi.SysCallExec(config.AppName, args...)
+	return osapi.StartProcess(config.AppName, args...)
 }
 
 // sets all the flags required to execute a command inside a container

@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"bufio"
@@ -42,26 +41,21 @@ func CommandExecL(name string, file *os.File, arg ...string) error {
 }
 
 //Exec a command and then continues without waiting
-func SysCallExec(name string, arg ...string) {
-	appBinPath, lookErr := exec.LookPath(name)
-	if lookErr != nil {
-		cplogs.V(5).Infof("path to binary file %s not found", name)
-		panic(lookErr)
+func StartProcess(name string, arg ...string) error {
+	cmd := exec.Command(name, arg...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	err := cmd.Start()
+	if err != nil {
+		return err
 	}
-
-	env := os.Environ()
-
-	//syscall.Exec requires the first argument to be the app-name
-	allArgs := append([]string{name}, arg...)
-
-	cplogs.V(5).Infof("executing command path: %#v with arguments: %#v", appBinPath, allArgs)
-	cplogs.Flush()
-	execErr := syscall.Exec(appBinPath, allArgs, env)
-	if execErr != nil {
-		cplogs.V(3).Infof("command error: %#v", execErr.Error())
-		cplogs.Flush()
-		panic(execErr)
+	cplogs.V(5).Infoln("wait for command to finish")
+	err = cmd.Wait()
+	if err != nil {
+		return err
 	}
+	return nil
 }
 
 func executeCmd(cmd *exec.Cmd) (string, error) {

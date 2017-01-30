@@ -96,6 +96,5 @@ func (h *BashHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 		return err
 	}
 
-	executor.SysCallExec(h.kubeConfigKey, environment, pod.GetName(), "/bin/bash")
-	return nil
+	return executor.StartProcess(h.kubeConfigKey, environment, pod.GetName(), "/bin/bash")
 }
