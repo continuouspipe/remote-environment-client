@@ -71,7 +71,7 @@ type ForwardHandle struct {
 func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settingsReader config.Reader) error {
 	h.Command = cmd
 
-	if len(argsIn[0]) > 0 {
+	if len(argsIn) > 0 {
 		h.ports = argsIn[0]
 	}
 
