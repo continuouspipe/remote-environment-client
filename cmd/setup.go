@@ -7,6 +7,9 @@ import (
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"net"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"time"
 )
 
 func NewSetupCmd() *cobra.Command {
@@ -51,8 +54,8 @@ func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter con
 		ProjectKey:          projectKey,
 		RemoteBranch:        remoteBranch,
 		RemoteName:          qp.ApplyDefault("What is your github remote name? (defaults to: origin)", "origin"),
-		DefaultService:      qp.ApplyDefault(qp.ReadString("What is the default container for the watch, bash, fetch and resync commands? (defaults to: web)"), "web"),
-		ClusterIp:           qp.RepeatIfEmpty("What is the IP of the cluster?"),
+		DefaultService:      qp.ApplyDefault("What is the default container for the watch, bash, fetch and resync commands? (defaults to: web)", "web"),
+		ClusterIp:           qp.RepeatUntilValid("What is the IP of the cluster?", h.IsValidIpAddress),
 		Username:            qp.RepeatIfEmpty("What is the cluster username?"),
 		Password:            qp.RepeatIfEmpty("What is the cluster password?"),
 		AnybarPort:          qp.ReadString("If you want to use AnyBar, please provide a port number e.g 1738 ?"),
@@ -64,6 +67,22 @@ func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter con
 
 	yamlWriter.Save(settings)
 	return settings
+}
+
+func (h *SetupHandle) IsValidIpAddress(ipAddr string) (bool, error) {
+	port := "https"
+	cplogs.V(5).Infof("dialling ip address %s:%s", ipAddr, port)
+	cplogs.Flush()
+	conn, err := net.DialTimeout("tcp", ipAddr+":"+port, 2*time.Second)
+	if err != nil {
+		cplogs.V(5).Infof("error occurred when dialling ip address %s:%s, error: %s", ipAddr, port, err.Error())
+		cplogs.Flush()
+		return false, fmt.Errorf("An error occurred when dialling ip address %s:%s, error: %s", ipAddr, port, err.Error())
+	}
+	conn.Close()
+	cplogs.V(5).Infof("connected successfully to ip address %s:%s", ipAddr, port)
+	cplogs.Flush()
+	return true, nil
 }
 
 func applySettingsToCubeCtlConfig(settings *config.ApplicationSettings) {
