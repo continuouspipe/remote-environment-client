@@ -15,6 +15,7 @@ import (
 const flushInterval = 5 * time.Second
 
 var logDir string
+var LogDir string
 
 func createLogDirs() {
 	if logDir != "" {
@@ -45,6 +46,7 @@ func init() {
 	}
 
 	logDir = defaultLogDir
+	LogDir = defaultLogDir
 
 	//overrides settings that glog usually sets by flag
 	logging.toStderr = false

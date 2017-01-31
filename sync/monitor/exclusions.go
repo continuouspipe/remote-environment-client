@@ -28,7 +28,8 @@ func NewExclusion() *Exclusion {
 								   `\.git`,
 								   `___jb_old___`,
 								   `___jb_tmp___`,
-								   `cp-remote-logs`}
+								   `cp-remote-logs`,
+								   `.cp-remote-env-settings.yml`}
 	return m
 }
 

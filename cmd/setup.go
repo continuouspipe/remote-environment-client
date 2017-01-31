@@ -10,6 +10,7 @@ import (
 	"net"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"time"
+	"github.com/continuouspipe/remote-environment-client/git"
 )
 
 func NewSetupCmd() *cobra.Command {
@@ -21,8 +22,9 @@ func NewSetupCmd() *cobra.Command {
 Your answers will be stored in a .cp-remote-env-settings file in the project root. You
 will probably want to add this to your .gitignore file.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			handler := &SetupHandle{cmd}
+			addApplicationFilesToGitIgnore()
 
+			handler := &SetupHandle{cmd}
 			settings := handler.Handle(args)
 
 			fmt.Printf("\nRemote settings written to %s\n", viper.ConfigFileUsed())
@@ -30,6 +32,13 @@ will probably want to add this to your .gitignore file.`,
 			fmt.Println(kubectlapi.ClusterInfo(settings.Environment))
 		},
 	}
+}
+
+func addApplicationFilesToGitIgnore() {
+	gitIgnore, err := git.NewIgnore()
+	checkErr(err)
+	gitIgnore.AddToIgnore(viper.ConfigFileUsed())
+	gitIgnore.AddToIgnore(cplogs.LogDir)
 }
 
 type SetupHandle struct {
