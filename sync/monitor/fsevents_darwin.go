@@ -16,6 +16,7 @@ func init() {
 
 type FsEvents struct {
 	Exclusions ExclusionProvider
+	Latency    time.Duration //sync latency in milliseconds
 }
 
 func NewFsEvents() *FsEvents {
@@ -24,6 +25,10 @@ func NewFsEvents() *FsEvents {
 
 func (m *FsEvents) SetExclusions(exclusion ExclusionProvider) {
 	m.Exclusions = exclusion
+}
+
+func (m *FsEvents) SetLatency(latency time.Duration) {
+	m.Latency = latency
 }
 
 func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error {
@@ -75,7 +80,14 @@ func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error 
 		}
 	}()
 
-	delay := 500 * time.Millisecond
+	//default latency 500 ms
+	latency := time.Duration(500)
+
+	//allow the user to override but only if is at least 100ms
+	if m.Latency > 100 {
+		latency = m.Latency
+	}
+	delay := latency * time.Millisecond
 	ticker := time.NewTicker(delay)
 	defer ticker.Stop()
 	for {
@@ -92,6 +104,7 @@ func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error 
 				return err
 			}
 			fmt.Println("Done.")
+			cplogs.Flush()
 			dirty = false
 		}
 		changeLock.Unlock()

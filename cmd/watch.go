@@ -9,6 +9,7 @@ import (
 	"strings"
 	"os"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
+	"time"
 )
 
 func NewWatchCmd() *cobra.Command {
@@ -45,12 +46,13 @@ setup but you can specify another container to sync with.`,
 
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
-			checkErr(handler.Handle(args, settings, dirMonitor, podsFinder, podsFilter))
+			checkErr(handler.Handle(args, dirMonitor, podsFinder, podsFilter))
 		},
 	}
 	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
 	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
+	command.PersistentFlags().Int64VarP(&handler.Latency, "latency", "l", 500, "Sync latency / speed in milli-seconds")
 	return command
 }
 
@@ -60,6 +62,7 @@ type WatchHandle struct {
 	RemoteBranch  string
 	Service       string
 	kubeConfigKey string
+	Latency       int64
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -92,10 +95,13 @@ func (h *WatchHandle) Validate() error {
 	if len(strings.Trim(h.Service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
 	}
+	if h.Latency <= 100 {
+		return fmt.Errorf("please specify a latency of at least 100 milli-seconds")
+	}
 	return nil
 }
 
-func (h *WatchHandle) Handle(args []string, settings config.Reader, dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
+func (h *WatchHandle) Handle(args []string, dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
 	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
 
 	allPods, err := podsFinder.FindAll(h.kubeConfigKey, environment)
@@ -117,5 +123,6 @@ func (h *WatchHandle) Handle(args []string, settings config.Reader, dirMonitor m
 	observer.KubeConfigKey = h.kubeConfigKey
 	observer.Environment = environment
 	observer.Pod = *pod
+	dirMonitor.SetLatency(time.Duration(h.Latency))
 	return dirMonitor.AnyEventCall(cwd, observer)
 }

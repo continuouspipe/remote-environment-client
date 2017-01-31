@@ -27,6 +27,7 @@ func init() {
 
 type FsWatch struct {
 	Exclusions ExclusionProvider
+	Latency    time.Duration //sync latency in milliseconds
 }
 
 func NewFsWatch() *FsWatch {
@@ -35,6 +36,10 @@ func NewFsWatch() *FsWatch {
 
 func (m *FsWatch) SetExclusions(exclusion ExclusionProvider) {
 	m.Exclusions = exclusion
+}
+
+func (m *FsEvents) SetLatency(latency time.Duration) {
+	m.Latency = latency
 }
 
 func (m FsWatch) AnyEventCall(directory string, observer EventsObserver) error {
@@ -94,7 +99,14 @@ func (m FsWatch) AnyEventCall(directory string, observer EventsObserver) error {
 		return fmt.Errorf("error watching source path %s: %v", directory, err)
 	}
 
-	delay := 500 * time.Millisecond
+	//default latency 500 ms
+	latency := time.Duration(500)
+
+	//allow the user to override but only if is at least 100ms
+	if m.Latency > 100 {
+		latency = m.Latency
+	}
+	delay := latency * time.Millisecond
 	ticker := time.NewTicker(delay)
 	defer ticker.Stop()
 	for {
@@ -114,6 +126,7 @@ func (m FsWatch) AnyEventCall(directory string, observer EventsObserver) error {
 				return err
 			}
 			fmt.Println("Done.")
+			cplogs.Flush()
 			dirty = false
 		}
 		changeLock.Unlock()
