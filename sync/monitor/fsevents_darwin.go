@@ -75,7 +75,7 @@ func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error 
 		}
 	}()
 
-	delay := 2 * time.Second
+	delay := 500 * time.Millisecond
 	ticker := time.NewTicker(delay)
 	defer ticker.Stop()
 	for {

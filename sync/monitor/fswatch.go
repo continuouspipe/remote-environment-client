@@ -94,7 +94,7 @@ func (m FsWatch) AnyEventCall(directory string, observer EventsObserver) error {
 		return fmt.Errorf("error watching source path %s: %v", directory, err)
 	}
 
-	delay := 2 * time.Second
+	delay := 500 * time.Millisecond
 	ticker := time.NewTicker(delay)
 	defer ticker.Stop()
 	for {
