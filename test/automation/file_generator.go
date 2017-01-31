@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-const INTERVAL_IN_SECONDS = 3
+const INTERVAL_IN_SECONDS = 4
 const FILES_CREATED = 500
 
 func main() {
