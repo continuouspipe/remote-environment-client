@@ -7,6 +7,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"fmt"
 	"time"
+	"sync"
 )
 
 func init() {
@@ -35,7 +36,7 @@ func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error 
 
 	es := &fsevents.EventStream{
 		Paths:   []string{directory},
-		Latency: 2 * time.Second,
+		Latency: 500 * time.Millisecond,
 		Device:  dev,
 		Flags:   fsevents.FileEvents | fsevents.WatchRoot}
 	es.Start()
@@ -44,24 +45,59 @@ func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error 
 	cplogs.V(5).Infof("Moditoring directory %s", directory)
 	cplogs.V(5).Infof("Device UUID %s", fsevents.GetDeviceUUID(dev))
 
-	for msg := range ec {
-		for _, e := range msg {
-			desc := m.GetEventDescription(e.Flags)
-			cplogs.V(1).Infof("filesystem event for %d(%s) %s\n", e.ID, e.Path, desc)
-			if (e.Flags & (fsevents.ItemCreated | fsevents.ItemRemoved | fsevents.ItemRenamed | fsevents.ItemModified | fsevents.ItemChangeOwner)) == 0 {
-				cplogs.V(5).Infof("skipping event %s on path %s as is not an item create, remove, renamed, modified or changed owner", desc, e.Path)
-				continue
-			}
-			//check if the file matches the exclusion list, if so ignore the event
-			match := m.Exclusions.MatchExclusionList(e.Path)
-			if match == true {
-				cplogs.V(2).Infof("skipping %s %s as is in the exclusion list", desc, e.Path)
-				continue
-			}
+	var (
+		changeLock sync.Mutex
+		dirty      bool
+		lastChange time.Time
+	)
 
-			observer.OnLastChange()
+	go func() {
+		for msg := range ec {
+			for _, e := range msg {
+				desc := m.GetEventDescription(e.Flags)
+				cplogs.V(1).Infof("filesystem event for %d(%s) %s\n", e.ID, e.Path, desc)
+				if (e.Flags & (fsevents.ItemCreated | fsevents.ItemRemoved | fsevents.ItemRenamed | fsevents.ItemModified | fsevents.ItemChangeOwner)) == 0 {
+					cplogs.V(5).Infof("skipping event %s on path %s as is not an item create, remove, renamed, modified or changed owner", desc, e.Path)
+					continue
+				}
+				//check if the file matches the exclusion list, if so ignore the event
+				match := m.Exclusions.MatchExclusionList(e.Path)
+				if match == true {
+					cplogs.V(2).Infof("skipping %s %s as is in the exclusion list", desc, e.Path)
+					continue
+				}
+
+				changeLock.Lock()
+				lastChange = time.Now()
+				dirty = true
+				changeLock.Unlock()
+			}
 		}
+	}()
+
+	delay := 2 * time.Second
+	ticker := time.NewTicker(delay)
+	defer ticker.Stop()
+	for {
+		changeLock.Lock()
+		// if a change happened more than 'delay' seconds ago, sync it now.
+		// if a change happened less than 'delay' seconds ago, sleep for 'delay' seconds
+		// and see if more changes happen, we don't want to sync when
+		// the filesystem is in the middle of changing due to a massive
+		// set of changes (such as a local build in progress).
+		if dirty && time.Now().After(lastChange.Add(delay)) {
+			fmt.Println("Synchronizing filesystem changes...")
+			err = observer.OnLastChange()
+			if err != nil {
+				return err
+			}
+			fmt.Println("Done.")
+			dirty = false
+		}
+		changeLock.Unlock()
+		<-ticker.C
 	}
+
 	return nil
 }
 
