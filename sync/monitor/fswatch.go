@@ -38,7 +38,7 @@ func (m *FsWatch) SetExclusions(exclusion ExclusionProvider) {
 	m.Exclusions = exclusion
 }
 
-func (m *FsEvents) SetLatency(latency time.Duration) {
+func (m *FsWatch) SetLatency(latency time.Duration) {
 	m.Latency = latency
 }
 

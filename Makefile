@@ -1,5 +1,5 @@
 BINARY=cp-remote-go
-VERSION=0.0.1-beta.1
+VERSION=0.0.1-beta.2
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config
 LDFLAGS=-ldflags="-X ${CONFIG_PKG}.CurrentVersion=${VERSION}"
 
@@ -10,6 +10,7 @@ BUILDARCH=amd64
 build:
 	mkdir bin 2>/dev/null; true
 	env GOOS=${BUILDOS} GOARCH=${BUILDARCH} go build ${LDFLAGS} -o bin/${BUILDOS}-${BUILDARCH}
+
 clean:
 	rm -f ${BINARY}
 	rm -f update/cktime
