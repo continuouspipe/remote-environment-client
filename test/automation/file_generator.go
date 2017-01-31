@@ -1,5 +1,5 @@
 // In order to test a long running 'watch' task process
-// This tool creates 50 files each 15 seconds
+// This tool creates n files, in each x seconds interval
 package main
 
 import (
@@ -9,13 +9,16 @@ import (
 	"strconv"
 )
 
+const INTERVAL_IN_SECONDS = 3
+const FILES_CREATED = 500
+
 func main() {
-	ticker := time.NewTicker(time.Second * 15)
+	ticker := time.NewTicker(time.Second * INTERVAL_IN_SECONDS)
 
 	c := 0
 
 	for t := range ticker.C {
-		for i := 0; i < 50; i = i + 1 {
+		for i := 0; i < FILES_CREATED; i = i + 1 {
 			now := time.Now()
 			fileName := "file_" + now.Format(time.RFC3339Nano) + "_.txt"
 			file, err := os.Create(fileName)
@@ -26,7 +29,7 @@ func main() {
 			file.Close()
 			fmt.Printf("Created file %s\n", fileName)
 		}
-		c = c + 50
-		fmt.Println("\nCreated 50 files: " + t.String() + ". Total file created " + strconv.Itoa(c))
+		c = c + FILES_CREATED
+		fmt.Printf("\n\nCreated %s files: %s. Total file created %s\n", strconv.Itoa(FILES_CREATED), t.String(), strconv.Itoa(c))
 	}
 }
