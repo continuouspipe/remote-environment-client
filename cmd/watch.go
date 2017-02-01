@@ -56,17 +56,19 @@ setup but you can specify another container to sync with.`,
 	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
 	command.PersistentFlags().Int64VarP(&handler.Latency, "latency", "l", 500, "Sync latency / speed in milli-seconds")
+	command.PersistentFlags().IntVarP(&handler.IndividualFileSyncThreshold, "individual-file-sync-threshold", "t", 10, "Above this threshold the watch command will sync any file or folder that is different compared to the local one")
 	return command
 }
 
 type WatchHandle struct {
-	Command       *cobra.Command
-	ProjectKey    string
-	RemoteBranch  string
-	Service       string
-	kubeConfigKey string
-	Latency       int64
-	Stdout        io.Writer
+	Command                     *cobra.Command
+	ProjectKey                  string
+	RemoteBranch                string
+	Service                     string
+	kubeConfigKey               string
+	Latency                     int64
+	Stdout                      io.Writer
+	IndividualFileSyncThreshold int
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -127,6 +129,7 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 	observer.KubeConfigKey = h.kubeConfigKey
 	observer.Environment = environment
 	observer.Pod = *pod
+	observer.IndividualFileSyncThreshold = h.IndividualFileSyncThreshold
 	dirMonitor.SetLatency(time.Duration(h.Latency))
 
 	fmt.Fprintf(h.Stdout, "\nTarget Pod for Sync: %s\n", pod.GetName())

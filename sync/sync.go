@@ -14,8 +14,9 @@ import (
 const SyncExcluded = ".cp-remote-ignore"
 
 type DirectoryEventSyncAll struct {
-	KubeConfigKey, Environment string
-	Pod                        v1.Pod
+	KubeConfigKey, Environment  string
+	Pod                         v1.Pod
+	IndividualFileSyncThreshold int
 }
 
 func GetDirectoryEventSyncAll() *DirectoryEventSyncAll {
@@ -39,8 +40,8 @@ func (o *DirectoryEventSyncAll) OnLastChange(paths []string) error {
 		args = append(args, fmt.Sprintf(`--exclude-from=%s`, SyncExcluded))
 	}
 
-	if len(paths) > 10 {
-		cplogs.V(5).Infof("batch file sync, files to sync %d, threshold: %d", len(paths), 10)
+	if len(paths) > o.IndividualFileSyncThreshold {
+		cplogs.V(5).Infof("batch file sync, files to sync %d, threshold: %d", len(paths), o.IndividualFileSyncThreshold)
 		args = append(args,
 			"--",
 			"./",
@@ -51,7 +52,7 @@ func (o *DirectoryEventSyncAll) OnLastChange(paths []string) error {
 		if err != nil {
 			return err
 		}
-		cplogs.V(5).Infof("individual file sync, files to sync %d, threshold: %d", len(paths), 10)
+		cplogs.V(5).Infof("individual file sync, files to sync %d, threshold: %d", len(paths), o.IndividualFileSyncThreshold)
 
 		args = append(args, "--")
 		args = append(args, relPaths...)
