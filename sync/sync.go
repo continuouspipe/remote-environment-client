@@ -28,7 +28,7 @@ func (o *DirectoryEventSyncAll) OnLastChange() error {
 	defer os.Unsetenv("RSYNC_RSH")
 
 	args := []string{
-		"-av",
+		"-rlptDv",
 		"--delete",
 		"--relative",
 		"--blocking-io"}
