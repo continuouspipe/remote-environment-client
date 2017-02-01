@@ -3,7 +3,7 @@ package monitor
 import "time"
 
 type EventsObserver interface {
-	OnLastChange() error
+	OnLastChange([]string) error
 }
 
 type DirectoryMonitor interface {

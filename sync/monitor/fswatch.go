@@ -47,10 +47,11 @@ func (m FsWatch) AnyEventCall(directory string, observer EventsObserver) error {
 	// mutex as they are shared between goroutines to communicate
 	// sync state/events.
 	var (
-		changeLock sync.Mutex
-		dirty      bool
-		lastChange time.Time
-		watchError error
+		changeLock  sync.Mutex
+		dirty       bool
+		lastChange  time.Time
+		watchError  error
+		pathsToSync []string
 	)
 
 	watcher, err := fsnotify.NewWatcher()
@@ -74,6 +75,7 @@ func (m FsWatch) AnyEventCall(directory string, observer EventsObserver) error {
 					continue
 				}
 
+				pathsToSync = append(pathsToSync, e.Path)
 				lastChange = time.Now()
 				dirty = true
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
@@ -121,13 +123,14 @@ func (m FsWatch) AnyEventCall(directory string, observer EventsObserver) error {
 		// set of changes (such as a local build in progress).
 		if dirty && time.Now().After(lastChange.Add(delay)) {
 			fmt.Println("Synchronizing filesystem changes...")
-			err = observer.OnLastChange()
+			err = observer.OnLastChange(pathsToSync)
 			if err != nil {
 				return err
 			}
 			fmt.Println("Done.")
 			cplogs.Flush()
 			dirty = false
+			pathsToSync = []string{}
 		}
 		changeLock.Unlock()
 		<-ticker.C

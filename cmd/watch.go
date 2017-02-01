@@ -10,6 +10,7 @@ import (
 	"os"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"time"
+	"io"
 )
 
 func NewWatchCmd() *cobra.Command {
@@ -44,9 +45,11 @@ setup but you can specify another container to sync with.`,
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
 
+			handler.Stdout = os.Stdout
+
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
-			checkErr(handler.Handle(args, dirMonitor, podsFinder, podsFilter))
+			checkErr(handler.Handle(dirMonitor, podsFinder, podsFilter))
 		},
 	}
 	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
@@ -63,6 +66,7 @@ type WatchHandle struct {
 	Service       string
 	kubeConfigKey string
 	Latency       int64
+	Stdout        io.Writer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -101,7 +105,7 @@ func (h *WatchHandle) Validate() error {
 	return nil
 }
 
-func (h *WatchHandle) Handle(args []string, dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
+func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
 	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
 
 	allPods, err := podsFinder.FindAll(h.kubeConfigKey, environment)
@@ -124,5 +128,8 @@ func (h *WatchHandle) Handle(args []string, dirMonitor monitor.DirectoryMonitor,
 	observer.Environment = environment
 	observer.Pod = *pod
 	dirMonitor.SetLatency(time.Duration(h.Latency))
+
+	fmt.Fprintf(h.Stdout, "\nTarget Pod for Sync: %s\n", pod.GetName())
+
 	return dirMonitor.AnyEventCall(cwd, observer)
 }

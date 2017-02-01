@@ -51,9 +51,10 @@ func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error 
 	cplogs.V(5).Infof("Device UUID %s", fsevents.GetDeviceUUID(dev))
 
 	var (
-		changeLock sync.Mutex
-		dirty      bool
-		lastChange time.Time
+		changeLock  sync.Mutex
+		dirty       bool
+		lastChange  time.Time
+		pathsToSync []string
 	)
 
 	go func() {
@@ -73,6 +74,7 @@ func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error 
 				}
 
 				changeLock.Lock()
+				pathsToSync = append(pathsToSync, e.Path)
 				lastChange = time.Now()
 				dirty = true
 				changeLock.Unlock()
@@ -99,13 +101,14 @@ func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error 
 		// set of changes (such as a local build in progress).
 		if dirty && time.Now().After(lastChange.Add(delay)) {
 			fmt.Println("Synchronizing filesystem changes...")
-			err = observer.OnLastChange()
+			err = observer.OnLastChange(pathsToSync)
 			if err != nil {
 				return err
 			}
 			fmt.Println("Done.")
 			cplogs.Flush()
 			dirty = false
+			pathsToSync = []string{}
 		}
 		changeLock.Unlock()
 		<-ticker.C
