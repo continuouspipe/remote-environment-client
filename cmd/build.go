@@ -82,7 +82,7 @@ func (h *BuildHandle) Handle() error {
 	if err != nil {
 		return err
 	}
-	cplogs.V(5).Infof("remoteExists value is %s", remoteExists)
+	cplogs.V(5).Infof("remoteExists value is %b", remoteExists)
 
 	if remoteExists == true {
 		localChanges, err := h.hasLocalChanges()

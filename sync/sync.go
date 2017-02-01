@@ -31,7 +31,8 @@ func (o *DirectoryEventSyncAll) OnLastChange() error {
 		"-rlptDv",
 		"--delete",
 		"--relative",
-		"--blocking-io"}
+		"--blocking-io",
+		"--checksum"}
 
 	if _, err := os.Stat(SyncExcluded); err == nil {
 		args = append(args, fmt.Sprintf(`--exclude-from=%s`, SyncExcluded))
