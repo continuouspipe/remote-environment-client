@@ -75,7 +75,7 @@ func (m FsWatch) AnyEventCall(directory string, observer EventsObserver) error {
 					continue
 				}
 
-				pathsToSync = append(pathsToSync, e.Path)
+				pathsToSync = append(pathsToSync, event.Name)
 				lastChange = time.Now()
 				dirty = true
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
