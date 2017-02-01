@@ -62,6 +62,7 @@ with the default container specified during setup but you can specify another co
 	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
 	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
+	command.PersistentFlags().StringVarP(&handler.File, "file", "f", "", "Allows to specify a file that needs to be fetch from the pod")
 	return command
 }
 
@@ -71,6 +72,7 @@ type FetchHandle struct {
 	RemoteBranch  string
 	Service       string
 	kubeConfigKey string
+	File          string
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -120,5 +122,5 @@ func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter p
 		return err
 	}
 
-	return fetcher.Fetch(h.kubeConfigKey, environment, pod.GetName())
+	return fetcher.Fetch(h.kubeConfigKey, environment, pod.GetName(), h.File)
 }
