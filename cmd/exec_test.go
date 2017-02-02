@@ -20,8 +20,8 @@ func TestCommandsAreSpawned(t *testing.T) {
 		return mockPod, nil
 	})
 	spyLocalExecutor := test.NewSpyLocalExecutor()
-	spyLocalExecutor.SpyCommandExec(func() (string, error) {
-		return "some retult back..", nil
+	spyLocalExecutor.MockCommandExec(func() (string, error) {
+		return "some results back..", nil
 	})
 
 	//test subject called
@@ -33,7 +33,7 @@ func TestCommandsAreSpawned(t *testing.T) {
 	out, _ := handler.Handle([]string{"ls", "-a", "-l", "-l"}, mockPodsFinder, mockPodFilter, spyLocalExecutor)
 
 	//expectations
-	test.AssertSame(t, "some retult back..", out)
+	test.AssertSame(t, "some results back..", out)
 	firstCall := spyLocalExecutor.FirstCallsFor("CommandExec")
 
 	if spyLocalExecutor.CallsCountFor("CommandExec") != 1 {

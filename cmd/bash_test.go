@@ -20,6 +20,9 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 		return mockPod, nil
 	})
 	spyLocalExecutor := test.NewSpyLocalExecutor()
+	spyLocalExecutor.MockStartProcess(func() error {
+		return nil
+	})
 
 	//test subject called
 	handler := &BashHandle{}
@@ -30,10 +33,10 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spyLocalExecutor)
 
 	//expectations
-	firstCall := spyLocalExecutor.FirstCallsFor("SysCallExec")
+	firstCall := spyLocalExecutor.FirstCallsFor("StartProcess")
 
-	if spyLocalExecutor.CallsCountFor("SysCallExec") != 1 {
-		t.Error("Expected SysCallExec to be called only once")
+	if spyLocalExecutor.CallsCountFor("StartProcess") != 1 {
+		t.Error("Expected StartProcess to be called only once")
 	}
 	if str, ok := firstCall.Arguments["kubeConfigKey"].(string); ok {
 		test.AssertSame(t, "my-config-key", str)

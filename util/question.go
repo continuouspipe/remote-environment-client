@@ -6,13 +6,11 @@ import (
 	"os"
 )
 
-type validator func(string) (bool, error)
-
 type QuestionPrompter interface {
 	ReadString(string) string
 	ApplyDefault(string, string) string
 	RepeatIfEmpty(string) string
-	RepeatUntilValid(string, validator) string
+	RepeatUntilValid(string, func(string) (bool, error)) string
 }
 
 type QuestionPrompt struct{}
@@ -48,7 +46,7 @@ func (qp QuestionPrompt) RepeatIfEmpty(question string) string {
 }
 
 //ask the same question to the user until the isValid() callback returns true
-func (qp QuestionPrompt) RepeatUntilValid(question string, isValid validator) string {
+func (qp QuestionPrompt) RepeatUntilValid(question string, isValid func(string) (bool, error)) string {
 	var res string
 	for {
 		res = qp.ReadString(question)

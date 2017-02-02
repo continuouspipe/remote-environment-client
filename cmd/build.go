@@ -8,6 +8,8 @@ import (
 	"github.com/continuouspipe/remote-environment-client/git"
 	"github.com/spf13/cobra"
 	"strings"
+	"io"
+	"os"
 )
 
 func NewBuildCmd() *cobra.Command {
@@ -18,6 +20,7 @@ func NewBuildCmd() *cobra.Command {
 	handler.push = git.NewPush()
 	handler.revList = git.NewRevList()
 	handler.revParse = git.NewRevParse()
+	handler.Stdout = os.Stdout
 
 	command := &cobra.Command{
 		Use:     "build",
@@ -53,6 +56,7 @@ type BuildHandle struct {
 	revParse     git.RevParseExecutor
 	remoteName   string
 	remoteBranch string
+	Stdout       io.Writer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -94,11 +98,11 @@ func (h *BuildHandle) Handle() error {
 		}
 	}
 
-	fmt.Println("Pushing to remote")
+	fmt.Fprintln(h.Stdout, "Pushing to remote")
 	h.pushToLocalBranch()
-	fmt.Println("Continuous Pipe will now build your developer environment")
-	fmt.Println("You can see when it is complete and find its IP address at https://ui.continuouspipe.io/")
-	fmt.Println("Please wait until the build is complete to use any of this tool's other commands.")
+	fmt.Fprintln(h.Stdout, "Continuous Pipe will now build your developer environment")
+	fmt.Fprintln(h.Stdout, "You can see when it is complete and find its IP address at https://ui.continuouspipe.io/")
+	fmt.Fprintln(h.Stdout, "Please wait until the build is complete to use any of this tool's other commands.")
 
 	return nil
 }

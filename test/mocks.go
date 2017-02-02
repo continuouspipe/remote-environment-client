@@ -1,6 +1,8 @@
 package test
 
-import "k8s.io/client-go/pkg/api/v1"
+import (
+	"k8s.io/client-go/pkg/api/v1"
+)
 
 //Mock for ConfigReader
 type MockConfigReader struct {
@@ -92,6 +94,10 @@ func (qp MockQuestionPrompt) RepeatIfEmpty(question string) string {
 	return qp.ReadString(question)
 }
 
+func (qp MockQuestionPrompt) RepeatUntilValid(question string, isValid func(string) (bool, error)) string {
+	return qp.ReadString(question)
+}
+
 //Mock for LsRemote
 type MockLsRemote struct {
 	getList func(remoteName string, remoteBranch string) (string, error)
@@ -124,4 +130,20 @@ func (m *MockRevParse) MockGetLocalBranchName(mocked func() (string, error)) {
 
 func (m *MockRevParse) GetLocalBranchName() (string, error) {
 	return m.getLocalBranchName()
+}
+
+//Mock for Writer
+type MockWriter struct {
+	write func(p []byte) (n int, err error)
+}
+
+func NewMockWriter() *MockWriter {
+	return &MockWriter{}
+}
+
+func (m *MockWriter) Write(p []byte) (n int, err error) {
+	return m.write(p)
+}
+func (m *MockWriter) MockWrite(mocked func(p []byte) (n int, err error)) {
+	m.write = mocked
 }

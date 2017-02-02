@@ -17,6 +17,14 @@ func TestRemoteBranchNotPresent(t *testing.T) {
 	})
 	spyCommit := test.NewSpyCommit()
 	spyPush := test.NewSpyPush()
+	spyPush.MockPush(func() (string, error) {
+		return "", nil
+	})
+
+	mockStdout := test.NewMockWriter()
+	mockStdout.MockWrite(func(p []byte) (n int, err error) {
+		return 100, nil
+	})
 
 	//test subject called
 	buildHandle := BuildHandle{}
@@ -26,6 +34,7 @@ func TestRemoteBranchNotPresent(t *testing.T) {
 	buildHandle.push = spyPush
 	buildHandle.remoteName = "origin"
 	buildHandle.remoteBranch = "feature-my-remote"
+	buildHandle.Stdout = mockStdout
 	buildHandle.Handle()
 
 	//expectations

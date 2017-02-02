@@ -20,6 +20,9 @@ func TestFetch(t *testing.T) {
 		return mockPod, nil
 	})
 	spyFetcher := test.NewSpyRsyncFetch()
+	spyFetcher.MockFetch(func() error {
+		return nil
+	})
 
 	//test subject called
 	handler := &FetchHandle{}
@@ -27,6 +30,7 @@ func TestFetch(t *testing.T) {
 	handler.ProjectKey = "proj"
 	handler.RemoteBranch = "feature-testing"
 	handler.Service = "web"
+	handler.File = "some-file.txt"
 	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spyFetcher)
 
 	//expectations
@@ -49,5 +53,10 @@ func TestFetch(t *testing.T) {
 		test.AssertSame(t, "web-123456", str)
 	} else {
 		t.Fatalf("Expected pod to be a string, given %T", firstCall.Arguments["pod"])
+	}
+	if str, ok := firstCall.Arguments["filePath"].(string); ok {
+		test.AssertSame(t, "some-file.txt", str)
+	} else {
+		t.Fatalf("Expected filePath to be a string, given %T", firstCall.Arguments["filePath"])
 	}
 }

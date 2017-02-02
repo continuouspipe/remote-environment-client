@@ -11,6 +11,9 @@ func TestUserApplicationSettingsAreStored(t *testing.T) {
 	//get mocked dependencies
 	mockedQuestionPrompt := test.NewMockQuestionPrompt()
 	spyYamlWriter := test.NewSpyYamlWriter()
+	spyYamlWriter.MockSave(func() bool {
+		return true
+	})
 
 	//test subject called
 	setupHandle := &SetupHandle{}

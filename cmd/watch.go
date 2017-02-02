@@ -132,7 +132,7 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 	observer.IndividualFileSyncThreshold = h.IndividualFileSyncThreshold
 	dirMonitor.SetLatency(time.Duration(h.Latency))
 
-	fmt.Fprintf(h.Stdout, "\nTarget Pod for Sync: %s\n", pod.GetName())
+	fmt.Fprintf(h.Stdout, "\nDestination Pod: %s\n", pod.GetName())
 
 	return dirMonitor.AnyEventCall(cwd, observer)
 }

@@ -1,6 +1,10 @@
 package test
 
-import "github.com/continuouspipe/remote-environment-client/config"
+import (
+	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/sync/monitor"
+	"time"
+)
 
 //A map that stores a list of function arguments [argumentName] => value (any type)
 type Arguments map[string]interface{}
@@ -42,21 +46,25 @@ func (spy *Spy) CallsCountFor(functionName string) int {
 //Spy to mock the LocalExecutor
 type SpyLocalExecutor struct {
 	Spy
+	startProcess func() error
+	commandExec  func() (string, error)
 }
 
 func NewSpyLocalExecutor() *SpyLocalExecutor {
 	return &SpyLocalExecutor{}
 }
 
-func (m *SpyLocalExecutor) SysCallExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) {
+func (m *SpyLocalExecutor) StartProcess(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) error {
 	args := make(Arguments)
 	args["kubeConfigKey"] = kubeConfigKey
 	args["environment"] = environment
 	args["pod"] = pod
 	args["execCmdArgs"] = execCmdArgs
 
-	function := &Function{Name: "SysCallExec", Arguments: args}
+	function := &Function{Name: "StartProcess", Arguments: args}
 	m.calledFunctions = append(m.calledFunctions, *function)
+
+	return m.startProcess()
 }
 
 func (m *SpyLocalExecutor) CommandExec(kubeConfigKey string, environment string, pod string, execCmdArgs ...string) (string, error) {
@@ -72,32 +80,43 @@ func (m *SpyLocalExecutor) CommandExec(kubeConfigKey string, environment string,
 	return m.commandExec()
 }
 
-func (m *SpyLocalExecutor) SpyCommandExec(mocked func() (string, error)) {
+func (m *SpyLocalExecutor) MockCommandExec(mocked func() (string, error)) {
 	m.commandExec = mocked
+}
+
+func (m *SpyLocalExecutor) MockStartProcess(mocked func() error) {
+	m.startProcess = mocked
 }
 
 //Spy for RsyncFetch
 type SpyRsyncFetch struct {
 	Spy
+	fetch func() error
 }
 
 func NewSpyRsyncFetch() *SpyRsyncFetch {
 	return &SpyRsyncFetch{}
 }
 
-func (r *SpyRsyncFetch) Fetch(kubeConfigKey string, environment string, pod string) error {
+func (r *SpyRsyncFetch) Fetch(kubeConfigKey string, environment string, pod string, filePath string) error {
 	args := make(Arguments)
 	args["kubeConfigKey"] = kubeConfigKey
 	args["environment"] = environment
 	args["pod"] = pod
+	args["filePath"] = filePath
 	function := &Function{Name: "Fetch", Arguments: args}
 	r.calledFunctions = append(r.calledFunctions, *function)
-	return nil
+	return r.fetch()
+}
+
+func (r *SpyRsyncFetch) MockFetch(mocked func() error) {
+	r.fetch = mocked
 }
 
 //Spy for YamlWriter
 type SpyYamlWriter struct {
 	Spy
+	save func() bool
 }
 
 func NewSpyYamlWriter() *SpyYamlWriter {
@@ -112,12 +131,17 @@ func (m *SpyYamlWriter) Save(settings *config.ApplicationSettings) bool {
 
 	function := &Function{Name: "Save", Arguments: args}
 	m.calledFunctions = append(m.calledFunctions, *function)
-	return true
+	return m.save()
+}
+
+func (m *SpyYamlWriter) MockSave(mocked func() bool) {
+	m.save = mocked
 }
 
 //Spy for Commit
 type SpyCommit struct {
 	Spy
+	commit func() (string, error)
 }
 
 func NewSpyCommit() *SpyCommit {
@@ -129,12 +153,18 @@ func (s *SpyCommit) Commit(message string) (string, error) {
 	args["message"] = message
 	function := &Function{Name: "Commit", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
-	return "", nil
+	return s.commit()
+}
+
+func (s *SpyCommit) SpyCommit(mocked func() (string, error)) {
+	s.commit = mocked
 }
 
 //Spy for Push
 type SpyPush struct {
 	Spy
+	push         func() (string, error)
+	deleteRemote func() (string, error)
 }
 
 func NewSpyPush() *SpyPush {
@@ -149,7 +179,11 @@ func (s *SpyPush) Push(localBranch string, remoteName string, remoteBranch strin
 
 	function := &Function{Name: "Push", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
-	return "", nil
+	return s.push()
+}
+
+func (s *SpyPush) MockPush(mocked func() (string, error)) {
+	s.push = mocked
 }
 
 func (s *SpyPush) DeleteRemote(remoteName string, remoteBranch string) (string, error) {
@@ -159,5 +193,50 @@ func (s *SpyPush) DeleteRemote(remoteName string, remoteBranch string) (string, 
 
 	function := &Function{Name: "DeleteRemote", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
-	return "", nil
+	return s.deleteRemote()
+}
+
+func (s *SpyPush) MockDeleteRemote(mocked func() (string, error)) {
+	s.deleteRemote = mocked
+}
+
+//Spy for OsDirectoryMonitor
+type SpyOsDirectoryMonitor struct {
+	anyEventCall func(directory string, observer monitor.EventsObserver) error
+	Spy
+}
+
+func NewSpyOsDirectoryMonitor() *SpyOsDirectoryMonitor {
+	return &SpyOsDirectoryMonitor{}
+}
+
+func (m *SpyOsDirectoryMonitor) AnyEventCall(directory string, observer monitor.EventsObserver) error {
+	args := make(Arguments)
+	args["directory"] = directory
+	args["observer"] = observer
+
+	function := &Function{Name: "AnyEventCall", Arguments: args}
+	m.calledFunctions = append(m.calledFunctions, *function)
+
+	return m.anyEventCall(directory, observer)
+}
+
+func (m *SpyOsDirectoryMonitor) MockAnyEventCall(mocked func(directory string, observer monitor.EventsObserver) error) {
+	m.anyEventCall = mocked
+}
+
+func (m *SpyOsDirectoryMonitor) SetExclusions(exclusion monitor.ExclusionProvider) {
+	args := make(Arguments)
+	args["exclusion"] = exclusion
+
+	function := &Function{Name: "SetExclusions", Arguments: args}
+	m.calledFunctions = append(m.calledFunctions, *function)
+}
+
+func (m SpyOsDirectoryMonitor) SetLatency(latency time.Duration) {
+	args := make(Arguments)
+	args["latency"] = latency
+
+	function := &Function{Name: "SetLatency", Arguments: args}
+	m.calledFunctions = append(m.calledFunctions, *function)
 }
