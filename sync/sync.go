@@ -1,81 +1,40 @@
 package sync
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/continuouspipe/remote-environment-client/config"
-	"github.com/continuouspipe/remote-environment-client/cplogs"
-	"github.com/continuouspipe/remote-environment-client/osapi"
-	"k8s.io/client-go/pkg/api/v1"
-	"path/filepath"
+	"github.com/continuouspipe/remote-environment-client/sync/monitor"
+	"github.com/continuouspipe/remote-environment-client/sync/rsync"
 )
 
-const SyncExcluded = ".cp-remote-ignore"
-
-type DirectoryEventSyncAll struct {
-	KubeConfigKey, Environment  string
-	Pod                         v1.Pod
-	IndividualFileSyncThreshold int
+//syncs the files specified in filePaths. When filePaths is an empty slice, it syncs all project files
+type Syncer interface {
+	Sync(filePaths []string) error
+	SetKubeConfigKey(string)
+	SetEnvironment(string)
+	SetPod(string)
+	SetIndividualFileSyncThreshold(int)
 }
 
-func GetDirectoryEventSyncAll() *DirectoryEventSyncAll {
-	return &DirectoryEventSyncAll{}
+func GetSyncer() Syncer {
+	return rsync.Rsync
 }
 
-func (o *DirectoryEventSyncAll) OnLastChange(paths []string) error {
-	rsh := fmt.Sprintf(`%s %s --context=%s --namespace=%s exec -i %s`, config.AppName, config.KubeCtlName, o.KubeConfigKey, o.Environment, o.Pod.GetName())
-	cplogs.V(5).Infof("setting RSYNC_RSH to %s\n", rsh)
-	os.Setenv("RSYNC_RSH", rsh)
-	defer os.Unsetenv("RSYNC_RSH")
-
-	args := []string{
-		"-rlptDv",
-		"--delete",
-		"--relative",
-		"--blocking-io",
-		"--checksum"}
-
-	if _, err := os.Stat(SyncExcluded); err == nil {
-		args = append(args, fmt.Sprintf(`--exclude-from=%s`, SyncExcluded))
-	}
-
-	if len(paths) > o.IndividualFileSyncThreshold {
-		cplogs.V(5).Infof("batch file sync, files to sync %d, threshold: %d", len(paths), o.IndividualFileSyncThreshold)
-		args = append(args,
-			"--",
-			"./",
-			"--:/app/",
-		)
-	} else {
-		relPaths, err := o.getRelativePathList(paths)
-		if err != nil {
-			return err
-		}
-		cplogs.V(5).Infof("individual file sync, files to sync %d, threshold: %d", len(paths), o.IndividualFileSyncThreshold)
-
-		args = append(args, "--")
-		args = append(args, relPaths...)
-		args = append(args, "--:/app/")
-	}
-
-	cplogs.V(5).Infof("rsync arguments: %s", args)
-
-	return osapi.CommandExecL("rsync", os.Stdout, args...)
+//this wraps a Syncer struct in order to implement the EventsObserver
+//when a file changes OnLastChange() is called which will then trigger
+//the sync via syncer.Sync
+type SyncOnEvent struct {
+	syncer Syncer
 }
 
-func (o DirectoryEventSyncAll) getRelativePathList(paths []string) ([]string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	for key, path := range paths {
-		relPath, err := filepath.Rel(cwd, "/"+path)
-		if err != nil {
-			return nil, err
-		}
-		paths[key] = relPath
-	}
+func NewSyncOnEvent() *SyncOnEvent {
+	return &SyncOnEvent{}
+}
 
-	return paths, nil
+func (observer SyncOnEvent) OnLastChange(filePaths []string) error {
+	return observer.syncer.Sync(filePaths)
+}
+
+func GetSyncOnEventObserver(syncer Syncer) monitor.EventsObserver {
+	syncOnEvent := NewSyncOnEvent()
+	syncOnEvent.syncer = syncer
+	return syncOnEvent
 }

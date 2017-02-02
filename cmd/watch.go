@@ -38,7 +38,7 @@ setup but you can specify another container to sync with.`,
 				res, err := exclusion.WriteDefaultExclusionsToFile()
 				checkErr(err)
 				if res == true {
-					fmt.Printf("\n%s was missing or empty and has been created with the default ignore settings.\n", sync.SyncExcluded)
+					fmt.Printf("\n%s was missing or empty and has been created with the default ignore settings.\n", monitor.CustomExclusionsFile)
 				}
 			}
 
@@ -125,14 +125,16 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 		return err
 	}
 
-	observer := sync.GetDirectoryEventSyncAll()
-	observer.KubeConfigKey = h.kubeConfigKey
-	observer.Environment = environment
-	observer.Pod = *pod
-	observer.IndividualFileSyncThreshold = h.IndividualFileSyncThreshold
+	syncer := sync.GetSyncer()
+	syncer.SetKubeConfigKey(h.kubeConfigKey)
+	syncer.SetEnvironment(environment)
+	syncer.SetPod(pod.GetName())
+	syncer.SetIndividualFileSyncThreshold(h.IndividualFileSyncThreshold)
 	dirMonitor.SetLatency(time.Duration(h.Latency))
 
 	fmt.Fprintf(h.Stdout, "\nDestination Pod: %s\n", pod.GetName())
+
+	observer := sync.GetSyncOnEventObserver(syncer)
 
 	return dirMonitor.AnyEventCall(cwd, observer)
 }

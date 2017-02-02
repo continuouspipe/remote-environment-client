@@ -47,11 +47,11 @@ with the default container specified during setup but you can specify another co
 
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
-			rsyncFetch := sync.NewRsyncFetch()
+			fetcher := sync.GetFetcher()
 
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
-			checkErr(handler.Handle(args, podsFinder, podsFilter, rsyncFetch))
+			checkErr(handler.Handle(args, podsFinder, podsFilter, fetcher))
 
 			_, err := benchmark.StopAndLog()
 			checkErr(err)
