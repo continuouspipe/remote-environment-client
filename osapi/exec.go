@@ -5,9 +5,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"bufio"
 	"fmt"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 )
 
 //Executes a command and waits for it to finish

@@ -6,8 +6,8 @@ import (
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
-	"k8s.io/client-go/pkg/api/v1"
 	"github.com/continuouspipe/remote-environment-client/osapi"
+	"k8s.io/client-go/pkg/api/v1"
 	"path/filepath"
 )
 

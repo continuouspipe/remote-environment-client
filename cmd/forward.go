@@ -3,11 +3,11 @@ package cmd
 import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/spf13/cobra"
 	"strings"
-	"github.com/continuouspipe/remote-environment-client/cplogs"
 )
 
 var (

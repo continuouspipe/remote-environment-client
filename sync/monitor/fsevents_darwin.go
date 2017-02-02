@@ -3,11 +3,11 @@
 package monitor
 
 import (
-	"github.com/fsnotify/fsevents"
-	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"fmt"
-	"time"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/fsnotify/fsevents"
 	"sync"
+	"time"
 )
 
 func init() {
@@ -128,10 +128,10 @@ func (m FsEvents) GetEventDescription(flags fsevents.EventFlags) string {
 		fsevents.Mount:           "Mount",
 		fsevents.Unmount:         "Unmount",
 
-		fsevents.ItemCreated:       "Created",
-		fsevents.ItemRemoved:       "Removed",
-		fsevents.ItemRenamed:       "Renamed",
-		fsevents.ItemModified:      "Modified",
+		fsevents.ItemCreated:  "Created",
+		fsevents.ItemRemoved:  "Removed",
+		fsevents.ItemRenamed:  "Renamed",
+		fsevents.ItemModified: "Modified",
 
 		fsevents.ItemInodeMetaMod:  "InodeMetaMod",
 		fsevents.ItemFinderInfoMod: "FinderInfoMod",

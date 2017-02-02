@@ -7,9 +7,9 @@ import (
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/git"
 	"github.com/spf13/cobra"
-	"strings"
 	"io"
 	"os"
+	"strings"
 )
 
 func NewBuildCmd() *cobra.Command {

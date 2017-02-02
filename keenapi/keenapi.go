@@ -2,11 +2,11 @@
 package keenapi
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"net/http"
-	"bufio"
 )
 
 type PayloadProvider interface {

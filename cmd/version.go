@@ -10,10 +10,10 @@ import (
 
 func NewVersionCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "version",
+		Use:     "version",
 		Aliases: []string{"ve"},
-		Short: "Show current version number",
-		Long:  ``,
+		Short:   "Show current version number",
+		Long:    ``,
 		Run: func(cmd *cobra.Command, args []string) {
 			handler := &VersionHandle{cmd}
 			handler.Handle(args)

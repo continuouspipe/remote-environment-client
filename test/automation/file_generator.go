@@ -3,10 +3,10 @@
 package main
 
 import (
-	"os"
 	"fmt"
-	"time"
+	"os"
 	"strconv"
+	"time"
 )
 
 const INTERVAL_IN_SECONDS = 4

@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"testing"
 	"github.com/continuouspipe/remote-environment-client/test"
+	"testing"
 )
 
 func TestRemoteBranchNotPresent(t *testing.T) {

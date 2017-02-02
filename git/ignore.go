@@ -1,8 +1,8 @@
 package git
 
 import (
-	"os"
 	"bufio"
+	"os"
 )
 
 type Ignore struct {

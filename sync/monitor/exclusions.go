@@ -2,8 +2,8 @@
 package monitor
 
 import (
-	"os"
 	"bufio"
+	"os"
 	"regexp"
 )
 
@@ -24,12 +24,12 @@ type Exclusion struct {
 func NewExclusion() *Exclusion {
 	m := &Exclusion{}
 	m.DefaultExclusions = []string{`/\.[^/]*$`,
-								   `\.idea`,
-								   `\.git`,
-								   `___jb_old___`,
-								   `___jb_tmp___`,
-								   `cp-remote-logs`,
-								   `.cp-remote-env-settings.yml`}
+		`\.idea`,
+		`\.git`,
+		`___jb_old___`,
+		`___jb_tmp___`,
+		`cp-remote-logs`,
+		`.cp-remote-env-settings.yml`}
 	return m
 }
 

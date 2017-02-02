@@ -1,13 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/continuouspipe/remote-environment-client/benchmark"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/spf13/cobra"
-	"fmt"
-	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"strings"
 )
 

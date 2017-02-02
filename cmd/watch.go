@@ -5,12 +5,12 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
-	"github.com/spf13/cobra"
-	"strings"
-	"os"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
-	"time"
+	"github.com/spf13/cobra"
 	"io"
+	"os"
+	"strings"
+	"time"
 )
 
 func NewWatchCmd() *cobra.Command {

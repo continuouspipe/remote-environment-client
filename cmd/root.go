@@ -2,14 +2,14 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/continuouspipe/remote-environment-client/cplogs"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"os"
 	"runtime/debug"
 )
 
@@ -112,7 +112,6 @@ func initConfig() {
 
 	//create the config file if it does not exist
 	configFileUsed := viper.ConfigFileUsed()
-
 
 	_, err = os.OpenFile(configFileUsed, os.O_RDWR|os.O_CREATE, 0664)
 	checkErr(err)

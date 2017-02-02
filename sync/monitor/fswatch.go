@@ -13,12 +13,12 @@ package monitor
 
 import (
 	"fmt"
-	"os"
-	"sync"
-	"time"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/path/filepath"
 	"github.com/fsnotify/fsnotify"
+	"os"
+	"sync"
+	"time"
 )
 
 func init() {

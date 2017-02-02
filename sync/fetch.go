@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/continuouspipe/remote-environment-client/config"
-	"github.com/continuouspipe/remote-environment-client/osapi"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/continuouspipe/remote-environment-client/osapi"
 )
 
 type Fetcher interface {

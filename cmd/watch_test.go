@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"testing"
+	"github.com/continuouspipe/remote-environment-client/sync"
+	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/test"
 	"k8s.io/client-go/pkg/api/v1"
 	"os"
-	"github.com/continuouspipe/remote-environment-client/sync"
-	"github.com/continuouspipe/remote-environment-client/sync/monitor"
+	"testing"
 )
 
 func TestWatch(t *testing.T) {
