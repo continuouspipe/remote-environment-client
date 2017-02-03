@@ -4,7 +4,6 @@ package git
 
 import "github.com/continuouspipe/remote-environment-client/osapi"
 
-
 type RevParseExecutor interface {
 	GetLocalBranchName() (string, error)
 }

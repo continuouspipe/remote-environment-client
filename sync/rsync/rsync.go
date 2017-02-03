@@ -15,8 +15,7 @@ var RsyncRsh RsyncSyncer
 var RsyncDaemon RsyncSyncer
 
 func GetRsync() RsyncSyncer {
-	//TODO: remove  || runtime.GOOS == "darwin" as is only there for testing before committing
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+	if runtime.GOOS == "windows" {
 		return RsyncDaemon
 	}
 	return RsyncRsh

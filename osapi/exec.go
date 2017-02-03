@@ -1,11 +1,11 @@
 package osapi
 
 import (
+	"bufio"
+	"fmt"
 	"io"
 	"os/exec"
 	"strings"
-	"bufio"
-	"fmt"
 
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 )
@@ -82,6 +82,10 @@ func StartProcess(scmd SCommand, killProcess chan bool, arg ...string) error {
 
 	cplogs.V(5).Infoln("wait for command to finish")
 
+	if killProcess == nil {
+		killProcess = make(chan bool, 1)
+	}
+
 	errChan := make(chan error, 1)
 
 	go func() {
@@ -95,9 +99,9 @@ func StartProcess(scmd SCommand, killProcess chan bool, arg ...string) error {
 		}
 		return err
 	case err := <-errChan:
-		cplogs.V(3).Infof("command error: %s", err.Error())
-		cplogs.Flush()
-		return err
+		if err != nil {
+			cplogs.V(3).Infof("command error: %s", err.Error())
+		}
 	}
 
 	return nil

@@ -5,7 +5,6 @@ package git
 
 import "github.com/continuouspipe/remote-environment-client/osapi"
 
-
 type PushExecutor interface {
 	Push(localBranch string, remoteName string, remoteBranch string) (string, error)
 	DeleteRemote(remoteName string, remoteBranch string) (string, error)

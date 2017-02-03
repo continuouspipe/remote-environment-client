@@ -12,8 +12,7 @@ var RfetchRsh RsyncFetcher
 var RfetchDaemon RsyncFetcher
 
 func GetRfetch() RsyncFetcher {
-	//TODO: remove  || runtime.GOOS == "darwin" as is only there for testing before committing
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+	if runtime.GOOS == "windows" {
 		return RfetchDaemon
 	}
 	return RfetchRsh

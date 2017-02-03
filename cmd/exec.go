@@ -1,15 +1,15 @@
 package cmd
 
 import (
-	"strings"
-	"os"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
+	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/spf13/cobra"
-	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 )
 
 var execExample = `

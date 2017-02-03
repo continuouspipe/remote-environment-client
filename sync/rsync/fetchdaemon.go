@@ -1,17 +1,19 @@
 package rsync
 
 import (
-	"fmt"
 	"bytes"
-	"os"
-	"time"
-	"strings"
+	"fmt"
 	"io/ioutil"
+	"net"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/continuouspipe/remote-environment-client/cplogs"
-	"github.com/continuouspipe/remote-environment-client/osapi"
-	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
+	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
+	"github.com/continuouspipe/remote-environment-client/osapi"
+	"strconv"
 )
 
 func init() {
@@ -24,8 +26,11 @@ func NewRsyncDaemonFetch() *RsyncDaemonFetch {
 	return d
 }
 
-const startTimeout = 10
-
+const (
+	commandTimeout     = 10
+	rsyncConfigSection = "root"
+	portForward        = 31986
+)
 const startDaemon = `
 TMP=${TMP:-/tmp}
 CONFIG=$(echo -n "" > ${TMP}/%[1]s && echo ${TMP}/%[1]s)
@@ -54,7 +59,6 @@ type RsyncDaemonFetch struct {
 func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod string, filePath string) error {
 	configFile := "rsyncd.conf"
 	pidFile := "rsyncd-pid.conf"
-	port := 9999
 
 	r.kscmd = kexec.KSCommand{}
 	r.kscmd.KubeConfigKey = kubeConfigKey
@@ -63,7 +67,7 @@ func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod st
 	r.kscmd.Stderr = ioutil.Discard
 	r.kscmd.Stdout = ioutil.Discard
 
-	errChan := r.StartDaemon(configFile, pidFile, port)
+	errChan := r.StartDaemon(configFile, pidFile, portForward)
 
 	err := r.WaitForDaemon(pidFile, errChan)
 	if err != nil {
@@ -71,7 +75,10 @@ func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod st
 	}
 	defer r.KillDaemon(pidFile)
 
-	stopChan := r.StartPortForward("9999:9999")
+	stopChan, err := r.StartPortForward(strconv.Itoa(portForward))
+	if err != nil {
+		return err
+	}
 	defer r.StopPortForward(stopChan)
 
 	args := []string{
@@ -85,10 +92,10 @@ func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod st
 
 	if filePath == "" {
 		cplogs.V(5).Infoln("fetching all files")
-		args = append(args, r.GetRsyncURL(port, "root", "app"))
+		args = append(args, r.GetRsyncURL(portForward, rsyncConfigSection, "app"))
 	} else {
 		cplogs.V(5).Infof("fetching specified file %s", filePath)
-		args = append(args, r.GetRsyncURL(port, "root", "app/"+filePath))
+		args = append(args, r.GetRsyncURL(portForward, rsyncConfigSection, "app/"+filePath))
 	}
 
 	currentDir, err := os.Getwd()
@@ -134,9 +141,9 @@ func (r RsyncDaemonFetch) WaitForDaemon(pidFile string, errChan *chan error) err
 	r.kscmd.Stdin = bytes.NewBufferString(fmt.Sprintf(checkRunningDeamon, pidFile))
 	startTime := time.Now()
 	for {
-		if time.Since(startTime) > (startTimeout * time.Second) {
+		if time.Since(startTime) > commandTimeout*time.Second {
 			cplogs.V(4).Infof("rsync deamon start timeout")
-			return fmt.Errorf("Rsync deamon start timeout afer waiting %d seconds", startTimeout)
+			return fmt.Errorf("Rsync deamon start timeout afer waiting %d seconds", commandTimeout)
 		}
 		err := r.executor.StartProcess(r.kscmd, "sh")
 		if err == nil {
@@ -145,7 +152,7 @@ func (r RsyncDaemonFetch) WaitForDaemon(pidFile string, errChan *chan error) err
 		if len(*errChan) > 0 {
 			return <-*errChan
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 	}
 	return nil
 }
@@ -154,19 +161,41 @@ func (r RsyncDaemonFetch) GetRsyncURL(port int, label string, path string) strin
 	return fmt.Sprintf("rsync://127.0.0.1:%d/%s/%s", port, label, strings.TrimPrefix(path, "/"))
 }
 
-func (r RsyncDaemonFetch) StartPortForward(ports string) (stopChan chan bool) {
+func (r RsyncDaemonFetch) StartPortForward(port string) (*chan bool, error) {
 	killProcess := make(chan bool, 1)
 	cplogs.V(5).Infoln("starting port forward in the background")
 	go func() {
-		err := kubectlapi.Forward(r.kscmd.KubeConfigKey, r.kscmd.Environment, r.kscmd.Pod, ports, killProcess)
+		err := kubectlapi.Forward(r.kscmd.KubeConfigKey, r.kscmd.Environment, r.kscmd.Pod, port+":"+port, killProcess)
 		if err != nil {
 			cplogs.V(4).Infoln("an error occured during port forward error: %s", err.Error())
 		}
 	}()
-	return stopChan
+
+	//wait until the port is open
+	startTime := time.Now()
+	for {
+		if time.Since(startTime) > commandTimeout*time.Second {
+			return nil, fmt.Errorf("port forwarding timeout after %d seconds", commandTimeout)
+		}
+		cplogs.V(5).Infof("verifying if %s is open", "127.0.0.1:"+port)
+		conn, err := net.DialTimeout("tcp", "127.0.0.1:"+port, 2*time.Second)
+		if err == nil {
+			cplogs.V(5).Infof("%s is open", "127.0.0.1:"+port)
+			conn.Close()
+			break
+		}
+		cplogs.V(5).Infof("%s is still closed, retrying..", "127.0.0.1:"+port)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	return &killProcess, nil
 }
 
-func (r RsyncDaemonFetch) StopPortForward(stopChan chan bool) {
-	cplogs.V(5).Infoln("stopping port forward")
-	close(stopChan)
+func (r RsyncDaemonFetch) StopPortForward(stopChan *chan bool) {
+	if stopChan == nil {
+		cplogs.V(5).Infoln("was not possible to stop the port forwarding")
+		return
+	}
+	cplogs.V(5).Infoln("stopping port forwarding")
+	close(*stopChan)
 }

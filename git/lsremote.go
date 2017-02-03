@@ -4,7 +4,6 @@ package git
 
 import "github.com/continuouspipe/remote-environment-client/osapi"
 
-
 type LsRemoteExecutor interface {
 	GetList(remoteName string, remoteBranch string) (string, error)
 }

@@ -1,14 +1,14 @@
 package cmd
 
 import (
-	"os"
-	"strings"
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
+	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/spf13/cobra"
-	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
+	"os"
+	"strings"
 )
 
 func NewBashCmd() *cobra.Command {
