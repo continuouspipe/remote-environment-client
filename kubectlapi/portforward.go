@@ -5,7 +5,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/osapi"
 )
 
-func Forward(kubeConfigKey string, environment string, pod string, ports string) error {
+func Forward(kubeConfigKey string, environment string, pod string, ports string, killProcess chan bool) error {
 	args := []string{
 		config.KubeCtlName,
 		"--context=" + kubeConfigKey,
@@ -15,5 +15,5 @@ func Forward(kubeConfigKey string, environment string, pod string, ports string)
 		ports,
 	}
 
-	return osapi.StartProcess(config.AppName, args...)
+	return osapi.StartProcess(getScmd(), killProcess, args...)
 }

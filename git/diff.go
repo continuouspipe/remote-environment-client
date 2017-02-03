@@ -4,6 +4,7 @@ package git
 
 import "github.com/continuouspipe/remote-environment-client/osapi"
 
+
 type DiffExecutor interface {
 	GetDiff(remoteName string, remoteBranch string) (string, error)
 }
@@ -22,6 +23,5 @@ func (g *diff) GetDiff(remoteName string, remoteBranch string) (string, error) {
 		remoteBranch,
 		remoteName + "/" + remoteBranch,
 	}
-
-	return osapi.CommandExec("git", args...)
+	return osapi.CommandExec(getGitScmd(), args...)
 }

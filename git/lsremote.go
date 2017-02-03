@@ -4,6 +4,7 @@ package git
 
 import "github.com/continuouspipe/remote-environment-client/osapi"
 
+
 type LsRemoteExecutor interface {
 	GetList(remoteName string, remoteBranch string) (string, error)
 }
@@ -21,6 +22,5 @@ func (g *lsRemote) GetList(remoteName string, remoteBranch string) (string, erro
 		".",
 		remoteName + "/" + remoteBranch,
 	}
-
-	return osapi.CommandExec("git", args...)
+	return osapi.CommandExec(getGitScmd(), args...)
 }

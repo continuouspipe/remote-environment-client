@@ -11,5 +11,5 @@ type Fetcher interface {
 }
 
 func GetFetcher() Fetcher {
-	return rsync.Rfetch
+	return rsync.GetRfetch()
 }

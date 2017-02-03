@@ -3,6 +3,7 @@ package kubectlapi
 import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/osapi"
+	"os"
 )
 
 func ClusterInfo(kubeConfigKey string) (string, error) {
@@ -10,6 +11,14 @@ func ClusterInfo(kubeConfigKey string) (string, error) {
 		config.KubeCtlName,
 		"--context=" + kubeConfigKey,
 		"cluster-info"}
+	return osapi.CommandExec(getScmd(), args...)
+}
 
-	return osapi.CommandExec(config.AppName, args...)
+func getScmd() osapi.SCommand {
+	scmd := osapi.SCommand{}
+	scmd.Name = config.AppName
+	scmd.Stdin = os.Stdin
+	scmd.Stdout = os.Stdout
+	scmd.Stderr = os.Stderr
+	return scmd
 }

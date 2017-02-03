@@ -1,64 +1,29 @@
 package osapi
 
 import (
-	"os"
+	"io"
 	"os/exec"
 	"strings"
-
 	"bufio"
 	"fmt"
+
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 )
 
+//reduced version of the os.Command to pass in minimal information required by the osapi package
+type SCommand struct {
+	Name   string
+	Stdin  io.Reader
+	Stdout io.Writer
+	Stderr io.Writer
+}
+
 //Executes a command and waits for it to finish
-func CommandExec(name string, arg ...string) (string, error) {
-	cmd := exec.Command(name, arg...)
-	return executeCmd(cmd)
-}
+func CommandExec(scmd SCommand, arg ...string) (string, error) {
+	cmd := exec.Command(scmd.Name, arg...)
+	cmd.Stdin = scmd.Stdin
+	cmd.Stderr = scmd.Stderr
 
-//execute the command and write output into log file
-//and optionally writes it on a file descriptor (e.g. os.Stdout)
-func CommandExecL(name string, file *os.File, arg ...string) error {
-	cmd := exec.Command(name, arg...)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		cplogs.Fatal(err)
-	}
-	if err := cmd.Start(); err != nil {
-		cplogs.Fatal(err)
-		return err
-	}
-
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		line := scanner.Text()
-		cplogs.V(5).Infoln(line)
-		if file != nil {
-			fmt.Fprintln(file, line)
-		}
-	}
-	return nil
-}
-
-//Exec a command and then continues without waiting
-func StartProcess(name string, arg ...string) error {
-	cmd := exec.Command(name, arg...)
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	err := cmd.Start()
-	if err != nil {
-		return err
-	}
-	cplogs.V(5).Infoln("wait for command to finish")
-	err = cmd.Wait()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func executeCmd(cmd *exec.Cmd) (string, error) {
 	cplogs.V(5).Infof("executing command path: %#v with arguments: %#v", cmd.Path, cmd.Args)
 	cplogs.Flush()
 	out, err := cmd.Output()
@@ -72,4 +37,68 @@ func executeCmd(cmd *exec.Cmd) (string, error) {
 	cplogs.Flush()
 	//remove newline and space from string
 	return strings.Trim(sout, "\n "), nil
+}
+
+//execute the command and write output into log file
+func CommandExecL(scmd SCommand, arg ...string) error {
+	cmd := exec.Command(scmd.Name, arg...)
+	cmd.Stdin = scmd.Stdin
+	cmd.Stderr = scmd.Stderr
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		cplogs.Fatal(err)
+	}
+	if err := cmd.Start(); err != nil {
+		cplogs.Fatal(err)
+		return err
+	}
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+		cplogs.V(5).Infoln(line)
+		if cmd.Stdout != nil {
+			fmt.Fprintln(cmd.Stdout, line)
+		}
+	}
+	return nil
+}
+
+//Start a process and waits for it to finish
+//it redirects the cmd Stdin Stdout and Stderr in the current process ones
+func StartProcess(scmd SCommand, killProcess chan bool, arg ...string) error {
+	cmd := exec.Command(scmd.Name, arg...)
+	cmd.Stderr = scmd.Stderr
+	cmd.Stdin = scmd.Stdin
+	cmd.Stdout = scmd.Stdout
+
+	cplogs.V(5).Infof("executing command path: %s with arguments: %#v", cmd.Path, cmd.Args)
+	cplogs.Flush()
+	err := cmd.Start()
+	if err != nil {
+		return err
+	}
+
+	cplogs.V(5).Infoln("wait for command to finish")
+
+	errChan := make(chan error, 1)
+
+	go func() {
+		errChan <- cmd.Wait()
+	}()
+
+	select {
+	case <-killProcess:
+		if err := cmd.Process.Kill(); err != nil {
+			cplogs.V(3).Infof("failed to kill: %s", err.Error())
+		}
+		return err
+	case err := <-errChan:
+		cplogs.V(3).Infof("command error: %s", err.Error())
+		cplogs.Flush()
+		return err
+	}
+
+	return nil
 }

@@ -1,5 +1,7 @@
 package rsync
 
+import "runtime"
+
 //use rsync to sync the files specified in filePaths. When filePaths is an empty slice, it syncs all project files
 type RsyncSyncer interface {
 	Sync(filePaths []string) error
@@ -9,5 +11,13 @@ type RsyncSyncer interface {
 	SetIndividualFileSyncThreshold(int)
 }
 
-//this is initialised by either by rsyncrsh or rsyncdaemon depending on the build constrains
-var Rsync RsyncSyncer
+var RsyncRsh RsyncSyncer
+var RsyncDaemon RsyncSyncer
+
+func GetRsync() RsyncSyncer {
+	//TODO: remove  || runtime.GOOS == "darwin" as is only there for testing before committing
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		return RsyncDaemon
+	}
+	return RsyncRsh
+}

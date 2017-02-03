@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	Rsync = NewRSyncRsh()
+	RsyncRsh = NewRSyncRsh()
 }
 
 const SyncExcluded = ".cp-remote-ignore"
@@ -79,7 +79,13 @@ func (o *RSyncRsh) Sync(paths []string) error {
 
 	cplogs.V(5).Infof("rsync arguments: %s", args)
 
-	return osapi.CommandExecL("rsync", os.Stdout, args...)
+	scmd := osapi.SCommand{}
+	scmd.Name = "rsync"
+	scmd.Stdin = os.Stdin
+	scmd.Stdout = os.Stdout
+	scmd.Stderr = os.Stderr
+
+	return osapi.CommandExecL(scmd, args...)
 }
 
 func (o RSyncRsh) getRelativePathList(paths []string) ([]string, error) {

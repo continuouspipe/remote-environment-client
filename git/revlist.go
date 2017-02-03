@@ -24,8 +24,7 @@ func (g *revList) GetLocalBranchAheadCount(localBranch string, remoteName string
 		"--count",
 		fmt.Sprintf("%s/%s...%s", remoteName, remoteBranch, localBranch),
 	}
-
-	scount, err := osapi.CommandExec("git", args...)
+	scount, err := osapi.CommandExec(getGitScmd(), args...)
 	if err != nil {
 		return 0, err
 	}

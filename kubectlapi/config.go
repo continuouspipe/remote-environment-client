@@ -14,8 +14,7 @@ func ConfigSetAuthInfo(environment string, username string, password string) (st
 		"--username=" + username,
 		"--password=" + password,
 	}
-
-	return osapi.CommandExec(config.AppName, args...)
+	return osapi.CommandExec(getScmd(), args...)
 }
 
 func ConfigSetCluster(environment string, clusterIp string) (string, error) {
@@ -27,8 +26,7 @@ func ConfigSetCluster(environment string, clusterIp string) (string, error) {
 		"--server=https://" + clusterIp,
 		"--insecure-skip-tls-verify=true",
 	}
-
-	return osapi.CommandExec(config.AppName, args...)
+	return osapi.CommandExec(getScmd(), args...)
 }
 
 func ConfigSetContext(environment string, username string) (string, error) {
@@ -40,6 +38,5 @@ func ConfigSetContext(environment string, username string) (string, error) {
 		"--cluster=" + environment,
 		"--user=" + environment + "-" + username,
 	}
-
-	return osapi.CommandExec(config.AppName, args...)
+	return osapi.CommandExec(getScmd(), args...)
 }

@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"strings"
+	"os"
 	"fmt"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/spf13/cobra"
-	"strings"
+	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 )
 
 var execExample = `
@@ -99,5 +102,13 @@ func (h *ExecHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 	pod, err := podsFilter.ByService(allPods, h.Service)
 	checkErr(err)
 
-	return spawn.CommandExec(h.kubeConfigKey, environment, pod.GetName(), args...)
+	kscmd := kexec.KSCommand{}
+	kscmd.KubeConfigKey = h.kubeConfigKey
+	kscmd.Environment = environment
+	kscmd.Pod = pod.GetName()
+	kscmd.Stdin = os.Stdin
+	kscmd.Stdout = os.Stdout
+	kscmd.Stderr = os.Stderr
+
+	return spawn.CommandExec(kscmd, args...)
 }

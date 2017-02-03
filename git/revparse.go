@@ -2,9 +2,8 @@
 // e.g. git rev-parse --abbrev-ref HEAD
 package git
 
-import (
-	"github.com/continuouspipe/remote-environment-client/osapi"
-)
+import "github.com/continuouspipe/remote-environment-client/osapi"
+
 
 type RevParseExecutor interface {
 	GetLocalBranchName() (string, error)
@@ -22,8 +21,7 @@ func (g *revParse) GetLocalBranchName() (string, error) {
 		"--abbrev-ref",
 		"HEAD",
 	}
-
-	res, err := osapi.CommandExec("git", args...)
+	res, err := osapi.CommandExec(getGitScmd(), args...)
 	if err != nil {
 		return "", err
 	}

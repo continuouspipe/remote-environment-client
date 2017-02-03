@@ -3,9 +3,8 @@
 // e.g. git push "$(remote_name)" --delete "$(remote_branch)"
 package git
 
-import (
-	"github.com/continuouspipe/remote-environment-client/osapi"
-)
+import "github.com/continuouspipe/remote-environment-client/osapi"
+
 
 type PushExecutor interface {
 	Push(localBranch string, remoteName string, remoteBranch string) (string, error)
@@ -25,8 +24,7 @@ func (g *push) Push(localBranch string, remoteName string, remoteBranch string) 
 		remoteName,
 		localBranch + ":" + remoteBranch,
 	}
-
-	return osapi.CommandExec("git", args...)
+	return osapi.CommandExec(getGitScmd(), args...)
 }
 
 func (g *push) DeleteRemote(remoteName string, remoteBranch string) (string, error) {
@@ -36,6 +34,5 @@ func (g *push) DeleteRemote(remoteName string, remoteBranch string) (string, err
 		"--delete",
 		remoteBranch,
 	}
-
-	return osapi.CommandExec("git", args...)
+	return osapi.CommandExec(getGitScmd(), args...)
 }

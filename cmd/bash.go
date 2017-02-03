@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"os"
+	"strings"
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/spf13/cobra"
-	"strings"
+	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 )
 
 func NewBashCmd() *cobra.Command {
@@ -96,5 +98,13 @@ func (h *BashHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 		return err
 	}
 
-	return executor.StartProcess(h.kubeConfigKey, environment, pod.GetName(), "/bin/bash")
+	kscmd := kexec.KSCommand{}
+	kscmd.KubeConfigKey = h.kubeConfigKey
+	kscmd.Environment = environment
+	kscmd.Pod = pod.GetName()
+	kscmd.Stdin = os.Stdin
+	kscmd.Stdout = os.Stdout
+	kscmd.Stderr = os.Stderr
+
+	return executor.StartProcess(kscmd, "/bin/bash")
 }

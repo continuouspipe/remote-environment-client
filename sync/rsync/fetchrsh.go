@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	Rfetch = NewRsyncRshFetch()
+	RfetchRsh = NewRsyncRshFetch()
 }
 
 type RsyncRshFetch struct{}
@@ -53,5 +53,12 @@ func (r RsyncRshFetch) Fetch(kubeConfigKey string, environment string, pod strin
 
 	cplogs.V(5).Infof("rsync arguments: %s", args)
 	cplogs.Flush()
-	return osapi.CommandExecL("rsync", os.Stdout, args...)
+
+	scmd := osapi.SCommand{}
+	scmd.Name = "rsync"
+	scmd.Stdin = os.Stdin
+	scmd.Stdout = os.Stdout
+	scmd.Stderr = os.Stderr
+
+	return osapi.CommandExecL(scmd, args...)
 }

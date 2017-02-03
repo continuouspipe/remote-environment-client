@@ -15,7 +15,7 @@ type Syncer interface {
 }
 
 func GetSyncer() Syncer {
-	return rsync.Rsync
+	return rsync.GetRsync()
 }
 
 //this wraps a Syncer struct in order to implement the EventsObserver
