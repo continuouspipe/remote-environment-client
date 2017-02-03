@@ -14,6 +14,7 @@ import (
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/osapi"
 	"strconv"
+	"path/filepath"
 )
 
 func init() {

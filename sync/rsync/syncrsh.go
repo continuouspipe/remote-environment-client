@@ -16,8 +16,6 @@ func init() {
 	RsyncRsh = NewRSyncRsh()
 }
 
-const SyncExcluded = ".cp-remote-ignore"
-
 type RSyncRsh struct {
 	kubeConfigKey, environment  string
 	pod                         string
