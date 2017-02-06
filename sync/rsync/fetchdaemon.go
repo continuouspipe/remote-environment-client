@@ -46,7 +46,7 @@ TMP=${TMP:-/tmp}
 PID=${TMP}/%[1]s
 kill $(cat ${PID})
 `
-const checkRunningDeamon = `set -e
+const checkRsyncDaemon = `set -e
 TMP=${TMP:-/tmp}
 PID=${TMP}/%[1]s
 ls ${PID}
@@ -86,7 +86,7 @@ func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod st
 		"-zrlptDv",
 		"--blocking-io",
 		"--force",
-		`--exclude=".*"`,
+		`--exclude=.*`,
 		fmt.Sprintf(`--exclude-from=%s`, SyncExcluded),
 		"--",
 	}
@@ -103,7 +103,7 @@ func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod st
 	if err != nil {
 		return err
 	}
-	args = append(args, currentDir)
+	args = append(args, convertWindowsPath(currentDir))
 
 	cplogs.V(5).Infof("rsync arguments: %s", args)
 	cplogs.Flush()
@@ -118,7 +118,9 @@ func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod st
 }
 
 func (r RsyncDaemonFetch) StartDaemon(configFile string, pidFile string, port int) *chan error {
-	r.kscmd.Stdin = bytes.NewBufferString(fmt.Sprintf(startDaemon, configFile, pidFile, port))
+	start := fmt.Sprintf(startDaemon, configFile, pidFile, port)
+	cplogs.V(5).Infof("Executing remotely script:\n%s\n", start)
+	r.kscmd.Stdin = bytes.NewBufferString(start)
 	errChan := make(chan error, 1)
 	go func() {
 		err := r.executor.StartProcess(r.kscmd, "sh")
@@ -130,7 +132,9 @@ func (r RsyncDaemonFetch) StartDaemon(configFile string, pidFile string, port in
 }
 
 func (r RsyncDaemonFetch) KillDaemon(pidFile string) error {
-	r.kscmd.Stdin = bytes.NewBufferString(fmt.Sprintf(killDaemon, pidFile))
+	stop := fmt.Sprintf(killDaemon, pidFile)
+	cplogs.V(5).Infof("Executing remotely script:\n%s\n", stop)
+	r.kscmd.Stdin = bytes.NewBufferString(stop)
 	err := r.executor.StartProcess(r.kscmd, "sh")
 	if err != nil {
 		cplogs.V(4).Infof("error when killing rsync daemon with pid file: %s, error %s", pidFile, err.Error())
@@ -139,7 +143,9 @@ func (r RsyncDaemonFetch) KillDaemon(pidFile string) error {
 }
 
 func (r RsyncDaemonFetch) WaitForDaemon(pidFile string, errChan *chan error) error {
-	r.kscmd.Stdin = bytes.NewBufferString(fmt.Sprintf(checkRunningDeamon, pidFile))
+	check := fmt.Sprintf(checkRsyncDaemon, pidFile)
+	cplogs.V(5).Infof("Executing remotely script:\n%s\n", check)
+	r.kscmd.Stdin = bytes.NewBufferString(check)
 	startTime := time.Now()
 	for {
 		if time.Since(startTime) > commandTimeout*time.Second {
@@ -188,7 +194,6 @@ func (r RsyncDaemonFetch) StartPortForward(port string) (*chan bool, error) {
 		cplogs.V(5).Infof("%s is still closed, retrying..", "127.0.0.1:"+port)
 		time.Sleep(100 * time.Millisecond)
 	}
-
 	return &killProcess, nil
 }
 
@@ -199,4 +204,26 @@ func (r RsyncDaemonFetch) StopPortForward(stopChan *chan bool) {
 	}
 	cplogs.V(5).Infoln("stopping port forwarding")
 	close(*stopChan)
+}
+
+// convertWindowsPath converts a windows native path to a path that can be used by
+// the rsync command in windows.
+// It can take one of three forms:
+// 1 - relative to current dir or relative to current drive
+//     \mydir\subdir or subdir
+//     For these, it's only sufficient to change '\' to '/'
+// 2 - absolute path with drive
+//     d:\mydir\subdir
+//     These need to be converted to /cygdrive/<drive-letter>/rest/of/path
+// 3 - UNC path
+//     \\server\c$\mydir\subdir
+//     For these it should be sufficient to change '\' to '/'
+func convertWindowsPath(path string) string {
+	// If the path starts with a single letter followed by a ":", it needs to
+	// be converted /cygwin/<drive>/path form
+	parts := strings.SplitN(path, ":", 2)
+	if len(parts) > 1 && len(parts[0]) == 1 {
+		return fmt.Sprintf("/cygdrive/%s/%s", strings.ToLower(parts[0]), strings.TrimPrefix(filepath.ToSlash(parts[1]), "/"))
+	}
+	return filepath.ToSlash(path)
 }

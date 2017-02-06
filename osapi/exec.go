@@ -58,8 +58,11 @@ func CommandExecL(scmd SCommand, arg ...string) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		cplogs.V(5).Infoln(line)
-		if cmd.Stdout != nil {
-			fmt.Fprintln(cmd.Stdout, line)
+
+		//cmd.Stdout can't be set before execution, print on the Stdout specified
+		//on the SCommand instead
+		if scmd.Stdout != nil {
+			fmt.Fprintln(scmd.Stdout, line)
 		}
 	}
 	return nil

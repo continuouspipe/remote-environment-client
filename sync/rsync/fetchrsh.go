@@ -36,7 +36,7 @@ func (r RsyncRshFetch) Fetch(kubeConfigKey string, environment string, pod strin
 		"-zrlptDv",
 		"--blocking-io",
 		"--force",
-		`--exclude=".*"`,
+		`--exclude=.*`,
 		fmt.Sprintf(`--exclude-from=%s`, SyncExcluded),
 		"--",
 	}
