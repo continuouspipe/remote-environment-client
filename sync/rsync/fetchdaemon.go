@@ -1,3 +1,5 @@
+// +build windows
+
 package rsync
 
 import (
@@ -15,6 +17,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/osapi"
 	"strconv"
 	"path/filepath"
+	"runtime"
 )
 
 func init() {
@@ -103,7 +106,11 @@ func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod st
 	if err != nil {
 		return err
 	}
-	args = append(args, convertWindowsPath(currentDir))
+
+	if runtime.GOOS == "windows" {
+		currentDir = convertWindowsPath(currentDir)
+	}
+	args = append(args, currentDir)
 
 	cplogs.V(5).Infof("rsync arguments: %s", args)
 	cplogs.Flush()

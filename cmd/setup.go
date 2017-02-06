@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 	"net"
 	"time"
+	"strings"
 )
 
 func NewSetupCmd() *cobra.Command {
@@ -60,8 +61,8 @@ func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter con
 	remoteBranch := qp.RepeatIfEmpty("What is the name of the Git branch you are using for your remote environment?")
 
 	settings := &config.ApplicationSettings{
-		ProjectKey:          projectKey,
-		RemoteBranch:        remoteBranch,
+		ProjectKey:          strings.ToLower(projectKey),
+		RemoteBranch:        strings.ToLower(remoteBranch),
 		RemoteName:          qp.ApplyDefault("What is your github remote name? (defaults to: origin)", "origin"),
 		DefaultService:      qp.ApplyDefault("What is the default container for the watch, bash, fetch and resync commands? (defaults to: web)", "web"),
 		ClusterIp:           qp.RepeatUntilValid("What is the IP of the cluster?", h.IsValidIpAddress),
@@ -71,7 +72,7 @@ func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter con
 		KeenWriteKey:        qp.ReadString("What is your keen.io write key? (Optional, only needed if you want to record usage stats)"),
 		KeenProjectId:       qp.ReadString("What is your keen.io project id? (Optional, only needed if you want to record usage stats)"),
 		KeenEventCollection: qp.ReadString("What is your keen.io event collection?  (Optional, only needed if you want to record usage stats)"),
-		Environment:         config.GetEnvironment(projectKey, remoteBranch),
+		Environment:         strings.ToLower(config.GetEnvironment(projectKey, remoteBranch)),
 	}
 
 	yamlWriter.Save(settings)
