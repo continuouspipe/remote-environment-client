@@ -85,7 +85,8 @@ func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod st
 		return err
 	}
 	args := []string{
-		"-zrltDv",
+		"-zrlDv",
+		"--omit-dir-times",
 		"--blocking-io",
 		"--force",
 		`--exclude=.*`,
