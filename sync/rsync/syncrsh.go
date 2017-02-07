@@ -10,6 +10,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/osapi"
+	"github.com/continuouspipe/remote-environment-client/util/slice"
 )
 
 func init() {
@@ -55,6 +56,8 @@ func (o *RSyncRsh) Sync(paths []string) error {
 	if _, err := os.Stat(SyncExcluded); err == nil {
 		args = append(args, fmt.Sprintf(`--exclude-from=%s`, SyncExcluded))
 	}
+
+	paths = slice.RemoveDuplicateString(paths)
 
 	if len(paths) > o.individualFileSyncThreshold {
 		cplogs.V(5).Infof("batch file sync, files to sync %d, threshold: %d", len(paths), o.individualFileSyncThreshold)
