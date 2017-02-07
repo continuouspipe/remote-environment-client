@@ -5,12 +5,11 @@ import (
 	"runtime"
 	"os"
 	"io/ioutil"
-	"strconv"
+	"path/filepath"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/osapi"
 	"github.com/continuouspipe/remote-environment-client/util/slice"
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
-	"path/filepath"
 )
 
 func init() {
@@ -52,23 +51,17 @@ func (r *RSyncDaemon) Sync(filePaths []string) error {
 	kscmd.Stdout = ioutil.Discard
 	r.remoteRsync.SetKSCommand(kscmd)
 
-
-	errChan := r.remoteRsync.StartDaemon(configFile, pidFile, portForward)
-
-	err := r.remoteRsync.WaitForDaemon(pidFile, errChan)
+	err := r.remoteRsync.StartDaemonOnRandomPort()
 	if err != nil {
 		return err
 	}
 	defer r.remoteRsync.KillDaemon(pidFile)
 
-	stopChan, err := r.remoteRsync.StartPortForward(strconv.Itoa(portForward))
+	stopChan, err := r.remoteRsync.StartPortForwardOnRandomPort()
 	if err != nil {
 		return err
 	}
 	defer r.remoteRsync.StopPortForward(stopChan)
-	if err != nil {
-		return err
-	}
 
 	args := []string{
 		"-rlptDv",
@@ -81,15 +74,7 @@ func (r *RSyncDaemon) Sync(filePaths []string) error {
 		args = append(args, fmt.Sprintf(`--exclude-from=%s`, SyncExcluded))
 	}
 
-	remoteRsyncUrl := r.remoteRsync.GetRsyncURL(portForward, rsyncConfigSection, "app")
-
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	if runtime.GOOS == "windows" {
-		currentDir = convertWindowsPath(currentDir)
-	}
+	remoteRsyncUrl := r.remoteRsync.GetRsyncURL(rsyncConfigSection, "app")
 
 	filePaths = slice.RemoveDuplicateString(filePaths)
 
@@ -97,7 +82,7 @@ func (r *RSyncDaemon) Sync(filePaths []string) error {
 		cplogs.V(5).Infof("batch file sync, files to sync %d, threshold: %d", len(filePaths), r.individualFileSyncThreshold)
 		args = append(args,
 			"--",
-			currentDir,
+			".",
 		)
 		args = append(args, remoteRsyncUrl)
 	} else {

@@ -7,15 +7,16 @@ import (
 	"net"
 	"os"
 	"strings"
+	"path/filepath"
 	"time"
+	"runtime"
+	"math/rand"
+	"strconv"
 
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/osapi"
-	"strconv"
-	"path/filepath"
-	"runtime"
 )
 
 func init() {
@@ -29,12 +30,13 @@ func NewRsyncDaemonFetch() *RsyncDaemonFetch {
 }
 
 const (
-	commandTimeout     = 10
-	rsyncConfigSection = "root"
-	portForward        = 31986
-	configFile         = "rsyncd.conf"
-	pidFile            = "rsyncd-pid.conf"
+	commandTimeout       = 10
+	differentPortTimeout = 20
+	rsyncConfigSection   = "root"
+	configFile           = "rsyncd.conf"
+	pidFile              = "rsyncd-pid.conf"
 )
+
 const startDaemon = `
 TMP=${TMP:-/tmp}
 CONFIG=$(echo -n "" > ${TMP}/%[1]s && echo ${TMP}/%[1]s)
@@ -68,22 +70,18 @@ func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod st
 	kscmd.Stdout = ioutil.Discard
 	r.remoteRsync.SetKSCommand(kscmd)
 
-	errChan := r.remoteRsync.StartDaemon(configFile, pidFile, portForward)
-
-	err := r.remoteRsync.WaitForDaemon(pidFile, errChan)
+	err := r.remoteRsync.StartDaemonOnRandomPort()
 	if err != nil {
 		return err
 	}
 	defer r.remoteRsync.KillDaemon(pidFile)
 
-	stopChan, err := r.remoteRsync.StartPortForward(strconv.Itoa(portForward))
+	stopChan, err := r.remoteRsync.StartPortForwardOnRandomPort()
 	if err != nil {
 		return err
 	}
 	defer r.remoteRsync.StopPortForward(stopChan)
-	if err != nil {
-		return err
-	}
+
 	args := []string{
 		"-zrlDv",
 		"--omit-dir-times",
@@ -96,10 +94,10 @@ func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod st
 
 	if filePath == "" {
 		cplogs.V(5).Infoln("fetching all files")
-		args = append(args, r.remoteRsync.GetRsyncURL(portForward, rsyncConfigSection, "app"))
+		args = append(args, r.remoteRsync.GetRsyncURL(rsyncConfigSection, "app")+"/")
 	} else {
 		cplogs.V(5).Infof("fetching specified file %s", filePath)
-		args = append(args, r.remoteRsync.GetRsyncURL(portForward, rsyncConfigSection, "app/"+filePath))
+		args = append(args, r.remoteRsync.GetRsyncURL(rsyncConfigSection, "app/"+filePath))
 	}
 
 	currentDir, err := os.Getwd()
@@ -125,12 +123,18 @@ func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod st
 }
 
 type RemoteRsyncDeamon struct {
-	executor kexec.Executor
-	kscmd    kexec.KSCommand
+	executor      kexec.Executor
+	kscmd         kexec.KSCommand
+	localPort     int
+	remotePort    int
+	portRangeFrom int
+	portRangeTo   int
 }
 
 func NewRemoteRsyncDeamon() *RemoteRsyncDeamon {
 	r := &RemoteRsyncDeamon{}
+	r.portRangeFrom = 30000
+	r.portRangeTo = 40000
 	r.executor = kexec.NewLocal()
 	return r
 }
@@ -139,8 +143,75 @@ func (r *RemoteRsyncDeamon) SetKSCommand(kscmd kexec.KSCommand) {
 	r.kscmd = kscmd
 }
 
-func (r RemoteRsyncDeamon) StartDaemon(configFile string, pidFile string, port int) *chan error {
-	start := fmt.Sprintf(startDaemon, configFile, pidFile, port)
+// sets the remote port number to a random one between the range specified
+// it then start the rsync daemon and waits for it to start
+// if an error occurs it tries with a different port
+// the attempts continues until a timeout value is reached
+func (r *RemoteRsyncDeamon) StartDaemonOnRandomPort() error {
+	startTime := time.Now()
+	for {
+		r.setRandomRemotePort()
+		errChan := r.startDaemon(configFile, pidFile)
+		err := r.waitForDaemon(pidFile, errChan)
+		if err == nil {
+			break
+		}
+		if time.Since(startTime) > differentPortTimeout*time.Second {
+			return err
+		}
+	}
+	return nil
+}
+
+//run the remote script that kills the rsync daemon
+func (r RemoteRsyncDeamon) KillDaemon(pidFile string) error {
+	stop := fmt.Sprintf(killDaemon, pidFile)
+	cplogs.V(5).Infof("Executing remotely script:\n%s\n", stop)
+	r.kscmd.Stdin = bytes.NewBufferString(stop)
+	err := r.executor.StartProcess(r.kscmd, "sh")
+	if err != nil {
+		cplogs.V(4).Infof("error when killing rsync daemon with pid file: %s, error %s", pidFile, err.Error())
+	}
+	return err
+}
+
+// sets the local port number to a random one between the range specified
+// it then attempt to establish port forwarding from the local port to the remote one
+// if an error occurs it tires with a different port
+// the attempts continues until a timeout value is reached
+func (r *RemoteRsyncDeamon) StartPortForwardOnRandomPort() (*chan bool, error) {
+	startTime := time.Now()
+	var stopChan *chan bool
+	var err error
+	for {
+		r.setRandomLocalPort()
+		stopChan, err = r.startPortForward()
+		if err == nil {
+			break
+		}
+		if time.Since(startTime) > differentPortTimeout*time.Second {
+			return nil, err
+		}
+	}
+	return stopChan, nil
+}
+
+// closes the channel that will then kill the goroutine that is running the port forwarding
+func (r RemoteRsyncDeamon) StopPortForward(stopChan *chan bool) {
+	if stopChan == nil {
+		cplogs.V(5).Infoln("was not possible to stop the port forwarding")
+		return
+	}
+	cplogs.V(5).Infoln("stopping port forwarding")
+	close(*stopChan)
+}
+
+func (r RemoteRsyncDeamon) GetRsyncURL(label string, path string) string {
+	return fmt.Sprintf("rsync://127.0.0.1:%d/%s/%s", r.localPort, label, strings.TrimPrefix(path, "/"))
+}
+
+func (r RemoteRsyncDeamon) startDaemon(configFile string, pidFile string) *chan error {
+	start := fmt.Sprintf(startDaemon, configFile, pidFile, r.remotePort)
 	r.kscmd.Stdin = bytes.NewBufferString(start)
 	errChan := make(chan error, 1)
 	go func() {
@@ -153,18 +224,7 @@ func (r RemoteRsyncDeamon) StartDaemon(configFile string, pidFile string, port i
 	return &errChan
 }
 
-func (r RemoteRsyncDeamon) KillDaemon(pidFile string) error {
-	stop := fmt.Sprintf(killDaemon, pidFile)
-	cplogs.V(5).Infof("Executing remotely script:\n%s\n", stop)
-	r.kscmd.Stdin = bytes.NewBufferString(stop)
-	err := r.executor.StartProcess(r.kscmd, "sh")
-	if err != nil {
-		cplogs.V(4).Infof("error when killing rsync daemon with pid file: %s, error %s", pidFile, err.Error())
-	}
-	return err
-}
-
-func (r RemoteRsyncDeamon) WaitForDaemon(pidFile string, errChan *chan error) error {
+func (r RemoteRsyncDeamon) waitForDaemon(pidFile string, errChan *chan error) error {
 	check := fmt.Sprintf(checkRsyncDaemon, pidFile)
 	r.kscmd.Stdin = bytes.NewBufferString(check)
 	startTime := time.Now()
@@ -187,15 +247,15 @@ func (r RemoteRsyncDeamon) WaitForDaemon(pidFile string, errChan *chan error) er
 	return nil
 }
 
-func (r RemoteRsyncDeamon) GetRsyncURL(port int, label string, path string) string {
-	return fmt.Sprintf("rsync://127.0.0.1:%d/%s/%s/", port, label, strings.TrimPrefix(path, "/"))
-}
+func (r RemoteRsyncDeamon) startPortForward() (*chan bool, error) {
 
-func (r RemoteRsyncDeamon) StartPortForward(port string) (*chan bool, error) {
+	sLocalPort := strconv.Itoa(r.localPort)
+	sRemotePort := strconv.Itoa(r.remotePort)
+
 	killProcess := make(chan bool, 1)
 	cplogs.V(5).Infoln("starting port forward in the background")
 	go func() {
-		err := kubectlapi.Forward(r.kscmd.KubeConfigKey, r.kscmd.Environment, r.kscmd.Pod, port+":"+port, killProcess)
+		err := kubectlapi.Forward(r.kscmd.KubeConfigKey, r.kscmd.Environment, r.kscmd.Pod, sLocalPort+":"+sRemotePort, killProcess)
 		if err != nil {
 			cplogs.V(4).Infoln("an error occured during port forward error: %s", err.Error())
 		}
@@ -207,26 +267,29 @@ func (r RemoteRsyncDeamon) StartPortForward(port string) (*chan bool, error) {
 		if time.Since(startTime) > commandTimeout*time.Second {
 			return nil, fmt.Errorf("port forwarding timeout after %d seconds", commandTimeout)
 		}
-		cplogs.V(5).Infof("verifying if %s is open", "127.0.0.1:"+port)
-		conn, err := net.DialTimeout("tcp", "127.0.0.1:"+port, 2*time.Second)
+		cplogs.V(5).Infof("verifying if %s is open", "127.0.0.1:"+sLocalPort)
+		conn, err := net.DialTimeout("tcp", "127.0.0.1:"+sLocalPort, 2*time.Second)
 		if err == nil {
-			cplogs.V(5).Infof("%s is open", "127.0.0.1:"+port)
+			cplogs.V(5).Infof("%s is open", "127.0.0.1:"+sLocalPort)
 			conn.Close()
 			break
 		}
-		cplogs.V(5).Infof("%s is still closed, retrying..", "127.0.0.1:"+port)
+		cplogs.V(5).Infof("%s is still closed, retrying..", "127.0.0.1:"+sLocalPort)
 		time.Sleep(100 * time.Millisecond)
 	}
 	return &killProcess, nil
 }
 
-func (r RemoteRsyncDeamon) StopPortForward(stopChan *chan bool) {
-	if stopChan == nil {
-		cplogs.V(5).Infoln("was not possible to stop the port forwarding")
-		return
-	}
-	cplogs.V(5).Infoln("stopping port forwarding")
-	close(*stopChan)
+func (r *RemoteRsyncDeamon) setRandomLocalPort() {
+	r.localPort = r.getRandomPort()
+}
+func (r *RemoteRsyncDeamon) setRandomRemotePort() {
+	r.remotePort = r.getRandomPort()
+}
+
+func (r RemoteRsyncDeamon) getRandomPort() int {
+	rand.Seed(time.Now().Unix())
+	return rand.Intn(r.portRangeTo - r.portRangeFrom) + r.portRangeFrom
 }
 
 // convertWindowsPath converts a windows native path to a path that can be used by
