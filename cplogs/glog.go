@@ -337,7 +337,7 @@ func (t *traceLocation) match(file string, line int) bool {
 	if t.line != line {
 		return false
 	}
-	if i := strings.LastIndex(file, "/"); i >= 0 {
+	if i := strings.LastIndex(file, string(filepath.Separator)); i >= 0 {
 		file = file[i+1:]
 	}
 	return t.file == file
@@ -538,7 +538,7 @@ func (l *loggingT) header(s severity, depth int) (*buffer, string, int) {
 		file = "???"
 		line = 1
 	} else {
-		slash := strings.LastIndex(file, "/")
+		slash := strings.LastIndex(file, string(filepath.Separator))
 		if slash >= 0 {
 			file = file[slash+1:]
 		}
@@ -965,7 +965,7 @@ func (l *loggingT) setV(pc uintptr) Level {
 	if strings.HasSuffix(file, ".go") {
 		file = file[:len(file)-3]
 	}
-	if slash := strings.LastIndex(file, "/"); slash >= 0 {
+	if slash := strings.LastIndex(file, string(filepath.Separator)); slash >= 0 {
 		file = file[slash+1:]
 	}
 	for _, filter := range l.vmodule.filter {

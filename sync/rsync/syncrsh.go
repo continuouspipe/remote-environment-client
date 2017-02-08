@@ -96,8 +96,8 @@ func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 				"--include="+filepath.Base(lPath),
 				"--exclude=*",
 				"--",
-				cwd+"/"+filepath.Dir(lPath)+"/",
-				"--:/app/"+filepath.Dir(lPath)+"/")
+				cwd+string(filepath.Separator)+filepath.Dir(lPath)+string(filepath.Separator),
+				"--:/app/"+filepath.Dir(lPath)+string(filepath.Separator))
 
 			fmt.Println(lPath)
 			err := o.executeRsync(lArgs, ioutil.Discard)
@@ -130,7 +130,7 @@ func (o RSyncRsh) syncAllFiles(paths []string, args []string) error {
 		return err
 	}
 	if _, err := os.Stat(SyncExcluded); err == nil {
-		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncExcluded))
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+string(filepath.Separator)+SyncExcluded))
 	}
 	args = append(args,
 		"--relative",
@@ -140,6 +140,7 @@ func (o RSyncRsh) syncAllFiles(paths []string, args []string) error {
 	)
 	return o.executeRsync(args, os.Stdout)
 }
+
 func (rsh RSyncRsh) executeRsync(args []string, stdOut io.Writer) error {
 	cplogs.V(5).Infof("rsync arguments: %s", args)
 	scmd := osapi.SCommand{}
@@ -156,7 +157,7 @@ func (o RSyncRsh) getRelativePathList(paths []string) ([]string, error) {
 		return nil, err
 	}
 	for key, path := range paths {
-		relPath, err := filepath.Rel(cwd, "/"+path)
+		relPath, err := filepath.Rel(cwd, string(filepath.Separator)+path)
 		if err != nil {
 			return nil, err
 		}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"runtime"
 	"os"
+	"io"
 	"io/ioutil"
 	"path/filepath"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
@@ -66,49 +67,82 @@ func (r *RSyncDaemon) Sync(filePaths []string) error {
 	defer r.remoteRsync.StopPortForward(stopChan)
 
 	args := []string{
-		"-rlptDv",
+		"-zrlDv",
+		"--omit-dir-times",
 		"--delete",
-		"--relative",
 		"--blocking-io",
 		"--checksum"}
 
-	if _, err := os.Stat(SyncExcluded); err == nil {
-		args = append(args, fmt.Sprintf(`--exclude-from=%s`, SyncExcluded))
-	}
-
-	remoteRsyncUrl := r.remoteRsync.GetRsyncURL(rsyncConfigSection, "app")
-
 	filePaths = slice.RemoveDuplicateString(filePaths)
 
-	if len(filePaths) > r.individualFileSyncThreshold {
-		cplogs.V(5).Infof("batch file sync, files to sync %d, threshold: %d", len(filePaths), r.individualFileSyncThreshold)
-		args = append(args,
-			"--",
-			".",
-		)
-		args = append(args, remoteRsyncUrl)
+	if len(filePaths) <= r.individualFileSyncThreshold {
+		cplogs.V(5).Infof("individual file sync, files to sync %d, threshold: %d", len(filePaths), r.individualFileSyncThreshold)
+		err = r.syncIndividualFiles(filePaths, args)
 	} else {
-		relPaths, err := r.getRelativePathList(filePaths)
+		err = r.syncAllFiles(filePaths, args)
+	}
+
+	cplogs.Flush()
+	return err
+}
+
+func (o RSyncDaemon) syncIndividualFiles(paths []string, args []string) error {
+	remoteRsyncUrl := o.remoteRsync.GetRsyncURL(rsyncConfigSection, "app")
+
+	paths, err := o.getRelativePathList(paths)
+	if err != nil {
+		return err
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	//this is a workaround to the issue with --delete throwing an error if the local file has been deleted
+	//which we want to delete in the remote pod.
+	//e.g( rsync: link_stat "/path/to/file.txt" failed: No such file or directory (2))
+	//
+	//as a fix, for each path we need to run a separate rsync command as we need to specify the relative path of the directory
+	//in the target. this is necessary because --include only works for files in the first level of the target directory
+	//and using --include is the only way to be able to delete a file remotely that doesn't exist locally
+	//and prevents the "rsync: link_stat" error above
+
+	for _, path := range paths {
+		lArgs := args
+		baseDir := cwd + string(filepath.Separator) + filepath.Dir(path) + string(filepath.Separator)
+		lArgs = append(args,
+			"--include="+filepath.Base(path),
+			"--exclude=*",
+			"--",
+			convertWindowsPath(baseDir),
+			remoteRsyncUrl+"/"+filepath.Dir(path)+"/")
+
+		fmt.Println(path)
+		err := o.executeRsync(lArgs, ioutil.Discard)
 		if err != nil {
 			return err
 		}
-		cplogs.V(5).Infof("individual file sync, files to sync %d, threshold: %d", len(filePaths), r.individualFileSyncThreshold)
-
-		args = append(args, "--")
-		args = append(args, relPaths...)
-		args = append(args, remoteRsyncUrl)
 	}
+	return nil
+}
 
-	cplogs.V(5).Infof("rsync arguments: %s", args)
-	cplogs.Flush()
-
-	scmd := osapi.SCommand{}
-	scmd.Name = "rsync"
-	scmd.Stdin = os.Stdin
-	scmd.Stdout = os.Stdout
-	scmd.Stderr = os.Stderr
-
-	return osapi.CommandExecL(scmd, args...)
+func (o RSyncDaemon) syncAllFiles(paths []string, args []string) error {
+	remoteRsyncUrl := o.remoteRsync.GetRsyncURL(rsyncConfigSection, "app")
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(SyncExcluded); err == nil {
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncExcluded))
+	}
+	args = append(args,
+		"--relative",
+		"--",
+		".",
+		remoteRsyncUrl+"/",
+	)
+	return o.executeRsync(args, os.Stdout)
 }
 
 func (o RSyncDaemon) getRelativePathList(paths []string) ([]string, error) {
@@ -130,4 +164,14 @@ func (o RSyncDaemon) getRelativePathList(paths []string) ([]string, error) {
 	}
 
 	return paths, nil
+}
+
+func (rsh RSyncDaemon) executeRsync(args []string, stdOut io.Writer) error {
+	cplogs.V(5).Infof("rsync arguments: %s", args)
+	scmd := osapi.SCommand{}
+	scmd.Name = "rsync"
+	scmd.Stdin = os.Stdin
+	scmd.Stdout = stdOut
+	scmd.Stderr = os.Stderr
+	return osapi.CommandExecL(scmd, args...)
 }

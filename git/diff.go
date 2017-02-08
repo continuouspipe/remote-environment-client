@@ -2,7 +2,10 @@
 // e.g. git diff --exit-code --quiet "feature/cp-remote-testing" "origin/feature/cp-remote-testing"
 package git
 
-import "github.com/continuouspipe/remote-environment-client/osapi"
+import (
+	"github.com/continuouspipe/remote-environment-client/osapi"
+	"path/filepath"
+)
 
 type DiffExecutor interface {
 	GetDiff(remoteName string, remoteBranch string) (string, error)
@@ -20,7 +23,7 @@ func (g *diff) GetDiff(remoteName string, remoteBranch string) (string, error) {
 		"--exit-code",
 		"--quiet",
 		remoteBranch,
-		remoteName + "/" + remoteBranch,
+		remoteName + string(filepath.Separator) + remoteBranch,
 	}
 	return osapi.CommandExec(getGitScmd(), args...)
 }

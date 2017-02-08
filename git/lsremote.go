@@ -2,7 +2,10 @@
 // e.g. git ls-remote --exit-code  --quiet . "origin/feature/cp-remote-testing"
 package git
 
-import "github.com/continuouspipe/remote-environment-client/osapi"
+import (
+	"github.com/continuouspipe/remote-environment-client/osapi"
+	"path/filepath"
+)
 
 type LsRemoteExecutor interface {
 	GetList(remoteName string, remoteBranch string) (string, error)
@@ -19,7 +22,7 @@ func (g *lsRemote) GetList(remoteName string, remoteBranch string) (string, erro
 		"ls-remote",
 		"--quiet",
 		".",
-		remoteName + "/" + remoteBranch,
+		remoteName + string(filepath.Separator) + remoteBranch,
 	}
 	return osapi.CommandExec(getGitScmd(), args...)
 }

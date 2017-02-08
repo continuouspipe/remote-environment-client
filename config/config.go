@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"os"
 	"strings"
+	"path/filepath"
 )
 
 var AppName = os.Args[0]
@@ -77,7 +78,7 @@ func NewApplicationSettings() *ApplicationSettings {
 }
 
 func GetEnvironment(projectKey string, remoteBranch string) string {
-	environment := strings.Replace(remoteBranch, "/", "-", -1)
+	environment := strings.Replace(remoteBranch, string(filepath.Separator), "-", -1)
 	environment = strings.Replace(environment, "\\", "-", -1)
 	environment = projectKey + "-" + environment
 	return environment
