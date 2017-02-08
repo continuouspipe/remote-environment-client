@@ -21,8 +21,8 @@ var selfUpdater = &selfupdate.Updater{
 	BinURL: "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/",
 	// The server hosting the binary patch diff for incremental updates
 	DiffURL: "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/",
-	// The directory created by the app when run which stores the cktime file
-	Dir: "update/",
+	// Check for update regardless of cktime timestamp
+	ForceCheck: true,
 	// The app name which is appended to the ApiURL to look for an update
 	CmdName: "gh-pages",
 }
@@ -44,8 +44,9 @@ func CheckForLatestVersion() error {
 		return nil
 	}
 
-	selfUpdater.BackgroundRun()
-	return nil
+	fmt.Println("Upgrade in progress...")
+	selfUpdater.Requester = NewHttpRequesterWrapper()
+	return selfUpdater.BackgroundRun()
 }
 
 //borrowed from the selfupdate package, downloads the json information and popualtes the updater.Info field

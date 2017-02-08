@@ -23,5 +23,5 @@ type CheckUpdates struct {
 }
 
 func (h *CheckUpdates) Handle(args []string) {
-	update.CheckForLatestVersion()
+	checkErr(update.CheckForLatestVersion())
 }
