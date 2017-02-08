@@ -4,15 +4,15 @@ package rsync
 
 import (
 	"fmt"
-	"runtime"
-	"os"
-	"io"
-	"io/ioutil"
-	"path/filepath"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/osapi"
 	"github.com/continuouspipe/remote-environment-client/util/slice"
-	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"runtime"
 )
 
 func init() {

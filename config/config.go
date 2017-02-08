@@ -4,8 +4,8 @@ import (
 	"github.com/spf13/viper"
 	"html/template"
 	"os"
-	"strings"
 	"path/filepath"
+	"strings"
 )
 
 var AppName = os.Args[0]

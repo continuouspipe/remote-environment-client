@@ -1,10 +1,10 @@
 package update
 
 import (
+	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/sanbornm/go-selfupdate/selfupdate"
 	"io"
 	"strings"
-	"github.com/sanbornm/go-selfupdate/selfupdate"
-	"github.com/continuouspipe/remote-environment-client/cplogs"
 )
 
 type HttpRequesterWrapper struct {

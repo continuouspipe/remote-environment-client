@@ -4,10 +4,10 @@ package rsync
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"io"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"

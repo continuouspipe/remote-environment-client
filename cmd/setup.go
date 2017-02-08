@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"net"
-	"time"
 	"strings"
+	"time"
 )
 
 func NewSetupCmd() *cobra.Command {

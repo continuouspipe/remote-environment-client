@@ -6,14 +6,14 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"os"
-	"strings"
 	"path/filepath"
-	"time"
 	"runtime"
-	"math/rand"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
@@ -291,7 +291,7 @@ func (r *RemoteRsyncDeamon) setRandomRemotePort() {
 
 func (r RemoteRsyncDeamon) getRandomPort() int {
 	rand.Seed(time.Now().Unix())
-	return rand.Intn(r.portRangeTo - r.portRangeFrom) + r.portRangeFrom
+	return rand.Intn(r.portRangeTo-r.portRangeFrom) + r.portRangeFrom
 }
 
 // convertWindowsPath converts a windows native path to a path that can be used by
