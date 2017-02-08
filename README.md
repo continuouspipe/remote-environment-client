@@ -23,34 +23,38 @@ need to add a remote for that repository.
 OSX (64bit):
 
 ```
-sudo curl https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/0.0.1-alpha.4/darwin-amd64.gz > cp-remote-go.gz
+sudo curl https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/0.0.1-beta.5/darwin-amd64.gz > cp-remote-go.gz
 gzip -d cp-remote-go.gz;
 mv cp-remote-go /usr/local/bin/cp-remote-go
 chmod +x /usr/local/bin/cp-remote-go
 ```
+
+Dependencies: You need to have 'git', and 'rsync' installed and available in the shell where cp-remote runs
 
 Linux (64-bits):
 
 if your architecture is 32bit use linux-386.gz rather than linux-amd64.gz
 
 ```
-sudo curl https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/0.0.1-alpha.4/linux-amd64.gz > cp-remote-go.gz
+sudo curl https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/0.0.1-beta.5/linux-amd64.gz > cp-remote-go.gz
 gzip -d cp-remote-go.gz;
 mv cp-remote-go /usr/local/bin/cp-remote-go
 chmod +x /usr/local/bin/cp-remote-go
 ```
 
+Dependencies: You need to have 'git', and 'rsync' installed and available in the shell where cp-remote runs
+
 Windows (64-bits):
 
 if your architecture is 32bit use windows-386.gz rather than windows-amd64.gz
 
-As it stands, the watch command is not supported on windows.
-
 ```
-Download https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/0.0.1-alpha.4/windows-amd64.gz > cp-remote-go.gz
+Download https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/0.0.1-beta.5/windows-amd64.gz > cp-remote-go.gz
 Extract cp-remote-go.gz
 Move cp-remote-go.exe into your project folder
 ```
+
+Dependencies: You need to have 'git', and 'cwRsync' installed and available in your environment PATHS variable
 
 ## Setup
 

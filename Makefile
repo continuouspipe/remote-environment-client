@@ -1,5 +1,24 @@
+# In order release a new version, checkout from the github pages at continuouspipe/remote-environment-client/gh-pages
+# all the GOOS-GOARCH.json files e.g.(darwin-amd64.json, windows-386.json, and so on..) along with the previous
+# 2 releases folders e.g.(0.0.1, 0.0.2 if you are releasing 0.0.3) and copy this in a folder called "public"
+#
+# Then cross-compile for all supported goos-goarch:
+#
+# make build BUILDOS=darwin BUILDARCH=amd64
+# make build BUILDOS=windows BUILDARCH=amd64
+# make build BUILDOS=windows BUILDARCH=386
+# make build BUILDOS=linux BUILDARCH=amd64
+# make build BUILDOS=linux BUILDARCH=386
+#
+# make build will put the binaries into the bin/ folder.
+# After this is done run "make package" which will put the new binaries into public/ along with the binary diffs
+# in order to have a quicker upgrade from the previous recent version
+#
+# after make package completes, copy all content of public/* into the github pages repository and commit/push
+
 BINARY=cp-remote-go
 VERSION=0.0.1-beta.5
+
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config
 LDFLAGS=-ldflags="-X ${CONFIG_PKG}.CurrentVersion=${VERSION}"
 
