@@ -51,26 +51,19 @@ func (o RSyncRsh) Sync(paths []string) error {
 	args := []string{
 		"-rlptDv",
 		"--delete",
-		"--relative",
 		"--blocking-io",
 		"--checksum"}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	if _, err := os.Stat(SyncExcluded); err == nil {
-		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncExcluded))
-	}
-
+	var err error
 	paths = slice.RemoveDuplicateString(paths)
 
 	if len(paths) <= o.individualFileSyncThreshold {
 		cplogs.V(5).Infof("individual file sync, files to sync %d, threshold: %d", len(paths), o.individualFileSyncThreshold)
-		return o.syncIndividualFiles(paths, args)
+		err = o.syncIndividualFiles(paths, args)
+	} else {
+		err = o.syncAllFiles(paths, args)
 	}
 
-	err = o.syncAllFiles(paths, args)
 	cplogs.Flush()
 	return err
 }
@@ -81,13 +74,10 @@ func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 		return err
 	}
 
-	//get the current directory
-	wd, err := os.Getwd()
+	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	//make sure that when this function terminates, the cwd is set back to what it was originally
-	defer os.Chdir(wd)
 
 	//this is a workaround to the issue with --delete throwing an error if the local file has been deleted
 	//which we want to delete in the remote pod.
@@ -103,12 +93,8 @@ func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 			"--include="+filepath.Base(path),
 			"--exclude=*",
 			"--",
-			"./",
-			"--:/app/"+filepath.Dir(path))
-
-		//change current directory to the file directory as rsync --include pattern matching only works if the file
-		//is in the directory that is getting sync-ed
-		os.Chdir(filepath.Dir(path))
+			cwd+"/"+filepath.Dir(path)+"/",
+			"--:/app/"+filepath.Dir(path)+"/")
 
 		fmt.Println(path)
 		err := o.executeRsync(iArgs, ioutil.Discard)
@@ -120,7 +106,15 @@ func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 }
 
 func (o RSyncRsh) syncAllFiles(paths []string, args []string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(SyncExcluded); err == nil {
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncExcluded))
+	}
 	args = append(args,
+		"--relative",
 		"--",
 		"./",
 		"--:/app/",
