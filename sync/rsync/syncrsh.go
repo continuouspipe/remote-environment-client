@@ -87,21 +87,40 @@ func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 	//in the target. this is necessary because --include only works for files in the first level of the target directory
 	//and using --include is the only way to be able to delete a file remotely that doesn't exist locally
 	//and prevents the "rsync: link_stat" error above
-	for _, path := range paths {
-		iArgs := args
-		iArgs = append(iArgs,
-			"--include="+filepath.Base(path),
-			"--exclude=*",
-			"--",
-			cwd+"/"+filepath.Dir(path)+"/",
-			"--:/app/"+filepath.Dir(path)+"/")
+	errChan := make(chan error, 1)
+	doneCountChan := make(chan bool, len(paths))
 
-		fmt.Println(path)
-		err := o.executeRsync(iArgs, ioutil.Discard)
-		if err != nil {
+	for _, path := range paths {
+		go func(lPath string, lArgs []string) {
+			lArgs = append(lArgs,
+				"--include="+filepath.Base(lPath),
+				"--exclude=*",
+				"--",
+				cwd+"/"+filepath.Dir(lPath)+"/",
+				"--:/app/"+filepath.Dir(lPath)+"/")
+
+			fmt.Println(lPath)
+			err := o.executeRsync(lArgs, ioutil.Discard)
+			if err != nil {
+				errChan <- err
+			}
+			doneCountChan <- true
+		}(path, args)
+	}
+
+	doneCount := 0
+	for {
+		if doneCount == len(paths) {
+			break
+		}
+		select {
+		case <-doneCountChan:
+			doneCount = doneCount + 1
+		case err := <-errChan:
 			return err
 		}
 	}
+
 	return nil
 }
 
