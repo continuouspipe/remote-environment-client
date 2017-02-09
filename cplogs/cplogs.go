@@ -5,7 +5,6 @@
 package cplogs
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -29,9 +28,6 @@ func GetLogInfoFile() string {
 }
 
 func init() {
-	//required by glog.go
-	flag.Parse()
-
 	cwd, err := os.Getwd()
 	if err != nil {
 		panic(err)
