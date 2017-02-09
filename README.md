@@ -2,7 +2,7 @@
 
 A command line tool to help with using ContinuousPipe as a remote development environment.
 
-This helps to set up Kubectl, create, build and destroy remote environments and keep files
+This helps to create, build and destroy remote environments and keep files
 in sync with the local filesystem.
 
 ## Prerequisites
@@ -12,7 +12,7 @@ You will need the following:
  * A ContinuousPipe hosted project with the GitHub integration set up
  * The project checked out locally 
  * The IP address, username and password to use for Kubenetes cluster
- * rsync and fswatch installed locally
+ * rsync installed locally
  * A [keen.io](https://keen.io) write token, project id and event collection name if you want to log usage stats 
 
 Note: if the GitHub repository is not the origin of your checked out project then you will
@@ -20,10 +20,41 @@ need to add a remote for that repository.
 
 ## Installation
 
+OSX (64bit):
+
 ```
-sudo curl https://continuouspipe.github.io/remote-environment-client/downloads/cp-remote-latest > /usr/local/bin/cp-remote && \
+sudo curl https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/0.0.1/darwin-amd64.gz > cp-remote.gz
+gzip -d cp-remote.gz;
+mv cp-remote /usr/local/bin/cp-remote
 chmod +x /usr/local/bin/cp-remote
 ```
+
+Dependencies: You need to have 'git', and 'rsync' installed and available in the shell where cp-remote runs
+
+Linux (64-bits):
+
+if your architecture is 32bit use linux-386.gz rather than linux-amd64.gz
+
+```
+sudo curl https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/0.0.1/linux-amd64.gz > cp-remote.gz
+gzip -d cp-remote.gz;
+mv cp-remote /usr/local/bin/cp-remote
+chmod +x /usr/local/bin/cp-remote
+```
+
+Dependencies: You need to have 'git', and 'rsync' installed and available in the shell where cp-remote runs
+
+Windows (64-bits):
+
+if your architecture is 32bit use windows-386.gz rather than windows-amd64.gz
+
+```
+Download https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/0.0.1/windows-amd64.gz > cp-remote.gz
+Extract cp-remote.gz
+Move cp-remote.exe into your project folder
+```
+
+Dependencies: You need to have 'git', and 'cwRsync' installed and available in your environment PATHS variable
 
 ## Setup
 
@@ -68,6 +99,7 @@ The `build` command will push changes the branch you have checked out locally to
  
  ```
  cp-remote watch
+ cp-remote wa
  ```
    
  The `watch` command will sync changes you make locally to a container that's part of the remote environment.
@@ -75,7 +107,7 @@ The `build` command will push changes the branch you have checked out locally to
  For example, if the service you want to sync to is web:
   
   ```
-  cp-remote watch web
+  cp-remote watch -s web
   ```
 The watch command should be left running, it will however need restarting whenever the remote environment
 is rebuilt. 
@@ -84,14 +116,14 @@ is rebuilt.
 
  ```
  cp-remote bash
- cp-remote sh
+ cp-remote ba
  ```
  
  This will remotely connect to a bash session onto the default container specified during setup but you can specify another
  container to connect to. For example, if the service you want to connect to is web:
  
  ```
- cp-remote bash web
+ cp-remote bash -s web
  ```
 
 ## Execute commands on a container   
@@ -114,6 +146,7 @@ and its arguments need to follow `--`.
 
   ```
   cp-remote fetch
+  cp-remote fe
   ```
  
 When the remote environment is rebuilt it may contain changes that you do not have on the local filesystem. 
@@ -126,25 +159,11 @@ When the remote environment is rebuilt it may contain changes that you do not ha
   ```
     cp-remote fetch web
   ```
-   
-## Resync
-
-  ```
-  cp-remote resync
-  ```
- 
-The fetch command may overwrite local changes that have not been commited to git yet. The resync command stashes these changes first
- and then after fetching the remote changes unstashes and transfers back these changes. This will resync with the default 
- container specified during setup but you can specify another container. For example to resync with the `web` container:
-  
-  ```
-  cp-remote resync web
-  ```
   
 ## Port Forwarding
 
  ```
- cp-remote forward db 3306
+ cp-remote forward -s db 3306
  ```
  
 The `forward` command will set up port forwarding from the local environment to a container 
@@ -153,7 +172,7 @@ to a database using a local client. You need to specify the container and the po
 to forward. For example, with a container named db running MySql you would run:
   
   ```
-  cp-remote forward db 3306
+  cp-remote forward -s db 3306
   ```
   
   this runs in the foreground, so in another terminal you can use the mysql client to connect:
@@ -165,7 +184,7 @@ to forward. For example, with a container named db running MySql you would run:
   You can specify a second port number if the remote port number is different to the local port number:
    
   ```
-  cp-remote forward db 3307 3306
+  cp-remote forward -s db 3307 3306
   ``` 
   
   Here the local port 3307 is forward to 3306 on the remote, you could then connect using:
@@ -191,20 +210,20 @@ Usage stats for the longer running commands (build and resync) can be logged to 
  
 ## Working with a different environment
  
-The `--namespace|-n` option can be used with the `watch`, `bash`, `resync`, `checkconnection`, `exec` and `forward`
+The `--project-key|-p` and `--remote-branch|-r` options can be used with the `watch`, `bash`, `resync`, `checkconnection`, `exec` and `forward`
  commands to run them against a different environment than the one specified during
  setup. This is useful if you need to access a different environment such as a feature branch
  environment. For example, to open a bash session on the `web` container of the `example-feature-my-shiny-new-work`
  environment you can run:
  
  ```
- cp-remote bash --namespace=example-feature-my-shiny-new-work web 
+ cp-remote bash --project-key example --remote-branch feature-my-shiny-new-work -s web
  ```
   
   or
   
  ```
- cp-remote bash -n=example-feature-my-shiny-new-work web 
+ cp-remote bash -p example -r feature-my-shiny-new-work -s web
  ```
 
 ## Anybar notifications
@@ -226,13 +245,14 @@ and that if they are pods can be found for the environment. It can be used with 
 another environment:
  
  ```
- cp-remote checkconnection 
+ cp-remote checkconnection
+ cp-remote ck
  ```
  
  or
  
  ```
- cp-remote checkconnection --namespace=example-feature-my-shiny-new-work 
+ cp-remote checkconnection --project-key example --remote-branch feature-my-shiny-new-work
  ```
  
 ## Configuration
