@@ -5,7 +5,6 @@ import (
 
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
-	"github.com/continuouspipe/remote-environment-client/test"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 )
@@ -44,15 +43,9 @@ func TestUserApplicationSettingsAreStored(t *testing.T) {
 		KeenProjectId:       "cc3d902idi01",
 		KeenEventCollection: "event-collection",
 		//we expect / to be converted to - and namespace being a concatenation of ProjectKey and RemoteBranch
-		Environment: "my-project-feature-MYPROJ-312-initial-commit",
+		Environment: "my-project-feature-myproj-312-initial-commit",
 	}
 
 	spyYamlWriter.ExpectsCallCount(t, "Save", 1)
-
-	firstCall := spyYamlWriter.FirstCallsFor("Save")
-	if actualSettings, ok := firstCall.Arguments["settings"].(*config.ApplicationSettings); ok {
-		test.AssertDeepEqual(t, expectedSettings, actualSettings)
-	} else {
-		t.Fatalf("Expected saved settings to be *config.ApplicationSettings, given %T", firstCall.Arguments["settings"])
-	}
+	spyYamlWriter.ExpectsFirstCallArgument(t, "Save", "settings", expectedSettings)
 }

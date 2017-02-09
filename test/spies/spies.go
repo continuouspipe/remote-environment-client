@@ -3,6 +3,7 @@ package spies
 import (
 	"github.com/continuouspipe/remote-environment-client/test"
 	"testing"
+	"reflect"
 )
 
 //A map that stores a list of function arguments [argumentName] => value (any type)
@@ -50,7 +51,13 @@ func (spy *Spy) ExpectsCallCount(t *testing.T, functionName string, expectedCall
 
 func (spy *Spy) ExpectsFirstCallArgument(t *testing.T, function string, argument string, expected interface{}) {
 	firstCall := spy.FirstCallsFor(function)
-	test.AssertSame(t, expected, firstCall.Arguments[argument])
+
+	switch reflect.TypeOf(expected).Kind() {
+	case reflect.Struct, reflect.Ptr:
+		test.AssertDeepEqual(t, expected, firstCall.Arguments[argument])
+	default:
+		test.AssertSame(t, expected, firstCall.Arguments[argument])
+	}
 }
 
 func (spy *Spy) ExpectsFirstCallArgumentStringSlice(t *testing.T, function string, argument string, expected []string) {
