@@ -74,7 +74,6 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	stdLog "log"
@@ -98,7 +97,7 @@ type severity int32 // sync/atomic int32
 // A message written to a high-severity log file is also written to each
 // lower-severity log file.
 const (
-	infoLog severity = iota
+	infoLog     severity = iota
 	warningLog
 	errorLog
 	fatalLog
@@ -675,11 +674,12 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 			buf.Write(stacks(false))
 		}
 	}
+	//if !flag.Parsed() {
+	//	os.Stderr.Write([]byte("ERROR: logging before flag.Parse: "))
+	//	os.Stderr.Write(data)
+	//} else
 	data := buf.Bytes()
-	if !flag.Parsed() {
-		os.Stderr.Write([]byte("ERROR: logging before flag.Parse: "))
-		os.Stderr.Write(data)
-	} else if l.toStderr {
+	if l.toStderr {
 		os.Stderr.Write(data)
 	} else {
 		if alsoToStderr || l.alsoToStderr || s >= l.stderrThreshold.get() {
