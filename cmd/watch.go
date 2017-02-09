@@ -46,6 +46,7 @@ setup but you can specify another container to sync with.`,
 			podsFilter := pods.NewKubePodsFilter()
 
 			handler.Stdout = os.Stdout
+			handler.Syncer = sync.GetSyncer()
 
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
@@ -69,6 +70,7 @@ type WatchHandle struct {
 	Latency                     int64
 	Stdout                      io.Writer
 	IndividualFileSyncThreshold int
+	syncer                      sync.Syncer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -125,16 +127,15 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 		return err
 	}
 
-	syncer := sync.GetSyncer()
-	syncer.SetKubeConfigKey(h.kubeConfigKey)
-	syncer.SetEnvironment(environment)
-	syncer.SetPod(pod.GetName())
-	syncer.SetIndividualFileSyncThreshold(h.IndividualFileSyncThreshold)
+	h.syncer.SetKubeConfigKey(h.kubeConfigKey)
+	h.syncer.SetEnvironment(environment)
+	h.syncer.SetPod(pod.GetName())
+	h.syncer.SetIndividualFileSyncThreshold(h.IndividualFileSyncThreshold)
 	dirMonitor.SetLatency(time.Duration(h.Latency))
 
 	fmt.Fprintf(h.Stdout, "\nDestination Pod: %s\n", pod.GetName())
 
-	observer := sync.GetSyncOnEventObserver(syncer)
+	observer := sync.GetSyncOnEventObserver(h.syncer)
 
 	return dirMonitor.AnyEventCall(cwd, observer)
 }

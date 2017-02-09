@@ -2,26 +2,28 @@ package cmd
 
 import (
 	"github.com/continuouspipe/remote-environment-client/test"
+	"github.com/continuouspipe/remote-environment-client/test/mocks"
+	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"testing"
 )
 
 func TestRemoteBranchNotPresent(t *testing.T) {
 	//get mocked dependencies
-	mocklsRemote := test.NewMockLsRemote()
+	mocklsRemote := mocks.NewMockLsRemote()
 	mocklsRemote.MockGetList(func(remoteName string, remoteBranch string) (string, error) {
 		return "", nil
 	})
-	mockRevParse := test.NewMockRevParse()
+	mockRevParse := mocks.NewMockRevParse()
 	mockRevParse.MockGetLocalBranchName(func() (string, error) {
 		return "feature-new", nil
 	})
-	spyCommit := test.NewSpyCommit()
-	spyPush := test.NewSpyPush()
+	spyCommit := spies.NewSpyCommit()
+	spyPush := spies.NewSpyPush()
 	spyPush.MockPush(func() (string, error) {
 		return "", nil
 	})
 
-	mockStdout := test.NewMockWriter()
+	mockStdout := mocks.NewMockWriter()
 	mockStdout.MockWrite(func(p []byte) (n int, err error) {
 		return 100, nil
 	})

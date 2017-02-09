@@ -4,22 +4,24 @@ import (
 	"testing"
 
 	"github.com/continuouspipe/remote-environment-client/test"
+	"github.com/continuouspipe/remote-environment-client/test/mocks"
+	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
 func TestFetch(t *testing.T) {
 	//get mocked dependencies
-	mockPodsFinder := test.NewMockPodsFinder()
+	mockPodsFinder := mocks.NewMockPodsFinder()
 	mockPodsFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.PodList, error) {
 		return &v1.PodList{}, nil
 	})
-	mockPodFilter := test.NewMockPodsFilter()
+	mockPodFilter := mocks.NewMockPodsFilter()
 	mockPodFilter.MockByService(func(podList *v1.PodList, service string) (*v1.Pod, error) {
 		mockPod := &v1.Pod{}
 		mockPod.SetName("web-123456")
 		return mockPod, nil
 	})
-	spyFetcher := test.NewSpyRsyncFetch()
+	spyFetcher := spies.NewSpyRsyncFetch()
 	spyFetcher.MockFetch(func() error {
 		return nil
 	})

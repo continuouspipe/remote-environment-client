@@ -4,6 +4,8 @@ import (
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/test"
+	"github.com/continuouspipe/remote-environment-client/test/mocks"
+	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"k8s.io/client-go/pkg/api/v1"
 	"os"
 	"testing"
@@ -11,23 +13,23 @@ import (
 
 func TestWatch(t *testing.T) {
 	//get mocked dependencies
-	mockPodsFinder := test.NewMockPodsFinder()
+	mockPodsFinder := mocks.NewMockPodsFinder()
 	mockPodsFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.PodList, error) {
 		return &v1.PodList{}, nil
 	})
-	mockPodFilter := test.NewMockPodsFilter()
+	mockPodFilter := mocks.NewMockPodsFilter()
 	mockPodFilter.MockByService(func(podList *v1.PodList, service string) (*v1.Pod, error) {
 		mockPod := &v1.Pod{}
 		mockPod.SetName("web-123456")
 		return mockPod, nil
 	})
 
-	spyOsDirectoryMonitor := test.NewSpyOsDirectoryMonitor()
+	spyOsDirectoryMonitor := spies.NewSpyOsDirectoryMonitor()
 	spyOsDirectoryMonitor.MockAnyEventCall(func(directory string, observer monitor.EventsObserver) error {
 		return nil
 	})
 
-	mockStdout := test.NewMockWriter()
+	mockStdout := mocks.NewMockWriter()
 	mockStdout.MockWrite(func(p []byte) (n int, err error) {
 		return 100, nil
 	})
@@ -60,7 +62,7 @@ func TestWatch(t *testing.T) {
 		t.Fatalf("Expected directory to be a string, given %T", firstCall.Arguments["directory"])
 	}
 
-	if observer, ok := firstCall.Arguments["observer"].(*sync.DirectoryEventSyncAll); ok {
+	if observer, ok := firstCall.Arguments["observer"].(*sync.Syncer); ok {
 		test.AssertSame(t, observer.Environment, "proj-feature-testing")
 		test.AssertSame(t, observer.IndividualFileSyncThreshold, 20)
 		test.AssertSame(t, observer.KubeConfigKey, "my-config-key")

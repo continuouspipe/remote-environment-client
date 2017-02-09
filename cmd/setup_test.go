@@ -5,12 +5,14 @@ import (
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/test"
+	"github.com/continuouspipe/remote-environment-client/test/mocks"
+	"github.com/continuouspipe/remote-environment-client/test/spies"
 )
 
 func TestUserApplicationSettingsAreStored(t *testing.T) {
 	//get mocked dependencies
-	mockedQuestionPrompt := test.NewMockQuestionPrompt()
-	spyYamlWriter := test.NewSpyYamlWriter()
+	mockedQuestionPrompt := mocks.NewMockQuestionPrompt()
+	spyYamlWriter := spies.NewSpyYamlWriter()
 	spyYamlWriter.MockSave(func() bool {
 		return true
 	})
