@@ -3,6 +3,7 @@ package cmd
 import (
 	"testing"
 
+	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/test"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
@@ -10,6 +11,9 @@ import (
 )
 
 func TestUserApplicationSettingsAreStored(t *testing.T) {
+	fmt.Println("Running TestUserApplicationSettingsAreStored")
+	defer fmt.Println("TestUserApplicationSettingsAreStored Done")
+
 	//get mocked dependencies
 	mockedQuestionPrompt := mocks.NewMockQuestionPrompt()
 	spyYamlWriter := spies.NewSpyYamlWriter()
@@ -28,7 +32,7 @@ func TestUserApplicationSettingsAreStored(t *testing.T) {
 
 	expectedSettings := &config.ApplicationSettings{
 		ProjectKey:   "my-project",
-		RemoteBranch: "feature/MYPROJ-312-initial-commit",
+		RemoteBranch: "feature/myproj-312-initial-commit",
 		//this is the default expected value for RemoteName
 		RemoteName:          "origin",
 		DefaultService:      "web",
@@ -42,6 +46,8 @@ func TestUserApplicationSettingsAreStored(t *testing.T) {
 		//we expect / to be converted to - and namespace being a concatenation of ProjectKey and RemoteBranch
 		Environment: "my-project-feature-MYPROJ-312-initial-commit",
 	}
+
+	spyYamlWriter.ExpectsCallCount(t, "Save", 1)
 
 	firstCall := spyYamlWriter.FirstCallsFor("Save")
 	if actualSettings, ok := firstCall.Arguments["settings"].(*config.ApplicationSettings); ok {

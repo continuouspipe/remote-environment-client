@@ -1,12 +1,12 @@
 package cmd
 
 import (
+	"fmt"
+	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
-	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"k8s.io/client-go/pkg/api/v1"
 	"testing"
-	"fmt"
 	"time"
 )
 

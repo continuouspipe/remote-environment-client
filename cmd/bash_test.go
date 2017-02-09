@@ -1,14 +1,19 @@
 package cmd
 
 import (
-	"github.com/continuouspipe/remote-environment-client/test"
+	"fmt"
+	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"k8s.io/client-go/pkg/api/v1"
+	"os"
 	"testing"
 )
 
 func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
+	fmt.Println("Running TestSysCallIsCalledToOpenBashSession")
+	defer fmt.Println("TestSysCallIsCalledToOpenBashSession Done")
+
 	//get mocked dependencies
 	mockPodsFinder := mocks.NewMockPodsFinder()
 	mockPodsFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.PodList, error) {
@@ -33,25 +38,16 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	handler.Service = "web"
 	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spyLocalExecutor)
 
-	//expectations
-	firstCall := spyLocalExecutor.FirstCallsFor("StartProcess")
+	kscmd := kexec.KSCommand{}
+	kscmd.KubeConfigKey = "my-config-key"
+	kscmd.Environment = "proj-feature-testing"
+	kscmd.Pod = "web-123456"
+	kscmd.Stdin = os.Stdin
+	kscmd.Stdout = os.Stdout
+	kscmd.Stderr = os.Stderr
 
-	if spyLocalExecutor.CallsCountFor("StartProcess") != 1 {
-		t.Error("Expected StartProcess to be called only once")
-	}
-	if str, ok := firstCall.Arguments["kubeConfigKey"].(string); ok {
-		test.AssertSame(t,"my-config-key", str)
-	} else {
-		t.Fatalf("Expected kube config to be a string, given %T", firstCall.Arguments["kubeConfigKey"])
-	}
-	if str, ok := firstCall.Arguments["environment"].(string); ok {
-		test.AssertSame(t,"proj-feature-testing", str)
-	} else {
-		t.Fatalf("Expected feature testing to be a string, given %T", firstCall.Arguments["environment"])
-	}
-	if str, ok := firstCall.Arguments["pod"].(string); ok {
-		test.AssertSame(t,"web-123456", str)
-	} else {
-		t.Fatalf("Expected pod to be a string, given %T", firstCall.Arguments["pod"])
-	}
+	//expectations
+	spyLocalExecutor.ExpectsCallCount(t, "StartProcess", 1)
+	spyLocalExecutor.ExpectsFirstCallArgument(t, "StartProcess", "kscmd", kscmd)
+	spyLocalExecutor.ExpectsFirstCallArgumentStringSlice(t, "StartProcess", "execCmdArgs", []string{"/bin/bash"})
 }

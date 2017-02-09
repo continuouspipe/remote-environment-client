@@ -1,8 +1,8 @@
 package spies
 
 import (
-	"testing"
 	"github.com/continuouspipe/remote-environment-client/test"
+	"testing"
 )
 
 //A map that stores a list of function arguments [argumentName] => value (any type)
@@ -51,4 +51,9 @@ func (spy *Spy) ExpectsCallCount(t *testing.T, functionName string, expectedCall
 func (spy *Spy) ExpectsFirstCallArgument(t *testing.T, function string, argument string, expected interface{}) {
 	firstCall := spy.FirstCallsFor(function)
 	test.AssertSame(t, expected, firstCall.Arguments[argument])
+}
+
+func (spy *Spy) ExpectsFirstCallArgumentStringSlice(t *testing.T, function string, argument string, expected []string) {
+	firstCall := spy.FirstCallsFor(function)
+	test.AssertDeepEqual(t, expected, firstCall.Arguments[argument])
 }

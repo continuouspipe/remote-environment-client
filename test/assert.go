@@ -13,6 +13,6 @@ func AssertSame(t *testing.T, expected interface{}, actual interface{}) {
 
 func AssertDeepEqual(t *testing.T, expected interface{}, actual interface{}) {
 	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("Expected(un-sorted): %#v, \nActual(un-sorted): %#v", expected, actual)
+		t.Errorf("Expected: %#v, \nActual: %#v", expected, actual)
 	}
 }

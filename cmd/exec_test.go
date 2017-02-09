@@ -3,13 +3,19 @@ package cmd
 import (
 	"testing"
 
+	"fmt"
+	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/test"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"k8s.io/client-go/pkg/api/v1"
+	"os"
 )
 
 func TestCommandsAreSpawned(t *testing.T) {
+	fmt.Println("Running TestCommandsAreSpawned")
+	defer fmt.Println("TestCommandsAreSpawned Done")
+
 	//get mocked dependencies
 	mockPodsFinder := mocks.NewMockPodsFinder()
 	mockPodsFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.PodList, error) {
@@ -36,29 +42,16 @@ func TestCommandsAreSpawned(t *testing.T) {
 
 	//expectations
 	test.AssertSame(t, "some results back..", out)
-	firstCall := spyLocalExecutor.FirstCallsFor("CommandExec")
 
-	if spyLocalExecutor.CallsCountFor("CommandExec") != 1 {
-		t.Error("Expected CommandExec to be called only once")
-	}
-	if str, ok := firstCall.Arguments["kubeConfigKey"].(string); ok {
-		test.AssertSame(t, "my-config-key", str)
-	} else {
-		t.Fatalf("Expected kube config to be a string, given %T", firstCall.Arguments["kubeConfigKey"])
-	}
-	if str, ok := firstCall.Arguments["environment"].(string); ok {
-		test.AssertSame(t, "proj-feature-testing", str)
-	} else {
-		t.Fatalf("Expected feature testing to be a string, given %T", firstCall.Arguments["environment"])
-	}
-	if str, ok := firstCall.Arguments["pod"].(string); ok {
-		test.AssertSame(t, "web-123456", str)
-	} else {
-		t.Fatalf("Expected pod to be a string, given %T", firstCall.Arguments["pod"])
-	}
-	if execArgs, ok := firstCall.Arguments["execCmdArgs"].([]string); ok {
-		test.AssertDeepEqual(t, execArgs, []string{"ls", "-a", "-l", "-l"})
-	} else {
-		t.Fatalf("Expected pod to be a string, given %T", firstCall.Arguments["pod"])
-	}
+	kscmd := kexec.KSCommand{}
+	kscmd.KubeConfigKey = "my-config-key"
+	kscmd.Environment = "proj-feature-testing"
+	kscmd.Pod = "web-123456"
+	kscmd.Stdin = os.Stdin
+	kscmd.Stdout = os.Stdout
+	kscmd.Stderr = os.Stderr
+
+	spyLocalExecutor.ExpectsCallCount(t, "CommandExec", 1)
+	spyLocalExecutor.ExpectsFirstCallArgument(t, "CommandExec", "kscmd", kscmd)
+	spyLocalExecutor.ExpectsFirstCallArgumentStringSlice(t, "CommandExec", "execCmdArgs", []string{"ls", "-a", "-l", "-l"})
 }

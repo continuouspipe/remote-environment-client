@@ -1,13 +1,16 @@
 package cmd
 
 import (
-	"github.com/continuouspipe/remote-environment-client/test"
+	"fmt"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"testing"
 )
 
 func TestRemoteBranchNotPresent(t *testing.T) {
+	fmt.Println("Running TestRemoteBranchNotPresent")
+	defer fmt.Println("TestRemoteBranchNotPresent Done")
+
 	//get mocked dependencies
 	mocklsRemote := mocks.NewMockLsRemote()
 	mocklsRemote.MockGetList(func(remoteName string, remoteBranch string) (string, error) {
@@ -40,28 +43,9 @@ func TestRemoteBranchNotPresent(t *testing.T) {
 	buildHandle.Handle()
 
 	//expectations
-	if spyCommit.CallsCountFor("Commit") != 0 {
-		t.Error("Expected Commit not to be called")
-	}
-
-	if spyPush.CallsCountFor("Push") != 1 {
-		t.Error("Expected Push to be called once")
-	}
-	firstCall := spyPush.FirstCallsFor("Push")
-	if str, ok := firstCall.Arguments["localBranch"].(string); ok {
-		test.AssertSame(t,"feature-new", str)
-	} else {
-		t.Fatalf("Expected local branch to be a string, given %T", firstCall.Arguments["localBranch"])
-	}
-	if str, ok := firstCall.Arguments["remoteName"].(string); ok {
-		test.AssertSame(t,"origin", str)
-	} else {
-		t.Fatalf("Expected remote name to be a string, given %T", firstCall.Arguments["remoteName"])
-	}
-
-	if str, ok := firstCall.Arguments["remoteBranch"].(string); ok {
-		test.AssertSame(t,"feature-my-remote", str)
-	} else {
-		t.Fatalf("Expected remote branch to be a string, given %T", firstCall.Arguments["remoteBranch"])
-	}
+	spyCommit.ExpectsCallCount(t, "Commit", 0)
+	spyPush.ExpectsCallCount(t, "Push", 1)
+	spyPush.ExpectsFirstCallArgument(t, "Push", "localBranch", "feature-new")
+	spyPush.ExpectsFirstCallArgument(t, "Push", "remoteName", "origin")
+	spyPush.ExpectsFirstCallArgument(t, "Push", "remoteBranch", "feature-my-remote")
 }

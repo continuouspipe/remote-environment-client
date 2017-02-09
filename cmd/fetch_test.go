@@ -3,13 +3,16 @@ package cmd
 import (
 	"testing"
 
-	"github.com/continuouspipe/remote-environment-client/test"
+	"fmt"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
 func TestFetch(t *testing.T) {
+	fmt.Println("Running TestFetch")
+	defer fmt.Println("TestFetch Done")
+
 	//get mocked dependencies
 	mockPodsFinder := mocks.NewMockPodsFinder()
 	mockPodsFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.PodList, error) {
@@ -35,30 +38,9 @@ func TestFetch(t *testing.T) {
 	handler.File = "some-file.txt"
 	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spyFetcher)
 
-	//expectations
-	firstCall := spyFetcher.FirstCallsFor("Fetch")
-
-	if spyFetcher.CallsCountFor("Fetch") != 1 {
-		t.Error("Expected Fetch to be called only once")
-	}
-	if str, ok := firstCall.Arguments["kubeConfigKey"].(string); ok {
-		test.AssertSame(t, "my-config-key", str)
-	} else {
-		t.Fatalf("Expected kube config to be a string, given %T", firstCall.Arguments["kubeConfigKey"])
-	}
-	if str, ok := firstCall.Arguments["environment"].(string); ok {
-		test.AssertSame(t, "proj-feature-testing", str)
-	} else {
-		t.Fatalf("Expected feature testing to be a string, given %T", firstCall.Arguments["environment"])
-	}
-	if str, ok := firstCall.Arguments["pod"].(string); ok {
-		test.AssertSame(t, "web-123456", str)
-	} else {
-		t.Fatalf("Expected pod to be a string, given %T", firstCall.Arguments["pod"])
-	}
-	if str, ok := firstCall.Arguments["filePath"].(string); ok {
-		test.AssertSame(t, "some-file.txt", str)
-	} else {
-		t.Fatalf("Expected filePath to be a string, given %T", firstCall.Arguments["filePath"])
-	}
+	spyFetcher.ExpectsCallCount(t, "Fetch", 1)
+	spyFetcher.ExpectsFirstCallArgument(t, "Fetch", "kubeConfigKey", "my-config-key")
+	spyFetcher.ExpectsFirstCallArgument(t, "Fetch", "environment", "proj-feature-testing")
+	spyFetcher.ExpectsFirstCallArgument(t, "Fetch", "pod", "web-123456")
+	spyFetcher.ExpectsFirstCallArgument(t, "Fetch", "filePath", "some-file.txt")
 }
