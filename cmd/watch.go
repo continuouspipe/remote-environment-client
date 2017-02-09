@@ -46,7 +46,7 @@ setup but you can specify another container to sync with.`,
 			podsFilter := pods.NewKubePodsFilter()
 
 			handler.Stdout = os.Stdout
-			handler.Syncer = sync.GetSyncer()
+			handler.syncer = sync.GetSyncer()
 
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())

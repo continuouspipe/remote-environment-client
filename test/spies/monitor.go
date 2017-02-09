@@ -7,8 +7,8 @@ import (
 
 //Spy for OsDirectoryMonitor
 type SpyOsDirectoryMonitor struct {
-	anyEventCall func(directory string, observer monitor.EventsObserver) error
 	Spy
+	anyEventCall func(directory string, observer monitor.EventsObserver) error
 }
 
 func NewSpyOsDirectoryMonitor() *SpyOsDirectoryMonitor {
@@ -38,7 +38,7 @@ func (m *SpyOsDirectoryMonitor) SetExclusions(exclusion monitor.ExclusionProvide
 	m.calledFunctions = append(m.calledFunctions, *function)
 }
 
-func (m SpyOsDirectoryMonitor) SetLatency(latency time.Duration) {
+func (m *SpyOsDirectoryMonitor) SetLatency(latency time.Duration) {
 	args := make(Arguments)
 	args["latency"] = latency
 

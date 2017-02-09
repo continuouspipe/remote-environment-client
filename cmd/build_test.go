@@ -49,18 +49,18 @@ func TestRemoteBranchNotPresent(t *testing.T) {
 	}
 	firstCall := spyPush.FirstCallsFor("Push")
 	if str, ok := firstCall.Arguments["localBranch"].(string); ok {
-		test.AssertSame(t, "feature-new", str)
+		test.AssertSame(t,"feature-new", str)
 	} else {
 		t.Fatalf("Expected local branch to be a string, given %T", firstCall.Arguments["localBranch"])
 	}
 	if str, ok := firstCall.Arguments["remoteName"].(string); ok {
-		test.AssertSame(t, "origin", str)
+		test.AssertSame(t,"origin", str)
 	} else {
 		t.Fatalf("Expected remote name to be a string, given %T", firstCall.Arguments["remoteName"])
 	}
 
 	if str, ok := firstCall.Arguments["remoteBranch"].(string); ok {
-		test.AssertSame(t, "feature-my-remote", str)
+		test.AssertSame(t,"feature-my-remote", str)
 	} else {
 		t.Fatalf("Expected remote branch to be a string, given %T", firstCall.Arguments["remoteBranch"])
 	}

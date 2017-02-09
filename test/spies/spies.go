@@ -1,5 +1,10 @@
 package spies
 
+import (
+	"testing"
+	"github.com/continuouspipe/remote-environment-client/test"
+)
+
 //A map that stores a list of function arguments [argumentName] => value (any type)
 type Arguments map[string]interface{}
 
@@ -35,4 +40,15 @@ func (spy *Spy) CallsCountFor(functionName string) int {
 		count++
 	}
 	return count
+}
+
+func (spy *Spy) ExpectsCallCount(t *testing.T, functionName string, expectedCallCount int) {
+	if spy.CallsCountFor(functionName) != expectedCallCount {
+		t.Errorf("Expected %s call count to be %d", functionName, expectedCallCount)
+	}
+}
+
+func (spy *Spy) ExpectsFirstCallArgument(t *testing.T, function string, argument string, expected interface{}) {
+	firstCall := spy.FirstCallsFor(function)
+	test.AssertSame(t, expected, firstCall.Arguments[argument])
 }

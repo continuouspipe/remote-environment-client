@@ -40,17 +40,17 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 		t.Error("Expected StartProcess to be called only once")
 	}
 	if str, ok := firstCall.Arguments["kubeConfigKey"].(string); ok {
-		test.AssertSame(t, "my-config-key", str)
+		test.AssertSame(t,"my-config-key", str)
 	} else {
 		t.Fatalf("Expected kube config to be a string, given %T", firstCall.Arguments["kubeConfigKey"])
 	}
 	if str, ok := firstCall.Arguments["environment"].(string); ok {
-		test.AssertSame(t, "proj-feature-testing", str)
+		test.AssertSame(t,"proj-feature-testing", str)
 	} else {
 		t.Fatalf("Expected feature testing to be a string, given %T", firstCall.Arguments["environment"])
 	}
 	if str, ok := firstCall.Arguments["pod"].(string); ok {
-		test.AssertSame(t, "web-123456", str)
+		test.AssertSame(t,"web-123456", str)
 	} else {
 		t.Fatalf("Expected pod to be a string, given %T", firstCall.Arguments["pod"])
 	}

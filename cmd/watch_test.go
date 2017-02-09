@@ -1,17 +1,19 @@
 package cmd
 
 import (
-	"github.com/continuouspipe/remote-environment-client/sync"
-	"github.com/continuouspipe/remote-environment-client/sync/monitor"
-	"github.com/continuouspipe/remote-environment-client/test"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
+	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"k8s.io/client-go/pkg/api/v1"
-	"os"
 	"testing"
+	"fmt"
+	"time"
 )
 
 func TestWatch(t *testing.T) {
+	fmt.Println("Running TestWatch")
+	defer fmt.Println("TestWatch Done")
+
 	//get mocked dependencies
 	mockPodsFinder := mocks.NewMockPodsFinder()
 	mockPodsFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.PodList, error) {
@@ -34,6 +36,11 @@ func TestWatch(t *testing.T) {
 		return 100, nil
 	})
 
+	spySyncer := spies.NewSpySyncer()
+	spySyncer.MockSync(func(filePaths []string) error {
+		return nil
+	})
+
 	//test subject called
 	handler := &WatchHandle{}
 	handler.kubeConfigKey = "my-config-key"
@@ -43,31 +50,24 @@ func TestWatch(t *testing.T) {
 	handler.Latency = 1000
 	handler.Stdout = mockStdout
 	handler.IndividualFileSyncThreshold = 20
+	handler.syncer = spySyncer
 	handler.Handle(spyOsDirectoryMonitor, mockPodsFinder, mockPodFilter)
 
 	//expectations
-	firstCall := spyOsDirectoryMonitor.FirstCallsFor("AnyEventCall")
+	spySyncer.ExpectsCallCount(t, "SetKubeConfigKey", 1)
+	spySyncer.ExpectsFirstCallArgument(t, "SetKubeConfigKey", "key", "my-config-key")
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("error: %s", err.Error())
-	}
+	spySyncer.ExpectsCallCount(t, "SetEnvironment", 1)
+	spySyncer.ExpectsFirstCallArgument(t, "SetEnvironment", "env", "proj-feature-testing")
 
-	if spyOsDirectoryMonitor.CallsCountFor("AnyEventCall") != 1 {
-		t.Error("Expected AnyEventCall to be called only once")
-	}
-	if str, ok := firstCall.Arguments["directory"].(string); ok {
-		test.AssertSame(t, cwd, str)
-	} else {
-		t.Fatalf("Expected directory to be a string, given %T", firstCall.Arguments["directory"])
-	}
+	spySyncer.ExpectsCallCount(t, "SetPod", 1)
+	spySyncer.ExpectsFirstCallArgument(t, "SetPod", "pod", "web-123456")
 
-	if observer, ok := firstCall.Arguments["observer"].(*sync.Syncer); ok {
-		test.AssertSame(t, observer.Environment, "proj-feature-testing")
-		test.AssertSame(t, observer.IndividualFileSyncThreshold, 20)
-		test.AssertSame(t, observer.KubeConfigKey, "my-config-key")
-		test.AssertSame(t, observer.Pod.GetName(), "web-123456")
-	} else {
-		t.Fatalf("Expected observer to implement sync.DirectoryEventSyncAll, given %T", firstCall.Arguments["observer"])
-	}
+	spySyncer.ExpectsCallCount(t, "SetIndividualFileSyncThreshold", 1)
+	spySyncer.ExpectsFirstCallArgument(t, "SetIndividualFileSyncThreshold", "threshold", 20)
+
+	spyOsDirectoryMonitor.ExpectsCallCount(t, "SetLatency", 1)
+	spyOsDirectoryMonitor.ExpectsFirstCallArgument(t, "SetLatency", "latency", time.Duration(1000))
+
+	spyOsDirectoryMonitor.ExpectsCallCount(t, "AnyEventCall", 1)
 }
