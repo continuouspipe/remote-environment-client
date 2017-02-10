@@ -56,6 +56,27 @@ Move cp-remote.exe into your project folder
 
 Dependencies: You need to have 'git', and 'cwRsync' installed and available in your environment PATHS variable
 
+### Migrate to CP-Remote Go
+
+- Install the latest version, see instructions in the Installation section above
+- In your project directory, run `cp-remote setup` (see Setup section below)
+
+**Changes in command arguments**
+
+In the Go version, the commands arguments needs to be passed as flags.
+To find out information about the available flags for each command run `cp-remote [command] --help` or `cp-remote [command] -h`
+
+**Examples:**
+
+Previously to open a bash remote shell overriding the default service, 
+the command using the bash script would have been `cp-remote bash web`.
+This has been updated to `cp-remote bash -s web`, alternatively you may use the full flag name `cp-remote bash --service web`
+
+To execute a command onan environment which differs from the default one.
+The previous command would have been `cp-remote exec --namespace=project-key-feature-my-shiny-new-work -- ls -l`.
+This has been updated to `cp-remote exec --project-key example --remote-branch feature-my-shiny-new-work -- ls -l`.
+Alternatively a more concise version is `cp-remote exec -p example -r feature-my-shiny-new-work -- ls -l`.
+
 ## Setup
 
 ```
