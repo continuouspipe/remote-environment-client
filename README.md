@@ -72,9 +72,9 @@ Examples:
  instead now, you have to run `cp-remote bash -s web` or using the full flag name `cp-remote bash --service web`
 
  To execute a command on a an environment which differs from the default one, the command using the bash script would have been
- `cp-remote exec --namespace=project-key-feature-my-shiny-new-work` instad now, you need to run
- `cp-remote checkconnection --project-key example --remote-branch feature-my-shiny-new-work`
- or shortened `cp-remote checkconnection -p example -r feature-my-shiny-new-work`
+ `cp-remote exec --namespace=project-key-feature-my-shiny-new-work -- ls -l` instad now, you need to run
+ `cp-remote exec --project-key example --remote-branch feature-my-shiny-new-work -- ls -l`
+ or shortened `cp-remote exec -p example -r feature-my-shiny-new-work -- ls -l`
 
 ## Setup
 
