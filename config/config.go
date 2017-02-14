@@ -11,13 +11,14 @@ import (
 var AppName = os.Args[0]
 
 const (
+	Username            = "username"
+	Password            = "password"
+	Team                = "team"
+	ClusterId           = "cluster-id"
 	ProjectKey          = "project-key"
 	RemoteBranch        = "remote-branch"
 	RemoteName          = "remote-name"
 	Service             = "service"
-	ClusterIp           = "cluster-ip"
-	Username            = "username"
-	Password            = "password"
 	AnybarPort          = "anybar-port"
 	KeenWriteKey        = "keen-write-key"
 	KeenProjectId       = "keen-project-id"
@@ -30,6 +31,14 @@ const (
 
 //Contains all remote environment settings
 type ApplicationSettings struct {
+	//Cp Remote Username
+	Username string
+	//Cp Remote API Key
+	Password string
+	//Cp Remote Team Name
+	Team string
+	//Cp Remote Cluster Identifier
+	ClusterId string
 	//Continuous Pipe project key
 	ProjectKey string
 	//Name of the git branch used for the remote environment
@@ -38,12 +47,6 @@ type ApplicationSettings struct {
 	RemoteName string
 	//default service name for the commands like (watch, bash, fetch and resync)
 	DefaultService string
-	//IP of the cluster
-	ClusterIp string
-	//Cluster username
-	Username string
-	//Cluster password
-	Password string
 	//Port Number for AnyBar
 	AnybarPort string
 	//keen.io write key
@@ -61,13 +64,14 @@ type ApplicationSettings struct {
 
 func NewApplicationSettings() *ApplicationSettings {
 	s := &ApplicationSettings{}
+	s.Username = viper.GetString(Username)
+	s.Password = viper.GetString(Password)
+	s.Team = viper.GetString(Team)
+	s.ClusterId = viper.GetString(ClusterId)
 	s.ProjectKey = viper.GetString(ProjectKey)
 	s.RemoteBranch = viper.GetString(RemoteBranch)
 	s.RemoteName = viper.GetString(RemoteName)
 	s.DefaultService = viper.GetString(Service)
-	s.ClusterIp = viper.GetString(ClusterIp)
-	s.Username = viper.GetString(Username)
-	s.Password = viper.GetString(Password)
 	s.AnybarPort = viper.GetString(AnybarPort)
 	s.KeenWriteKey = viper.GetString(KeenWriteKey)
 	s.KeenProjectId = viper.GetString(KeenProjectId)
@@ -114,13 +118,14 @@ func (writer YamlWriter) Save(config *ApplicationSettings) bool {
 	}
 
 	tmpl, err := template.New("config").Parse(
-		ProjectKey + ": {{.ProjectKey}}\n" +
+		Username + ": {{.Username}}\n" +
+			Password + ": {{.Password}}\n" +
+			Team + ": {{.Team}}\n" +
+			ClusterId + ": {{.ClusterId}}\n" +
+			ProjectKey + ": {{.ProjectKey}}\n" +
 			RemoteBranch + ": {{.RemoteBranch}}\n" +
 			RemoteName + ": {{.RemoteName}}\n" +
 			Service + ": {{.DefaultService}}\n" +
-			ClusterIp + ": {{.ClusterIp}}\n" +
-			Username + ": {{.Username}}\n" +
-			Password + ": {{.Password}}\n" +
 			AnybarPort + ": {{.AnybarPort}}\n" +
 			KeenWriteKey + ": {{.KeenWriteKey}}\n" +
 			KeenProjectId + ": {{.KeenProjectId}}\n" +
@@ -142,13 +147,15 @@ type MandatoryChecker struct {
 
 func NewMandatoryChecker() *MandatoryChecker {
 	checker := &MandatoryChecker{}
-	checker.settings = []string{ProjectKey,
-		RemoteBranch,
-		RemoteName,
-		ClusterIp,
-		Service,
+	checker.settings = []string{
 		Username,
 		Password,
+		Team,
+		ClusterId,
+		ProjectKey,
+		RemoteBranch,
+		RemoteName,
+		Service,
 		KubeConfigKey}
 	return checker
 }
