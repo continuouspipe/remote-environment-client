@@ -298,7 +298,7 @@ Here, this is the environment for the develop branch, so the project key is `my-
 ### What is the name of the Git branch you are using for your remote environment? (REMOTE_BRANCH)
 
 The name of the branch you will use for your remote environment. There may be a 
-project specific naming convention for this e.g. `remote-<your name>`
+project specific naming convention for this e.g. `cpdev/<your name>`
 
 ### What is your github remote name?  (REMOTE_NAME)
 
