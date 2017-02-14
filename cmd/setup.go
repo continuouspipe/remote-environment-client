@@ -57,17 +57,23 @@ func (h *SetupHandle) Handle(args []string) *config.ApplicationSettings {
 }
 
 func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter config.Writer) *config.ApplicationSettings {
+
+	username := qp.RepeatIfEmpty("What is the continuouspipe username?")
+	password := qp.RepeatIfEmpty("What is the continuouspipe api-key?")
+	team := qp.RepeatIfEmpty("What is the continuouspipe team?")
+	clusterId := qp.RepeatIfEmpty("What is the continuouspipe cluster identifier?")
 	projectKey := qp.RepeatIfEmpty("What is your Continuous Pipe project key?")
 	remoteBranch := qp.RepeatIfEmpty("What is the name of the Git branch you are using for your remote environment?")
 
 	settings := &config.ApplicationSettings{
+		Username:            username,
+		Password:            password,
+		Team:                team,
+		ClusterId:           clusterId,
 		ProjectKey:          strings.ToLower(projectKey),
 		RemoteBranch:        strings.ToLower(remoteBranch),
 		RemoteName:          qp.ApplyDefault("What is your github remote name? (defaults to: origin)", "origin"),
 		DefaultService:      qp.ApplyDefault("What is the default container for the watch, bash, fetch and resync commands? (defaults to: web)", "web"),
-		ClusterIp:           qp.RepeatUntilValid("What is the IP of the cluster?", h.IsValidIpAddress),
-		Username:            qp.RepeatIfEmpty("What is the cluster username?"),
-		Password:            qp.RepeatIfEmpty("What is the cluster password?"),
 		AnybarPort:          qp.ReadString("If you want to use AnyBar, please provide a port number e.g 1738 ?"),
 		KeenWriteKey:        qp.ReadString("What is your keen.io write key? (Optional, only needed if you want to record usage stats)"),
 		KeenProjectId:       qp.ReadString("What is your keen.io project id? (Optional, only needed if you want to record usage stats)"),
@@ -97,6 +103,6 @@ func (h *SetupHandle) IsValidIpAddress(ipAddr string) (bool, error) {
 
 func applySettingsToCubeCtlConfig(settings *config.ApplicationSettings) {
 	kubectlapi.ConfigSetAuthInfo(settings.Environment, settings.Username, settings.Password)
-	kubectlapi.ConfigSetCluster(settings.Environment, settings.ClusterIp)
+	kubectlapi.ConfigSetCluster(settings.Environment, "127.0.0.1:8080", settings.Team, settings.ClusterId)
 	kubectlapi.ConfigSetContext(settings.Environment, settings.Username)
 }

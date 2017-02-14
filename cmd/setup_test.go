@@ -35,7 +35,6 @@ func TestUserApplicationSettingsAreStored(t *testing.T) {
 		//this is the default expected value for RemoteName
 		RemoteName:          "origin",
 		DefaultService:      "web",
-		ClusterIp:           "127.0.0.1",
 		Username:            "root",
 		Password:            "2e9fik2s9-fds903",
 		AnybarPort:          "6542",
