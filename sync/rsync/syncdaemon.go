@@ -1,5 +1,4 @@
 // +build windows
-
 package rsync
 
 import (
@@ -23,6 +22,7 @@ type RSyncDaemon struct {
 	kubeConfigKey, environment  string
 	pod                         string
 	individualFileSyncThreshold int
+	remoteProjectPath           string
 	remoteRsync                 *RemoteRsyncDeamon
 }
 
@@ -35,14 +35,21 @@ func NewRSyncDaemon() *RSyncDaemon {
 func (r *RSyncDaemon) SetKubeConfigKey(kubeConfigKey string) {
 	r.kubeConfigKey = kubeConfigKey
 }
+
 func (r *RSyncDaemon) SetEnvironment(environment string) {
 	r.environment = environment
 }
+
 func (r *RSyncDaemon) SetPod(pod string) {
 	r.pod = pod
 }
+
 func (r *RSyncDaemon) SetIndividualFileSyncThreshold(individualFileSyncThreshold int) {
 	r.individualFileSyncThreshold = individualFileSyncThreshold
+}
+
+func (r *RSyncDaemon) SetRemoteProjectPath(remoteProjectPath string) {
+	r.remoteProjectPath = remoteProjectPath
 }
 
 func (r *RSyncDaemon) Sync(filePaths []string) error {
@@ -87,7 +94,7 @@ func (r *RSyncDaemon) Sync(filePaths []string) error {
 }
 
 func (o RSyncDaemon) syncIndividualFiles(paths []string, args []string) error {
-	remoteRsyncUrl := o.remoteRsync.GetRsyncURL(rsyncConfigSection, "app")
+	remoteRsyncUrl := o.remoteRsync.GetRsyncURL(rsyncConfigSection, o.remoteProjectPath)
 
 	paths, err := o.getRelativePathList(paths)
 	if err != nil {
@@ -116,7 +123,7 @@ func (o RSyncDaemon) syncIndividualFiles(paths []string, args []string) error {
 			"--exclude=*",
 			"--",
 			convertWindowsPath(baseDir),
-			remoteRsyncUrl+"/"+filepath.Dir(path)+"/")
+			remoteRsyncUrl+filepath.Dir(path)+"/")
 
 		fmt.Println(path)
 		err := o.executeRsync(lArgs, ioutil.Discard)
@@ -128,7 +135,7 @@ func (o RSyncDaemon) syncIndividualFiles(paths []string, args []string) error {
 }
 
 func (o RSyncDaemon) syncAllFiles(paths []string, args []string) error {
-	remoteRsyncUrl := o.remoteRsync.GetRsyncURL(rsyncConfigSection, "app")
+	remoteRsyncUrl := o.remoteRsync.GetRsyncURL(rsyncConfigSection, o.remoteProjectPath)
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -140,7 +147,7 @@ func (o RSyncDaemon) syncAllFiles(paths []string, args []string) error {
 		"--relative",
 		"--",
 		".",
-		remoteRsyncUrl+"/",
+		remoteRsyncUrl,
 	)
 	return o.executeRsync(args, os.Stdout)
 }

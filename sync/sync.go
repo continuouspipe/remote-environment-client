@@ -12,6 +12,7 @@ type Syncer interface {
 	SetEnvironment(string)
 	SetPod(string)
 	SetIndividualFileSyncThreshold(int)
+	SetRemoteProjectPath(string)
 }
 
 func GetSyncer() Syncer {

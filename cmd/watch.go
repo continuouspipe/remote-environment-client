@@ -58,6 +58,7 @@ setup but you can specify another container to sync with.`,
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
 	command.PersistentFlags().Int64VarP(&handler.Latency, "latency", "l", 500, "Sync latency / speed in milli-seconds")
 	command.PersistentFlags().IntVarP(&handler.IndividualFileSyncThreshold, "individual-file-sync-threshold", "t", 10, "Above this threshold the watch command will sync any file or folder that is different compared to the local one")
+	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
 	return command
 }
 
@@ -70,6 +71,7 @@ type WatchHandle struct {
 	Latency                     int64
 	Stdout                      io.Writer
 	IndividualFileSyncThreshold int
+	RemoteProjectPath           string
 	syncer                      sync.Syncer
 }
 
@@ -88,7 +90,9 @@ func (h *WatchHandle) Complete(cmd *cobra.Command, argsIn []string, settingsRead
 	if h.Service == "" {
 		h.Service = settingsReader.GetString(config.Service)
 	}
-
+	if strings.HasSuffix(h.RemoteProjectPath, "/") == false {
+		h.RemoteProjectPath = h.RemoteProjectPath + "/"
+	}
 	return nil
 }
 
@@ -105,6 +109,9 @@ func (h *WatchHandle) Validate() error {
 	}
 	if h.Latency <= 100 {
 		return fmt.Errorf("please specify a latency of at least 100 milli-seconds")
+	}
+	if strings.HasPrefix(h.RemoteProjectPath, "/") == false {
+		return fmt.Errorf("please specify an absolute path for your --remote-project-path")
 	}
 	return nil
 }
@@ -131,6 +138,7 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 	h.syncer.SetEnvironment(environment)
 	h.syncer.SetPod(pod.GetName())
 	h.syncer.SetIndividualFileSyncThreshold(h.IndividualFileSyncThreshold)
+	h.syncer.SetRemoteProjectPath(h.RemoteProjectPath)
 	dirMonitor.SetLatency(time.Duration(h.Latency))
 
 	fmt.Fprintf(h.Stdout, "\nDestination Pod: %s\n", pod.GetName())

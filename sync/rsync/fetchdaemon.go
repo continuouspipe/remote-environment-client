@@ -1,5 +1,4 @@
 // +build windows
-
 package rsync
 
 import (
@@ -60,14 +59,33 @@ ls ${PID}
 `
 
 type RsyncDaemonFetch struct {
-	remoteRsync *RemoteRsyncDeamon
+	remoteRsync                *RemoteRsyncDeamon
+	kubeConfigKey, environment string
+	pod                        string
+	remoteProjectPath          string
 }
 
-func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod string, filePath string) error {
+func (r *RsyncDaemonFetch) SetKubeConfigKey(kubeConfigKey string) {
+	r.kubeConfigKey = kubeConfigKey
+}
+
+func (r *RsyncDaemonFetch) SetEnvironment(environment string) {
+	r.environment = environment
+}
+
+func (r *RsyncDaemonFetch) SetPod(pod string) {
+	r.pod = pod
+}
+
+func (r *RsyncDaemonFetch) SetRemoteProjectPath(remoteProjectPath string) {
+	r.remoteProjectPath = remoteProjectPath
+}
+
+func (r RsyncDaemonFetch) Fetch(filePath string) error {
 	kscmd := kexec.KSCommand{}
-	kscmd.KubeConfigKey = kubeConfigKey
-	kscmd.Environment = environment
-	kscmd.Pod = pod
+	kscmd.KubeConfigKey = r.kubeConfigKey
+	kscmd.Environment = r.environment
+	kscmd.Pod = r.pod
 	kscmd.Stderr = ioutil.Discard
 	kscmd.Stdout = ioutil.Discard
 	r.remoteRsync.SetKSCommand(kscmd)
@@ -96,10 +114,10 @@ func (r RsyncDaemonFetch) Fetch(kubeConfigKey string, environment string, pod st
 
 	if filePath == "" {
 		cplogs.V(5).Infoln("fetching all files")
-		args = append(args, r.remoteRsync.GetRsyncURL(rsyncConfigSection, "app")+"/")
+		args = append(args, r.remoteRsync.GetRsyncURL(rsyncConfigSection, r.remoteProjectPath))
 	} else {
 		cplogs.V(5).Infof("fetching specified file %s", filePath)
-		args = append(args, r.remoteRsync.GetRsyncURL(rsyncConfigSection, "app/"+filePath))
+		args = append(args, r.remoteRsync.GetRsyncURL(rsyncConfigSection, r.remoteProjectPath+filePath))
 	}
 
 	currentDir, err := os.Getwd()
