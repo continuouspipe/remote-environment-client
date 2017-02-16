@@ -103,6 +103,6 @@ func (h *SetupHandle) IsValidIpAddress(ipAddr string) (bool, error) {
 
 func applySettingsToCubeCtlConfig(settings *config.ApplicationSettings) {
 	kubectlapi.ConfigSetAuthInfo(settings.Environment, settings.Username, settings.Password)
-	kubectlapi.ConfigSetCluster(settings.Environment, "127.0.0.1:8080", settings.Team, settings.ClusterId)
+	kubectlapi.ConfigSetCluster(settings.Environment, "kube-proxy.continuouspipe.io:8080", settings.Team, settings.ClusterId)
 	kubectlapi.ConfigSetContext(settings.Environment, settings.Username)
 }
