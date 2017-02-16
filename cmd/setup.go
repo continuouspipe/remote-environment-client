@@ -1,17 +1,12 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/git"
-	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"net"
-	"strings"
-	"time"
 )
 
 func NewSetupCmd() *cobra.Command {
@@ -25,12 +20,16 @@ will probably want to add this to your .gitignore file.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			addApplicationFilesToGitIgnore()
 
-			handler := &SetupHandle{cmd}
-			settings := handler.Handle(args)
+			qp := util.NewQuestionPrompt()
+			handler := &SetupHandle{}
+			handler.Command = cmd
+			handler.qp = qp
 
-			fmt.Printf("\nRemote settings written to %s\n", viper.ConfigFileUsed())
-			fmt.Printf("Created the kubernetes config key %s\n", settings.Environment)
-			fmt.Println(kubectlapi.ClusterInfo(settings.Environment))
+			checkErr(handler.Handle(args))
+
+			//fmt.Printf("\nRemote settings written to %s\n", viper.ConfigFileUsed())
+			//fmt.Printf("Created the kubernetes config key %s\n", settings.Environment)
+			//fmt.Println(kubectlapi.ClusterInfo(settings.Environment))
 		},
 	}
 }
@@ -44,44 +43,62 @@ func addApplicationFilesToGitIgnore() {
 
 type SetupHandle struct {
 	Command *cobra.Command
+	qp      util.QuestionPrompter
 }
 
-func (h *SetupHandle) Handle(args []string) *config.ApplicationSettings {
-	qp := util.NewQuestionPrompt()
-	yamlWriter := config.NewYamlWriter()
+func (h *SetupHandle) Handle(args []string) error {
 
-	settings := h.storeUserSettings(qp, yamlWriter)
-	applySettingsToCubeCtlConfig(settings)
+	//yamlWriter := config.NewYamlWriter()
 
-	return settings
+	//request username and password
+	username := h.qp.RepeatIfEmpty("What is the continuouspipe username?")
+	password := h.qp.RepeatIfEmpty("What is the continuouspipe api-key?")
+
+	//store global configuration settings
+
+	//
+
+
+	return nil
 }
 
-func (h *SetupHandle) storeUserSettings(qp util.QuestionPrompter, yamlWriter config.Writer) *config.ApplicationSettings {
-
-	username := qp.RepeatIfEmpty("What is the continuouspipe username?")
-	password := qp.RepeatIfEmpty("What is the continuouspipe api-key?")
-	team := qp.RepeatIfEmpty("What is the continuouspipe team?")
-	clusterId := qp.RepeatIfEmpty("What is the continuouspipe cluster identifier?")
-	projectKey := qp.RepeatIfEmpty("What is your Continuous Pipe project key?")
-	remoteBranch := qp.RepeatIfEmpty("What is the name of the Git branch you are using for your remote environment?")
+/*func (h *SetupHandle) storeUserSettings(yamlWriter config.Writer) *config.ApplicationSettings {
+	team := h.qp.RepeatIfEmpty("What is the continuouspipe team?")
+	clusterId := h.qp.RepeatIfEmpty("What is the continuouspipe cluster identifier?")
+	projectKey := h.qp.RepeatIfEmpty("What is your Continuous Pipe project key?")
+	remoteBranch := h.qp.RepeatIfEmpty("What is the name of the Git branch you are using for your remote environment?")
 
 	settings := &config.ApplicationSettings{
-		Username:            username,
-		Password:            password,
 		Team:                team,
 		ClusterId:           clusterId,
 		ProjectKey:          strings.ToLower(projectKey),
 		RemoteBranch:        strings.ToLower(remoteBranch),
-		RemoteName:          qp.ApplyDefault("What is your github remote name? (defaults to: origin)", "origin"),
-		DefaultService:      qp.ApplyDefault("What is the default container for the watch, bash, fetch and resync commands? (defaults to: web)", "web"),
-		AnybarPort:          qp.ReadString("If you want to use AnyBar, please provide a port number e.g 1738 ?"),
-		KeenWriteKey:        qp.ReadString("What is your keen.io write key? (Optional, only needed if you want to record usage stats)"),
-		KeenProjectId:       qp.ReadString("What is your keen.io project id? (Optional, only needed if you want to record usage stats)"),
-		KeenEventCollection: qp.ReadString("What is your keen.io event collection?  (Optional, only needed if you want to record usage stats)"),
+		RemoteName:          h.qp.ApplyDefault("What is your github remote name? (defaults to: origin)", "origin"),
+		DefaultService:      h.qp.ApplyDefault("What is the default container for the watch, bash, fetch and resync commands? (defaults to: web)", "web"),
+		AnybarPort:          h.qp.ReadString("If you want to use AnyBar, please provide a port number e.g 1738 ?"),
+		KeenWriteKey:        h.qp.ReadString("What is your keen.io write key? (Optional, only needed if you want to record usage stats)"),
+		KeenProjectId:       h.qp.ReadString("What is your keen.io project id? (Optional, only needed if you want to record usage stats)"),
+		KeenEventCollection: h.qp.ReadString("What is your keen.io event collection?  (Optional, only needed if you want to record usage stats)"),
 		Environment:         strings.ToLower(config.GetEnvironment(projectKey, remoteBranch)),
 	}
 
-	yamlWriter.Save(settings)
+	tmpl, err := template.New("config").Parse(
+		config.Team + ": {{.Team}}\n" +
+			config.ClusterId + ": {{.ClusterId}}\n" +
+			config.ProjectKey + ": {{.ProjectKey}}\n" +
+			config.RemoteBranch + ": {{.RemoteBranch}}\n" +
+			config.RemoteName + ": {{.RemoteName}}\n" +
+			config.Service + ": {{.DefaultService}}\n" +
+			config.AnybarPort + ": {{.AnybarPort}}\n" +
+			config.KeenWriteKey + ": {{.KeenWriteKey}}\n" +
+			config.KeenProjectId + ": {{.KeenProjectId}}\n" +
+			config.KeenEventCollection + ": {{.KeenEventCollection}}\n" +
+			config.Environment + ": {{.Environment}}\n" +
+			"# Do not change the kubernetes-config-key. If it has been changed please run the setup command again\n" +
+			config.KubeConfigKey + ": {{.Environment}}\n")
+	checkErr(err)
+
+	yamlWriter.Save(viper.ConfigFileUsed(), tmpl)
 	return settings
 }
 
@@ -106,3 +123,4 @@ func applySettingsToCubeCtlConfig(settings *config.ApplicationSettings) {
 	kubectlapi.ConfigSetCluster(settings.Environment, "kube-proxy.continuouspipe.io:8080", settings.Team, settings.ClusterId)
 	kubectlapi.ConfigSetContext(settings.Environment, settings.Username)
 }
+*/
