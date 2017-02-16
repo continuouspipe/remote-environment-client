@@ -13,7 +13,7 @@ import (
 	"runtime/debug"
 )
 
-var cfgFile string
+var localConfigFile string
 
 var usageTemplate = `Usage:{{if .Runnable}}
   {{if .HasAvailableFlags}}{{appendIfNotPresent .UseLine "[flags]"}}{{else}}{{.UseLine}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
@@ -73,7 +73,7 @@ func Execute() {
 }
 
 func init() {
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", ".cp-remote-env-settings.yml", "config file (default is .cp-remote-env-settings.yml in the directory cp-remote is run from.)")
+	RootCmd.PersistentFlags().StringVar(&localConfigFile, "config", ".cp-remote-settings.yml", "local config file (default is .cp-remote-settings.yml in the directory cp-remote is run from.)")
 
 	RootCmd.AddCommand(NewBashCmd())
 	RootCmd.AddCommand(NewBuildCmd())
@@ -99,25 +99,38 @@ func init() {
 }
 
 func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
+	initLocalConfig()
+	initGlobalConfig()
+}
+
+func initLocalConfig() {
+	if localConfigFile != "" {
+		config.C.Local.SetConfigFile(localConfigFile)
 	}
 	pwd, err := os.Getwd()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	viper.AddConfigPath(pwd)
-
+	config.C.Local.AddConfigPath(pwd)
 	//create the config file if it does not exist
-	configFileUsed := viper.ConfigFileUsed()
-
+	configFileUsed := config.C.Local.ConfigFileUsed()
 	_, err = os.OpenFile(configFileUsed, os.O_RDWR|os.O_CREATE, 0664)
 	checkErr(err)
-
 	//load config file
-	checkErr(viper.ReadInConfig())
+	checkErr(config.C.Local.ReadInConfig())
+}
+
+func initGlobalConfig() {
+	config.C.Global.SetConfigFile("config.yml")
+	//TODO: Use github.com/mitchellh/go-homedir to get a cross platform home directory
+	config.C.Global.AddConfigPath("~/cp-remote/")
+	//create the config file if it does not exist
+	configFileUsed := config.C.Global.ConfigFileUsed()
+	_, err := os.OpenFile(configFileUsed, os.O_RDWR|os.O_CREATE, 0664)
+	checkErr(err)
+	//load config file
+	checkErr(config.C.Global.ReadInConfig())
 }
 
 func validateConfig(validator config.Validator, reader config.Reader) {
