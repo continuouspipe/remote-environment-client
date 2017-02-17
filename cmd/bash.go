@@ -12,7 +12,7 @@ import (
 )
 
 func NewBashCmd() *cobra.Command {
-	settings := config.NewApplicationSettings()
+	settings := config.C
 	handler := &BashHandle{}
 
 	bashcmd := &cobra.Command{
@@ -22,8 +22,7 @@ func NewBashCmd() *cobra.Command {
 		Long: `This will remotely connect to a bash session onto the default container specified
 during setup but you can specify another container to connect to. `,
 		Run: func(cmd *cobra.Command, args []string) {
-			validator := config.NewMandatoryChecker()
-			validateConfig(validator, settings)
+			validateConfig()
 
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
@@ -36,9 +35,16 @@ during setup but you can specify another container to connect to. `,
 		Example: fmt.Sprintf("%s bash", config.AppName),
 	}
 
-	bashcmd.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
-	bashcmd.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
-	bashcmd.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
+	projectKey, err := settings.GetString(config.ProjectKey)
+	checkErr(err)
+	remoteBranch, err := settings.GetString(config.RemoteBranch)
+	checkErr(err)
+	service, err := settings.GetString(config.Service)
+	checkErr(err)
+
+	bashcmd.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", projectKey, "Continuous Pipe project key")
+	bashcmd.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", remoteBranch, "Name of the Git branch you are using for your remote environment")
+	bashcmd.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 
 	return bashcmd
 }
@@ -52,19 +58,24 @@ type BashHandle struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *BashHandle) Complete(cmd *cobra.Command, argsIn []string, settingsReader config.Reader) error {
+func (h *BashHandle) Complete(cmd *cobra.Command, argsIn []string, conf *config.Config) error {
 	h.Command = cmd
 
-	h.kubeConfigKey = settingsReader.GetString(config.KubeConfigKey)
+	var err error
 
+	h.kubeConfigKey, err = conf.GetString(config.KubeConfigKey)
+	checkErr(err)
 	if h.ProjectKey == "" {
-		h.ProjectKey = settingsReader.GetString(config.ProjectKey)
+		h.ProjectKey, err = conf.GetString(config.ProjectKey)
+		checkErr(err)
 	}
 	if h.RemoteBranch == "" {
-		h.RemoteBranch = settingsReader.GetString(config.RemoteBranch)
+		h.RemoteBranch, err = conf.GetString(config.RemoteBranch)
+		checkErr(err)
 	}
 	if h.Service == "" {
-		h.Service = settingsReader.GetString(config.Service)
+		h.Service, err = conf.GetString(config.Service)
+		checkErr(err)
 	}
 
 	return nil

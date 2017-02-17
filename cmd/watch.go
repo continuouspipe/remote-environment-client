@@ -14,7 +14,7 @@ import (
 )
 
 func NewWatchCmd() *cobra.Command {
-	settings := config.NewApplicationSettings()
+	settings := config.C
 	handler := &WatchHandle{}
 	command := &cobra.Command{
 		Use:     "watch",
@@ -27,8 +27,7 @@ setup but you can specify another container to sync with.`,
 			fmt.Println("Watching for changes. Quit anytime with Ctrl-C.")
 
 			dirMonitor := monitor.GetOsDirectoryMonitor()
-			validator := config.NewMandatoryChecker()
-			validateConfig(validator, settings)
+			validateConfig()
 
 			exclusion := monitor.NewExclusion()
 			exclusion.LoadCustomExclusionsFromFile()
@@ -53,9 +52,17 @@ setup but you can specify another container to sync with.`,
 			checkErr(handler.Handle(dirMonitor, podsFinder, podsFilter))
 		},
 	}
-	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
-	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
-	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
+
+	projectKey, err := settings.GetString(config.ProjectKey)
+	checkErr(err)
+	remoteBranch, err := settings.GetString(config.RemoteBranch)
+	checkErr(err)
+	service, err := settings.GetString(config.Service)
+	checkErr(err)
+
+	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", projectKey, "Continuous Pipe project key")
+	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", remoteBranch, "Name of the Git branch you are using for your remote environment")
+	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 	command.PersistentFlags().Int64VarP(&handler.Latency, "latency", "l", 500, "Sync latency / speed in milli-seconds")
 	command.PersistentFlags().IntVarP(&handler.IndividualFileSyncThreshold, "individual-file-sync-threshold", "t", 10, "Above this threshold the watch command will sync any file or folder that is different compared to the local one")
 	return command
@@ -74,19 +81,24 @@ type WatchHandle struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *WatchHandle) Complete(cmd *cobra.Command, argsIn []string, settingsReader config.Reader) error {
+func (h *WatchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
 	h.Command = cmd
 
-	h.kubeConfigKey = settingsReader.GetString(config.KubeConfigKey)
+	var err error
+	h.kubeConfigKey, err = settings.GetString(config.KubeConfigKey)
+	checkErr(err)
 
 	if h.ProjectKey == "" {
-		h.ProjectKey = settingsReader.GetString(config.ProjectKey)
+		h.ProjectKey, err = settings.GetString(config.ProjectKey)
+		checkErr(err)
 	}
 	if h.RemoteBranch == "" {
-		h.RemoteBranch = settingsReader.GetString(config.RemoteBranch)
+		h.RemoteBranch, err = settings.GetString(config.RemoteBranch)
+		checkErr(err)
 	}
 	if h.Service == "" {
-		h.Service = settingsReader.GetString(config.Service)
+		h.Service, err = settings.GetString(config.Service)
+		checkErr(err)
 	}
 
 	return nil

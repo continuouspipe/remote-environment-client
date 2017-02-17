@@ -13,7 +13,6 @@ import (
 )
 
 func NewBuildCmd() *cobra.Command {
-	settings := config.NewApplicationSettings()
 	handler := &BuildHandle{}
 	handler.commit = git.NewCommit()
 	handler.lsRemote = git.NewLsRemote()
@@ -31,13 +30,12 @@ environment branch. ContinuousPipe will then build the environment. You can use 
 https://ui.continuouspipe.io/ to see when the environment has finished building and to
 find its IP address.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			validator := config.NewMandatoryChecker()
-			validateConfig(validator, settings)
+			validateConfig()
 
 			benchmrk := benchmark.NewCmdBenchmark()
 			benchmrk.Start("build")
 
-			checkErr(handler.Complete(cmd, args, settings))
+			checkErr(handler.Complete(cmd, args, config.C))
 			checkErr(handler.Validate())
 			checkErr(handler.Handle())
 			_, err := benchmrk.StopAndLog()
@@ -60,10 +58,13 @@ type BuildHandle struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *BuildHandle) Complete(cmd *cobra.Command, argsIn []string, settingsReader config.Reader) error {
+func (h *BuildHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
 	h.Command = cmd
-	h.remoteName = settingsReader.GetString(config.RemoteName)
-	h.remoteBranch = settingsReader.GetString(config.RemoteBranch)
+	var err error
+	h.remoteName, err = settings.GetString(config.RemoteName)
+	checkErr(err)
+	h.remoteBranch, err = settings.GetString(config.RemoteBranch)
+	checkErr(err)
 	return nil
 }
 

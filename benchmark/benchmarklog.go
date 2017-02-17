@@ -13,12 +13,11 @@ type CmdBenchmark struct {
 }
 
 func NewCmdBenchmark() *CmdBenchmark {
-	settings := config.NewApplicationSettings()
 	b := &CmdBenchmark{}
 	b.sender = keenapi.NewSender()
-	b.sender.ProjectId = settings.GetString(config.KeenProjectId)
-	b.sender.WriteKey = settings.GetString(config.KeenWriteKey)
-	b.sender.EventCollection = settings.GetString(config.KeenEventCollection)
+	b.sender.ProjectId, _ = config.C.GetString(config.KeenProjectId)
+	b.sender.WriteKey, _ = config.C.GetString(config.KeenWriteKey)
+	b.sender.EventCollection, _ = config.C.GetString(config.KeenEventCollection)
 	b.payloadProvider = keenapi.NewBenchmarkPayload()
 	return b
 }

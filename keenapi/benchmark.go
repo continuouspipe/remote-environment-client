@@ -8,14 +8,14 @@ import (
 )
 
 type BenchmarkPayload struct {
-	settings  config.Reader
+	settings  *config.Config
 	Command   string
 	StartTime string
 }
 
 func NewBenchmarkPayload() *BenchmarkPayload {
 	b := &BenchmarkPayload{}
-	b.settings = config.NewApplicationSettings()
+	b.settings = config.C
 	return b
 }
 
@@ -23,9 +23,18 @@ func (b *BenchmarkPayload) GetJsonPayload() ([]byte, error) {
 	t := time.Now()
 	endTime := t.Format(time.RFC3339)
 
+	projectKey, err := b.settings.GetString(config.ProjectKey)
+	if err != nil {
+		return nil, err
+	}
+	remoteBranch, err := b.settings.GetString(config.RemoteBranch)
+	if err != nil {
+		return nil, err
+	}
+
 	payload := make(map[string]string)
-	payload["project"] = b.settings.GetString(config.ProjectKey)
-	payload["namespace"] = b.settings.GetString(config.Environment)
+	payload["project"] = projectKey
+	payload["namespace"] = config.GetEnvironment(projectKey, remoteBranch)
 	payload["command"] = b.Command
 	payload["start-time"] = b.StartTime
 	payload["end-time"] = endTime

@@ -6,7 +6,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"github.com/mitchellh/go-homedir"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"os"
@@ -104,38 +104,47 @@ func initConfig() {
 }
 
 func initLocalConfig() {
-	if localConfigFile != "" {
-		config.C.Local.SetConfigFile(localConfigFile)
-	}
 	pwd, err := os.Getwd()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	config.C.Local.AddConfigPath(pwd)
+
+	config.C.SetConfigFile(config.LocalConfigType, pwd + string(os.PathSeparator) + localConfigFile)
+
 	//create the config file if it does not exist
-	configFileUsed := config.C.Local.ConfigFileUsed()
+	configFileUsed, err := config.C.ConfigFileUsed(config.LocalConfigType)
+	checkErr(err)
+
 	_, err = os.OpenFile(configFileUsed, os.O_RDWR|os.O_CREATE, 0664)
 	checkErr(err)
 	//load config file
-	checkErr(config.C.Local.ReadInConfig())
+	checkErr(config.C.ReadInConfig(config.LocalConfigType))
 }
 
 func initGlobalConfig() {
-	config.C.Global.SetConfigFile("config.yml")
-	//TODO: Use github.com/mitchellh/go-homedir to get a cross platform home directory
-	config.C.Global.AddConfigPath("~/cp-remote/")
-	//create the config file if it does not exist
-	configFileUsed := config.C.Global.ConfigFileUsed()
-	_, err := os.OpenFile(configFileUsed, os.O_RDWR|os.O_CREATE, 0664)
+	homedir, err := homedir.Dir()
 	checkErr(err)
+	globalConfigPath := homedir + string(os.PathSeparator) + ".cp-remote" + string(os.PathSeparator)
+	globalConfigName := "config.yml"
+
+	//create the directory
+	_ = os.Mkdir(globalConfigPath, 0755)
+
+	//create the global config file
+	_, err = os.OpenFile(globalConfigPath+globalConfigName, os.O_RDWR|os.O_CREATE, 0664)
+	checkErr(err)
+
+	//set directory and file path in config
+	config.C.SetConfigFile(config.GlobalConfigType, globalConfigPath + globalConfigName)
+
 	//load config file
-	checkErr(config.C.Global.ReadInConfig())
+	checkErr(config.C.ReadInConfig(config.GlobalConfigType))
 }
 
-func validateConfig(validator config.Validator, reader config.Reader) {
-	i, missing := validator.Validate(reader)
-	if i > 0 {
+func validateConfig() {
+	valid, missing := config.C.Validate()
+	if valid == false {
 		exitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the setup command.", missing))
 	}
 }

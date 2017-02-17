@@ -47,17 +47,29 @@ type SetupHandle struct {
 }
 
 func (h *SetupHandle) Handle(args []string) error {
-
-	//yamlWriter := config.NewYamlWriter()
-
 	//request username and password
 	username := h.qp.RepeatIfEmpty("What is the continuouspipe username?")
-	password := h.qp.RepeatIfEmpty("What is the continuouspipe api-key?")
+	err := config.C.Set(config.Username, username)
+	if err != nil {
+		return err
+	}
 
-	//store global configuration settings
+	apiKey := h.qp.RepeatIfEmpty("What is the continuouspipe api-key?")
+	err = config.C.Set(config.ApiKey, apiKey)
+	if err != nil {
+		return err
+	}
 
-	//
+	//save the settings
+	config.C.Save()
 
+	err = config.C.Set(config.RemoteBranch, "Some remote branch")
+	if err != nil {
+		return err
+	}
+
+	//save the settings
+	config.C.Save()
 
 	return nil
 }
