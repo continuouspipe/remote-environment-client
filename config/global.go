@@ -1,17 +1,27 @@
 package config
 
-type GlobalConfig struct {
-	settings []Setting
+import (
+	"github.com/spf13/viper"
+)
+
+type globalConfig struct {
 	viperWrapper
 }
 
-func NewGlobalConfig() *GlobalConfig {
-	global := &GlobalConfig{}
+const Username = "username"
+const ApiKey = "api-key"
+
+func newGlobalConfig() *globalConfig {
+	global := &globalConfig{}
 	global.settings = []Setting{
 		//CP Username
-		{"username", "", true},
+		{Username, "", true},
 
 		//CP API Key
-		{"api-key", "", true}}
+		{ApiKey, "", true}}
+	global.viper = viper.New()
+	for _, setting := range global.settings {
+		global.viper.Set(setting.Name, setting.DefaultValue)
+	}
 	return global
 }

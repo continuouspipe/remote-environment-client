@@ -10,7 +10,7 @@ import (
 )
 
 func NewCheckConnectionCmd() *cobra.Command {
-	settings := config.NewApplicationSettings()
+	settings := config.C
 	handler := &CheckConnectionHandle{}
 	command := &cobra.Command{
 		Use:     "checkconnection",
@@ -20,8 +20,7 @@ func NewCheckConnectionCmd() *cobra.Command {
 for the Kubernetes cluster are correct and that if they are pods can be found for the environment.
 It can be used with the environment option to check another environment`,
 		Run: func(cmd *cobra.Command, args []string) {
-			validator := config.NewMandatoryChecker()
-			validateConfig(validator, settings)
+			validateConfig()
 
 			podsFinder := pods.NewKubePodsFind()
 			checkErr(handler.Complete(cmd, args, settings))
@@ -30,8 +29,13 @@ It can be used with the environment option to check another environment`,
 		},
 	}
 
-	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
-	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
+	projectKey, err := settings.GetString(config.ProjectKey)
+	checkErr(err)
+	remoteBranch, err := settings.GetString(config.RemoteBranch)
+	checkErr(err)
+
+	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", projectKey, "Continuous Pipe project key")
+	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", remoteBranch, "Name of the Git branch you are using for your remote environment")
 
 	return command
 }
@@ -44,16 +48,20 @@ type CheckConnectionHandle struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, settingsReader config.Reader) error {
+func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, setting *config.Config) error {
 	h.Command = cmd
 
-	h.kubeConfigKey = settingsReader.GetString(config.KubeConfigKey)
+	var err error
+	h.kubeConfigKey, err = setting.GetString(config.KubeConfigKey)
+	checkErr(err)
 
 	if h.ProjectKey == "" {
-		h.ProjectKey = settingsReader.GetString(config.ProjectKey)
+		h.ProjectKey, err = setting.GetString(config.ProjectKey)
+		checkErr(err)
 	}
 	if h.RemoteBranch == "" {
-		h.RemoteBranch = settingsReader.GetString(config.RemoteBranch)
+		h.RemoteBranch, err = setting.GetString(config.RemoteBranch)
+		checkErr(err)
 	}
 
 	return nil

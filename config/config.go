@@ -1,40 +1,129 @@
 package config
 
-import "github.com/spf13/viper"
+import (
+	"github.com/spf13/viper"
+	"fmt"
+	"os"
+	"bufio"
+)
 
 var C *Config
 
+type ConfigType string
+
+const LocalConfigType ConfigType = "local"
+const GlobalConfigType ConfigType = "global"
+
 type Setting struct {
-	Name      string
-	Value     string
-	Mandatory bool
+	Name         string
+	DefaultValue string
+	Mandatory    bool
 }
 
 //allows to fetch settings either from global or local config
 type Config struct {
-	Global *GlobalConfig
-	Local  *LocalConfig
+	global *globalConfig
+	local  *localConfig
 }
 
 func NewConfig() *Config {
-	config := &Config{}
-	config.Global = NewGlobalConfig()
-	config.Local = NewLocalConfig()
-	return config
+	c := &Config{}
+	c.global = newGlobalConfig()
+	c.local = newLocalConfig()
+	return c
 }
 
-func (c *Config) Set(key string, value interface{}) {
-	//set the key value on global or local depending who handles it
+//set the key value on global or local depending who handles it
+func (c *Config) Set(key string, value interface{}) error {
+	if c.local.HasSetting(key) {
+		c.local.Set(key, value)
+		return nil
+	} else if c.global.HasSetting(key) {
+		c.global.Set(key, value)
+		return nil
+	}
+	return fmt.Errorf("The key specified %s didn't match any of the handled configs.", key)
 }
 
-func (c *Config) GetBool(key string) bool {
-	//get the bool value on global or local depending who handles it
-	return false
+//get the bool value on global or local depending who handles it
+func (c *Config) GetBool(key string) (bool, error) {
+	if c.local.HasSetting(key) {
+		return c.local.GetBool(key), nil
+	} else if c.global.HasSetting(key) {
+		return c.global.GetBool(key), nil
+	}
+	return false, fmt.Errorf("The key specified %s didn't match any of the handled configs.", key)
 }
 
-func (c *Config) GetString(key string) string {
-	//get the bool value on global or local depending who handles it
-	return ""
+//get the string value on global or local depending who handles it
+func (c *Config) GetString(key string) (string, error) {
+	if c.local.HasSetting(key) {
+		return c.local.GetString(key), nil
+	} else if c.global.HasSetting(key) {
+		return c.global.GetString(key), nil
+	}
+	return "", fmt.Errorf("The key specified %s didn't match any of the handled configs.", key)
+}
+
+//set the config file for the given config type
+func (c *Config) SetConfigFile(configType ConfigType, in string) error {
+	if configType == LocalConfigType {
+		c.local.SetConfigFile(in)
+		return nil
+	} else if configType == GlobalConfigType {
+		c.global.SetConfigFile(in)
+		return nil
+	}
+	return fmt.Errorf("The config type specified %s didn't match any of the handled configs.", configType)
+}
+
+//set the config path for the given config type
+func (c *Config) SetConfigPath(configType ConfigType, in string) error {
+	if configType == LocalConfigType {
+		c.local.SetConfigPath(in)
+		return nil
+	} else if configType == GlobalConfigType {
+		c.global.SetConfigPath(in)
+		return nil
+	}
+	return fmt.Errorf("The config type specified %s didn't match any of the handled configs.", configType)
+}
+
+//set the config file used for the given config type
+func (c *Config) ConfigFileUsed(configType ConfigType) (string, error) {
+	if configType == LocalConfigType {
+		return c.local.ConfigFileUsed(), nil
+	} else if configType == GlobalConfigType {
+		return c.global.ConfigFileUsed(), nil
+	}
+	return "", fmt.Errorf("The config type specified %s didn't match any of the handled configs.", configType)
+}
+
+//reads from the viper config specified in the configType
+func (c *Config) ReadInConfig(configType ConfigType) error {
+	if configType == LocalConfigType {
+		return c.local.ReadInConfig()
+	} else if configType == GlobalConfigType {
+		return c.global.ReadInConfig()
+	}
+	return fmt.Errorf("The config type specified %s didn't match any of the handled configs.", configType)
+}
+
+//save the local and global settings on disk
+func (c *Config) Save() error {
+	err := c.local.Save()
+	if err != nil {
+		return err
+	}
+	return c.global.Save()
+}
+
+//check if all mandatory settings are set for both config types
+func (c Config) Validate() (bool, []string) {
+	local := c.local.GetMissingMandatorySettings()
+	global := c.global.GetMissingMandatorySettings()
+	all := append(local, global...)
+	return len(all) > 0 && all[0] != "", all
 }
 
 func init() {
@@ -43,33 +132,97 @@ func init() {
 
 //used by local and global config structs to expose the required viper methods
 type viperWrapper struct {
-	viper *viper.Viper
+	settings   []Setting
+	viper      *viper.Viper
+	configFile string
 }
 
-func (w *viperWrapper) SetConfigFile(in string) {
-	w.viper.SetConfigFile(in)
+func (v *viperWrapper) SetConfigFile(in string) {
+	v.configFile = in
+	v.viper.SetConfigFile(in)
 }
 
-func (w *viperWrapper) AddConfigPath(in string) {
-	w.viper.AddConfigPath(in)
+func (v *viperWrapper) SetConfigPath(in string) {
+	v.viper.AddConfigPath(in)
 }
 
-func (w *viperWrapper) ConfigFileUsed() string {
-	return w.viper.ConfigFileUsed()
+//reads from the viper config, then if the value is missing sets it from the specified default
+func (v *viperWrapper) ReadInConfig() error {
+	err := v.viper.ReadInConfig()
+	if err != nil {
+		return err
+	}
+	for _, setting := range v.settings {
+		if value := v.viper.GetString(setting.Name); value == "" {
+			v.viper.Set(setting.Name, setting.DefaultValue)
+		}
+	}
+	return nil
 }
 
-func (w *viperWrapper) ReadInConfig() error {
-	return w.viper.ReadInConfig()
+func (v *viperWrapper) Set(key string, value interface{}) {
+	v.viper.Set(key, value)
 }
 
-func (w *viperWrapper) Set(key string, value interface{}) {
-	w.viper.Set(key, value)
+func (v viperWrapper) ConfigFileUsed() string {
+	return v.viper.ConfigFileUsed()
 }
 
-func (w *viperWrapper) GetBool(key string) bool {
-	return w.viper.GetBool(key)
+func (v viperWrapper) GetBool(key string) bool {
+	return v.viper.GetBool(key)
 }
 
-func (w *viperWrapper) GetString(key string) string {
-	return w.viper.GetString(key)
+func (v viperWrapper) GetString(key string) string {
+	return v.viper.GetString(key)
+}
+
+func (v viperWrapper) HasSetting(key string) bool {
+	for _, setting := range v.settings {
+		if setting.Name == key {
+			return true
+		}
+	}
+	return false
+}
+
+//saves the settings on disk
+func (v viperWrapper) Save() error {
+	configFile := v.viper.ConfigFileUsed()
+
+	file, err := os.OpenFile(configFile, os.O_TRUNC|os.O_WRONLY, 0664)
+	defer file.Close()
+	if err != nil {
+		return err
+	}
+
+	w := bufio.NewWriter(file)
+	for _, setting := range v.settings {
+		_, err := w.WriteString(fmt.Sprintf("%s: %s\n", setting.Name, v.GetString(setting.Name)))
+		if err != nil {
+			return err
+		}
+	}
+	w.Flush()
+	return nil
+}
+
+func (v viperWrapper) GetMissingMandatorySettings() []string {
+	missing := []string{}
+	settings := v.GetMandatorySettings()
+	for _, setting := range settings {
+		if v.GetString(setting) == "" {
+			missing = append(missing, setting)
+		}
+	}
+	return missing
+}
+
+func (v viperWrapper) GetMandatorySettings() []string {
+	settings := []string{}
+	for _, setting := range v.settings {
+		if setting.Mandatory == true {
+			settings = append(settings, setting.Name)
+		}
+	}
+	return settings
 }

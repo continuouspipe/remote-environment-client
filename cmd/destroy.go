@@ -9,7 +9,7 @@ import (
 )
 
 func NewDestroyCmd() *cobra.Command {
-	settings := config.NewApplicationSettings()
+	settings := config.C
 	handler := &DestroyHandle{}
 	command := &cobra.Command{
 		Use:   "destroy",
@@ -17,8 +17,7 @@ func NewDestroyCmd() *cobra.Command {
 		Long: `The destroy command will delete the remote branch used for your remote
 environment, ContinuousPipe will then remove the environment.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			validator := config.NewMandatoryChecker()
-			validateConfig(validator, settings)
+			validateConfig()
 
 			fmt.Println("Destroying remote environment")
 			fmt.Println("Deleting remote branch")
@@ -40,10 +39,13 @@ type DestroyHandle struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *DestroyHandle) Complete(cmd *cobra.Command, argsIn []string, settingsReader config.Reader) error {
+func (h *DestroyHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
 	h.Command = cmd
-	h.remoteName = settingsReader.GetString(config.RemoteName)
-	h.remoteBranch = settingsReader.GetString(config.RemoteBranch)
+	var err error
+	h.remoteName, err = settings.GetString(config.RemoteName)
+	checkErr(err)
+	h.remoteBranch, err = settings.GetString(config.RemoteBranch)
+	checkErr(err)
 	return nil
 }
 

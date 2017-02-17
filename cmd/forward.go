@@ -30,7 +30,7 @@ var (
 )
 
 func NewForwardCmd() *cobra.Command {
-	settings := config.NewApplicationSettings()
+	settings := config.C
 	handler := &ForwardHandle{}
 	command := &cobra.Command{
 		Use:     "forward",
@@ -41,8 +41,7 @@ to a container on the remote environment that has a port exposed. This is useful
 such as connecting to a database using a local client. You need to specify the container and
 the port number to forward.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			validator := config.NewMandatoryChecker()
-			validateConfig(validator, settings)
+			validateConfig()
 
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
@@ -50,9 +49,17 @@ the port number to forward.`,
 		},
 		Example: portforwardExample,
 	}
-	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
-	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
-	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
+
+	projectKey, err := settings.GetString(config.ProjectKey)
+	checkErr(err)
+	remoteBranch, err := settings.GetString(config.RemoteBranch)
+	checkErr(err)
+	service, err := settings.GetString(config.Service)
+	checkErr(err)
+
+	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", projectKey, "Continuous Pipe project key")
+	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", remoteBranch, "Name of the Git branch you are using for your remote environment")
+	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 	return command
 }
 
@@ -68,7 +75,7 @@ type ForwardHandle struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settingsReader config.Reader) error {
+func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
 	h.Command = cmd
 
 	if len(argsIn) > 0 {
@@ -77,16 +84,22 @@ func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settingsRe
 
 	h.podsFinder = pods.NewKubePodsFind()
 	h.podsFilter = pods.NewKubePodsFilter()
-	h.kubeConfigKey = settingsReader.GetString(config.KubeConfigKey)
+
+	var err error
+	h.kubeConfigKey, err = settings.GetString(config.KubeConfigKey)
+	checkErr(err)
 
 	if h.ProjectKey == "" {
-		h.ProjectKey = settingsReader.GetString(config.ProjectKey)
+		h.ProjectKey, err = settings.GetString(config.ProjectKey)
+		checkErr(err)
 	}
 	if h.RemoteBranch == "" {
-		h.RemoteBranch = settingsReader.GetString(config.RemoteBranch)
+		h.RemoteBranch, err = settings.GetString(config.RemoteBranch)
+		checkErr(err)
 	}
 	if h.Service == "" {
-		h.Service = settingsReader.GetString(config.Service)
+		h.Service, err = settings.GetString(config.Service)
+		checkErr(err)
 	}
 
 	return nil
