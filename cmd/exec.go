@@ -14,10 +14,10 @@ import (
 
 var execExample = `
 # execute -l -all on the web pod
-cp-remote-go ex -- ls -all
+cp-remote ex -- ls -all
 
 # execute -l -all on the web pod overriding the project-key and remote-branch
-cp-remote-go ex -p techup -r dev-user -s web -- ls -all
+cp-remote ex -p techup -r dev-user -s web -- ls -all
 `
 
 func NewExecCmd() *cobra.Command {

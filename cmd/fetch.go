@@ -13,10 +13,10 @@ import (
 
 var fetchExample = `
 # fetch files and folders from the remote pod
-cp-remote-go fe
+cp-remote fe
 
 # fetch files and folders overriding the configuration settings
-cp-remote-go fe -p techup -r dev-user -s web
+cp-remote fe -p techup -r dev-user -s web
 `
 
 func NewFetchCmd() *cobra.Command {
