@@ -1,10 +1,10 @@
 package config
 
 import (
-	"github.com/spf13/viper"
-	"fmt"
-	"os"
 	"bufio"
+	"fmt"
+	"github.com/spf13/viper"
+	"os"
 )
 
 var C *Config

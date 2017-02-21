@@ -5,8 +5,8 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/fatih/color"
-	"github.com/spf13/cobra"
 	"github.com/mitchellh/go-homedir"
+	"github.com/spf13/cobra"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"os"
@@ -110,7 +110,7 @@ func initLocalConfig() {
 		os.Exit(1)
 	}
 
-	config.C.SetConfigFile(config.LocalConfigType, pwd + string(os.PathSeparator) + localConfigFile)
+	config.C.SetConfigFile(config.LocalConfigType, pwd+string(os.PathSeparator)+localConfigFile)
 
 	//create the config file if it does not exist
 	configFileUsed, err := config.C.ConfigFileUsed(config.LocalConfigType)
@@ -136,7 +136,7 @@ func initGlobalConfig() {
 	checkErr(err)
 
 	//set directory and file path in config
-	config.C.SetConfigFile(config.GlobalConfigType, globalConfigPath + globalConfigName)
+	config.C.SetConfigFile(config.GlobalConfigType, globalConfigPath+globalConfigName)
 
 	//load config file
 	checkErr(config.C.ReadInConfig(config.GlobalConfigType))

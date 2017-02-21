@@ -1,9 +1,9 @@
 package config
 
 import (
-	"strings"
-	"path/filepath"
 	"github.com/spf13/viper"
+	"path/filepath"
+	"strings"
 )
 
 type localConfig struct {
@@ -13,7 +13,7 @@ type localConfig struct {
 const Project = "project"
 const Flow = "flow"
 const ClusterIdentifier = "cluster-identifier"
-const ProjectKey = "project-key"
+const KubeEnvironmentName = "kube-environment-name"
 const RemoteName = "remote-name"
 const RemoteBranch = "remote-branch"
 const Service = "service"
@@ -22,6 +22,9 @@ const AnybarPort = "anybar-port"
 const KeenWriteKey = "keen-write-key"
 const KeenProjectId = "keen-project-id"
 const KeenEventCollection = "keen-event-collection"
+const RemoteEnvironmentId = "remote-environment-id"
+const InitStatus = "init-status"
+const RemoteEnvironmentConfigModifiedAt = "remote-environment-config-modified-at"
 
 func newLocalConfig() *localConfig {
 	local := &localConfig{}
@@ -29,7 +32,7 @@ func newLocalConfig() *localConfig {
 		{Project, "", true},              //CP project name (previously Team Name)
 		{Flow, "", true},                 //CP flow Name
 		{ClusterIdentifier, "", true},    //CP cluster Identifier
-		{ProjectKey, "", true},           //CP project key
+		{KubeEnvironmentName, "", true},  //CP cluster Identifier
 		{RemoteName, "origin", true},     //Github remote name (origin by default)
 		{RemoteBranch, "", true},         //Git name of the git branch used for the remote environment
 		{Service, "web", true},           //Kubernetes service name for the commands like (watch, bash, fetch and resync)
@@ -38,6 +41,12 @@ func newLocalConfig() *localConfig {
 		{KeenWriteKey, "", false},        //Keen.io write key
 		{KeenProjectId, "", false},       //Keen.io project id
 		{KeenEventCollection, "", false}, //Keen.io event collection
+		{InitStatus, "", false},          //Initialization status used in the init cmd
+		{RemoteEnvironmentId, "", false}, //Remote environment Id
+
+		//Timestamp that indicates when was the last time that the user has modified the remote environment config settings
+		//when the timestamp stored locally differs from the one in the server, it means that the config are out of sync and may need re-synced
+		{RemoteEnvironmentConfigModifiedAt, "", false},
 	}
 	local.viper = viper.New()
 	for _, setting := range local.settings {

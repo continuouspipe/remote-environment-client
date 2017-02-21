@@ -2,10 +2,10 @@ package error
 
 import (
 	"fmt"
-	"runtime/debug"
-	"os"
-	"github.com/fatih/color"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/fatih/color"
+	"os"
+	"runtime/debug"
 )
 
 func CheckErr(err error) {

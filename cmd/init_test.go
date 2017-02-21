@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"testing"
-	"github.com/continuouspipe/remote-environment-client/test"
 	"fmt"
+	"github.com/continuouspipe/remote-environment-client/test"
+	"testing"
 )
 
 func TestInitHandler_Complete(t *testing.T) {

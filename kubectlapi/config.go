@@ -1,9 +1,9 @@
 package kubectlapi
 
 import (
+	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/osapi"
-	"fmt"
 )
 
 func ConfigSetAuthInfo(environment string, username string, password string) (string, error) {

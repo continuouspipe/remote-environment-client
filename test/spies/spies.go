@@ -2,8 +2,8 @@ package spies
 
 import (
 	"github.com/continuouspipe/remote-environment-client/test"
-	"testing"
 	"reflect"
+	"testing"
 )
 
 //A map that stores a list of function arguments [argumentName] => value (any type)
