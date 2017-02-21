@@ -83,7 +83,7 @@ func init() {
 	RootCmd.AddCommand(NewExecCmd())
 	RootCmd.AddCommand(NewFetchCmd())
 	RootCmd.AddCommand(NewForwardCmd())
-	RootCmd.AddCommand(NewSetupCmd())
+	RootCmd.AddCommand(NewInitCmd())
 	RootCmd.AddCommand(NewVersionCmd())
 	RootCmd.AddCommand(NewWatchCmd())
 
