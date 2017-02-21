@@ -23,7 +23,7 @@ need to add a remote for that repository.
 OSX (64bit):
 
 ```
-sudo curl https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/0.0.1/darwin-amd64.gz > cp-remote.gz
+sudo curl https://continuouspipe.github.io/remote-environment-client/0.0.1/darwin-amd64.gz > cp-remote.gz
 gzip -d cp-remote.gz;
 mv cp-remote /usr/local/bin/cp-remote
 chmod +x /usr/local/bin/cp-remote
@@ -36,7 +36,7 @@ Linux (64-bits):
 if your architecture is 32bit use linux-386.gz rather than linux-amd64.gz
 
 ```
-sudo curl https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/0.0.1/linux-amd64.gz > cp-remote.gz
+sudo curl https://continuouspipe.github.io/remote-environment-client/0.0.1/linux-amd64.gz > cp-remote.gz
 gzip -d cp-remote.gz;
 mv cp-remote /usr/local/bin/cp-remote
 chmod +x /usr/local/bin/cp-remote
@@ -49,7 +49,7 @@ Windows (64-bits):
 if your architecture is 32bit use windows-386.gz rather than windows-amd64.gz
 
 ```
-Download https://raw.githubusercontent.com/continuouspipe/remote-environment-client/gh-pages/0.0.1/windows-amd64.gz > cp-remote.gz
+Download https://continuouspipe.github.io/remote-environment-client/0.0.1/windows-amd64.gz > cp-remote.gz
 Extract cp-remote.gz
 Move cp-remote.exe into your project folder
 ```
