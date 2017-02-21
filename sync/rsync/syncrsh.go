@@ -23,6 +23,7 @@ type RSyncRsh struct {
 	kubeConfigKey, environment  string
 	pod                         string
 	individualFileSyncThreshold int
+	remoteProjectPath           string
 }
 
 func NewRSyncRsh() *RSyncRsh {
@@ -32,14 +33,21 @@ func NewRSyncRsh() *RSyncRsh {
 func (o *RSyncRsh) SetKubeConfigKey(kubeConfigKey string) {
 	o.kubeConfigKey = kubeConfigKey
 }
+
 func (o *RSyncRsh) SetEnvironment(environment string) {
 	o.environment = environment
 }
+
 func (o *RSyncRsh) SetPod(pod string) {
 	o.pod = pod
 }
+
 func (o *RSyncRsh) SetIndividualFileSyncThreshold(individualFileSyncThreshold int) {
 	o.individualFileSyncThreshold = individualFileSyncThreshold
+}
+
+func (o *RSyncRsh) SetRemoteProjectPath(remoteProjectPath string) {
+	o.remoteProjectPath = remoteProjectPath
 }
 
 func (o RSyncRsh) Sync(paths []string) error {
@@ -97,7 +105,7 @@ func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 				"--exclude=*",
 				"--",
 				cwd+string(filepath.Separator)+filepath.Dir(lPath)+string(filepath.Separator),
-				"--:/app/"+filepath.Dir(lPath)+string(filepath.Separator))
+				"--:"+o.remoteProjectPath+filepath.Dir(lPath)+string(filepath.Separator))
 
 			fmt.Println(lPath)
 			err := o.executeRsync(lArgs, ioutil.Discard)
@@ -136,7 +144,7 @@ func (o RSyncRsh) syncAllFiles(paths []string, args []string) error {
 		"--relative",
 		"--",
 		"./",
-		"--:/app/",
+		"--:"+o.remoteProjectPath,
 	)
 	return o.executeRsync(args, os.Stdout)
 }

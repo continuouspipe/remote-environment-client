@@ -36,11 +36,17 @@ func TestFetch(t *testing.T) {
 	handler.RemoteBranch = "feature-testing"
 	handler.Service = "web"
 	handler.File = "some-file.txt"
+	handler.RemoteProjectPath = "/my/sub/path/"
 	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spyFetcher)
 
+	spyFetcher.ExpectsCallCount(t, "SetKubeConfigKey", 1)
+	spyFetcher.ExpectsCallCount(t, "SetRemoteProjectPath", 1)
+	spyFetcher.ExpectsCallCount(t, "SetEnvironment", 1)
+	spyFetcher.ExpectsCallCount(t, "SetPod", 1)
 	spyFetcher.ExpectsCallCount(t, "Fetch", 1)
-	spyFetcher.ExpectsFirstCallArgument(t, "Fetch", "kubeConfigKey", "my-config-key")
-	spyFetcher.ExpectsFirstCallArgument(t, "Fetch", "environment", "proj-feature-testing")
-	spyFetcher.ExpectsFirstCallArgument(t, "Fetch", "pod", "web-123456")
+	spyFetcher.ExpectsFirstCallArgument(t, "SetKubeConfigKey", "kubeConfigKey", "my-config-key")
+	spyFetcher.ExpectsFirstCallArgument(t, "SetRemoteProjectPath", "remoteProjectPath", "/my/sub/path/")
+	spyFetcher.ExpectsFirstCallArgument(t, "SetEnvironment", "environment", "proj-feature-testing")
+	spyFetcher.ExpectsFirstCallArgument(t, "SetPod", "pod", "web-123456")
 	spyFetcher.ExpectsFirstCallArgument(t, "Fetch", "filePath", "some-file.txt")
 }

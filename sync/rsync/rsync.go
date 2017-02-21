@@ -11,6 +11,7 @@ type RsyncSyncer interface {
 	SetEnvironment(string)
 	SetPod(string)
 	SetIndividualFileSyncThreshold(int)
+	SetRemoteProjectPath(string)
 }
 
 var RsyncRsh RsyncSyncer

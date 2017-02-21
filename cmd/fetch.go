@@ -63,16 +63,18 @@ with the default container specified during setup but you can specify another co
 	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
 	command.PersistentFlags().StringVarP(&handler.File, "file", "f", "", "Allows to specify a file that needs to be fetch from the pod")
+	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
 	return command
 }
 
 type FetchHandle struct {
-	Command       *cobra.Command
-	ProjectKey    string
-	RemoteBranch  string
-	Service       string
-	kubeConfigKey string
-	File          string
+	Command           *cobra.Command
+	ProjectKey        string
+	RemoteBranch      string
+	Service           string
+	kubeConfigKey     string
+	File              string
+	RemoteProjectPath string
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -90,7 +92,9 @@ func (h *FetchHandle) Complete(cmd *cobra.Command, argsIn []string, settingsRead
 	if h.Service == "" {
 		h.Service = settingsReader.GetString(config.Service)
 	}
-
+	if strings.HasSuffix(h.RemoteProjectPath, "/") == false {
+		h.RemoteProjectPath = h.RemoteProjectPath + "/"
+	}
 	return nil
 }
 
@@ -104,6 +108,9 @@ func (h *FetchHandle) Validate() error {
 	}
 	if len(strings.Trim(h.Service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
+	}
+	if strings.HasPrefix(h.RemoteProjectPath, "/") == false {
+		return fmt.Errorf("please specify an absolute path for your --remote-project-path")
 	}
 	return nil
 }
@@ -122,5 +129,9 @@ func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter p
 		return err
 	}
 
-	return fetcher.Fetch(h.kubeConfigKey, environment, pod.GetName(), h.File)
+	fetcher.SetEnvironment(environment)
+	fetcher.SetKubeConfigKey(h.kubeConfigKey)
+	fetcher.SetPod(pod.GetName())
+	fetcher.SetRemoteProjectPath(h.RemoteProjectPath)
+	return fetcher.Fetch(h.File)
 }

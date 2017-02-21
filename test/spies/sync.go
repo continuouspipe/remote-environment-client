@@ -42,7 +42,6 @@ func (s *SpySyncer) SetEnvironment(env string) {
 
 	function := &Function{Name: "SetEnvironment", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
-
 }
 
 func (s *SpySyncer) SetPod(pod string) {
@@ -51,7 +50,14 @@ func (s *SpySyncer) SetPod(pod string) {
 
 	function := &Function{Name: "SetPod", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
+}
 
+func (s *SpySyncer) SetRemoteProjectPath(remoteProjectPath string) {
+	args := make(Arguments)
+	args["remoteProjectPath"] = remoteProjectPath
+
+	function := &Function{Name: "SetRemoteProjectPath", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
 }
 
 func (s *SpySyncer) SetIndividualFileSyncThreshold(threshold int) {
@@ -60,5 +66,4 @@ func (s *SpySyncer) SetIndividualFileSyncThreshold(threshold int) {
 
 	function := &Function{Name: "SetIndividualFileSyncThreshold", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
-
 }
