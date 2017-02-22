@@ -2,8 +2,6 @@ package config
 
 import (
 	"github.com/spf13/viper"
-	"path/filepath"
-	"strings"
 )
 
 type localConfig struct {
@@ -49,11 +47,4 @@ func newLocalConfig() *localConfig {
 		local.viper.Set(setting.Name, setting.DefaultValue)
 	}
 	return local
-}
-
-func GetEnvironment(projectKey string, remoteBranch string) string {
-	environment := strings.Replace(remoteBranch, string(filepath.Separator), "-", -1)
-	environment = strings.Replace(environment, "\\", "-", -1)
-	environment = projectKey + "-" + environment
-	return environment
 }

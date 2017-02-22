@@ -29,62 +29,43 @@ It can be used with the environment option to check another environment`,
 		},
 	}
 
-	projectKey, err := settings.GetString(config.ProjectKey)
+	environment, err := settings.GetString(config.KubeEnvironmentName)
 	checkErr(err)
-	remoteBranch, err := settings.GetString(config.RemoteBranch)
-	checkErr(err)
-
-	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", projectKey, "Continuous Pipe project key")
-	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", remoteBranch, "Name of the Git branch you are using for your remote environment")
+	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "r", environment, "The full remote environment name: project-key-git-branch")
 
 	return command
 }
 
 type CheckConnectionHandle struct {
 	Command       *cobra.Command
-	ProjectKey    string
-	RemoteBranch  string
+	Environment   string
 	kubeConfigKey string
 }
 
 // Complete verifies command line arguments and loads data from the command environment
 func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, setting *config.Config) error {
 	h.Command = cmd
-
 	var err error
-	h.kubeConfigKey, err = setting.GetString(config.KubeConfigKey)
-	checkErr(err)
-
-	if h.ProjectKey == "" {
-		h.ProjectKey, err = setting.GetString(config.ProjectKey)
+	if h.Environment == "" {
+		h.Environment, err = setting.GetString(config.KubeEnvironmentName)
 		checkErr(err)
 	}
-	if h.RemoteBranch == "" {
-		h.RemoteBranch, err = setting.GetString(config.RemoteBranch)
-		checkErr(err)
-	}
-
 	return nil
 }
 
 // Validate checks that the provided checkconnection options are specified.
 func (h *CheckConnectionHandle) Validate() error {
-	if len(strings.Trim(h.ProjectKey, " ")) == 0 {
-		return fmt.Errorf("the project key specified is invalid")
-	}
-	if len(strings.Trim(h.RemoteBranch, " ")) == 0 {
-		return fmt.Errorf("the remote branch specified is invalid")
+	if len(strings.Trim(h.Environment, " ")) == 0 {
+		return fmt.Errorf("the environment specified is invalid")
 	}
 	return nil
 }
 
 // Finds the pods and prints them
 func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) error {
-	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
+	fmt.Println("checking connection for environment " + h.Environment)
 
-	fmt.Println("checking connection for environment " + environment)
-
-	countPods, err := fetchNumberOfPods(h.kubeConfigKey, environment, podsFinder)
+	countPods, err := fetchNumberOfPods(h.kubeConfigKey, h.Environment, podsFinder)
 	if err != nil {
 		return err
 	}

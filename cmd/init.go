@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
+	"github.com/continuouspipe/remote-environment-client/util"
 )
 
 const InitStateParseSaveToken = "parse-save-token"
@@ -25,6 +26,7 @@ func NewInitCmd() *cobra.Command {
 	settings := config.C
 	handler := &InitHandler{}
 	handler.config = settings
+	handler.qp = util.NewQuestionPrompt()
 
 	command := &cobra.Command{
 		Use:     "init [cp-remote-token]",
@@ -47,18 +49,25 @@ func NewInitCmd() *cobra.Command {
 	return command
 }
 
+func addApplicationFilesToGitIgnore() {
+	gitIgnore, err := git.NewIgnore()
+	checkErr(err)
+	logFile, err := config.C.ConfigFileUsed(config.LocalConfigType)
+	checkErr(err)
+	gitIgnore.AddToIgnore(logFile)
+	gitIgnore.AddToIgnore(cplogs.LogDir)
+}
+
 type InitHandler struct {
 	command *cobra.Command
 	config  *config.Config
 	token   string
+	qp      util.QuestionPrompter
 }
 
 // Complete verifies command line arguments and loads data from the command environment
 func (i *InitHandler) Complete(argsIn []string) error {
-
-	fmt.Println(len(argsIn))
 	if len(argsIn) > 0 && argsIn[0] != "" {
-		fmt.Println(argsIn[0])
 		i.token = argsIn[0]
 		return nil
 	}
@@ -108,8 +117,15 @@ func (i InitHandler) Handle() error {
 		return err
 	}
 
-	//TODO: Handle currentStatus === 'completed'
-	//e.g.: Will we ask the user if he want to rebuild using this new init token?
+	if currentStatus == InitStateCompleted {
+		answer := i.qp.RepeatIfEmpty("The environment is already initialized, do you want to re-initialize? (yes/no)")
+		if answer == "no" {
+			return nil
+		}
+		cplogs.V(5).Infoln("The user requested to re-initialize the remote environment")
+		//the user want to re-initialize, set the status to empty.
+		currentStatus = ""
+	}
 
 	var initState initState
 
@@ -418,8 +434,17 @@ func (i applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 	kubectlapi.ConfigSetCluster(environment, "kube-proxy-staging.continuouspipe.io:8080", project, clusterId)
 	kubectlapi.ConfigSetContext(environment, username)
 
-	fmt.Printf("\nRemote settings written to %s\n", i.config.ConfigFileUsed(config.LocalConfigType))
-	fmt.Printf("\nRemote settings written to %s\n", i.config.ConfigFileUsed(config.GlobalConfigType))
+	localConfigFile, err := i.config.ConfigFileUsed(config.LocalConfigType)
+	if err != nil {
+		return err
+	}
+	globalConfigFile, err := i.config.ConfigFileUsed(config.GlobalConfigType)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("\nRemote settings written to %s\n", localConfigFile)
+	fmt.Printf("\nRemote settings written to %s\n", globalConfigFile)
 	fmt.Printf("Created the kubernetes config key %s\n", environment)
 	fmt.Println(kubectlapi.ClusterInfo(environment))
 	return nil

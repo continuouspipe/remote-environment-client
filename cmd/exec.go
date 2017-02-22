@@ -44,41 +44,28 @@ the exec command. The command and its arguments need to follow --`,
 			fmt.Println(res)
 		},
 	}
-	projectKey, err := settings.GetString(config.ProjectKey)
-	checkErr(err)
-	remoteBranch, err := settings.GetString(config.RemoteBranch)
+	environment, err := settings.GetString(config.KubeEnvironmentName)
 	checkErr(err)
 	service, err := settings.GetString(config.Service)
 	checkErr(err)
 
-	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", projectKey, "Continuous Pipe project key")
-	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", remoteBranch, "Name of the Git branch you are using for your remote environment")
+	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "r", environment, "The full remote environment name: project-key-git-branch")
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 	return command
 }
 
 type ExecHandle struct {
-	Command       *cobra.Command
-	ProjectKey    string
-	RemoteBranch  string
-	Service       string
-	kubeConfigKey string
+	Command     *cobra.Command
+	Environment string
+	Service     string
 }
 
 // Complete verifies command line arguments and loads data from the command environment
 func (h *ExecHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
 	h.Command = cmd
-
 	var err error
-	h.kubeConfigKey, err = settings.GetString(config.KubeConfigKey)
-	checkErr(err)
-
-	if h.ProjectKey == "" {
-		h.ProjectKey, err = settings.GetString(config.ProjectKey)
-		checkErr(err)
-	}
-	if h.RemoteBranch == "" {
-		h.RemoteBranch, err = settings.GetString(config.RemoteBranch)
+	if h.Environment == "" {
+		h.Environment, err = settings.GetString(config.KubeEnvironmentName)
 		checkErr(err)
 	}
 	if h.Service == "" {
@@ -91,11 +78,8 @@ func (h *ExecHandle) Complete(cmd *cobra.Command, argsIn []string, settings *con
 
 // Validate checks that the provided exec options are specified.
 func (h *ExecHandle) Validate() error {
-	if len(strings.Trim(h.ProjectKey, " ")) == 0 {
-		return fmt.Errorf("the project key specified is invalid")
-	}
-	if len(strings.Trim(h.RemoteBranch, " ")) == 0 {
-		return fmt.Errorf("the remote branch specified is invalid")
+	if len(strings.Trim(h.Environment, " ")) == 0 {
+		return fmt.Errorf("the environment specified is invalid")
 	}
 	if len(strings.Trim(h.Service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
@@ -105,17 +89,15 @@ func (h *ExecHandle) Validate() error {
 
 // Handle executes a command inside a pod
 func (h *ExecHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, spawn exec.Spawner) (string, error) {
-	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
-
-	allPods, err := podsFinder.FindAll(h.kubeConfigKey, environment)
+	allPods, err := podsFinder.FindAll(h.Environment, h.Environment)
 	checkErr(err)
 
 	pod, err := podsFilter.ByService(allPods, h.Service)
 	checkErr(err)
 
 	kscmd := kexec.KSCommand{}
-	kscmd.KubeConfigKey = h.kubeConfigKey
-	kscmd.Environment = environment
+	kscmd.KubeConfigKey = h.Environment
+	kscmd.Environment = h.Environment
 	kscmd.Pod = pod.GetName()
 	kscmd.Stdin = os.Stdin
 	kscmd.Stdout = os.Stdout

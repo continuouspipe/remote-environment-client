@@ -53,15 +53,12 @@ setup but you can specify another container to sync with.`,
 		},
 	}
 
-	projectKey, err := settings.GetString(config.ProjectKey)
-	checkErr(err)
-	remoteBranch, err := settings.GetString(config.RemoteBranch)
+	environment, err := settings.GetString(config.KubeEnvironmentName)
 	checkErr(err)
 	service, err := settings.GetString(config.Service)
 	checkErr(err)
 
-	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", projectKey, "Continuous Pipe project key")
-	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", remoteBranch, "Name of the Git branch you are using for your remote environment")
+	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "r", environment, "The full remote environment name: project-key-git-branch")
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 	command.PersistentFlags().Int64VarP(&handler.Latency, "latency", "l", 500, "Sync latency / speed in milli-seconds")
 	command.PersistentFlags().IntVarP(&handler.IndividualFileSyncThreshold, "individual-file-sync-threshold", "t", 10, "Above this threshold the watch command will sync any file or folder that is different compared to the local one")
@@ -71,10 +68,8 @@ setup but you can specify another container to sync with.`,
 
 type WatchHandle struct {
 	Command                     *cobra.Command
-	ProjectKey                  string
-	RemoteBranch                string
+	Environment                 string
 	Service                     string
-	kubeConfigKey               string
 	Latency                     int64
 	Stdout                      io.Writer
 	IndividualFileSyncThreshold int
@@ -87,15 +82,8 @@ func (h *WatchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *co
 	h.Command = cmd
 
 	var err error
-	h.kubeConfigKey, err = settings.GetString(config.KubeConfigKey)
-	checkErr(err)
-
-	if h.ProjectKey == "" {
-		h.ProjectKey, err = settings.GetString(config.ProjectKey)
-		checkErr(err)
-	}
-	if h.RemoteBranch == "" {
-		h.RemoteBranch, err = settings.GetString(config.RemoteBranch)
+	if h.Environment == "" {
+		h.Environment, err = settings.GetString(config.KubeEnvironmentName)
 		checkErr(err)
 	}
 	if h.Service == "" {
@@ -110,11 +98,8 @@ func (h *WatchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *co
 
 // Validate checks that the provided watch options are specified.
 func (h *WatchHandle) Validate() error {
-	if len(strings.Trim(h.ProjectKey, " ")) == 0 {
-		return fmt.Errorf("the project key specified is invalid")
-	}
-	if len(strings.Trim(h.RemoteBranch, " ")) == 0 {
-		return fmt.Errorf("the remote branch specified is invalid")
+	if len(strings.Trim(h.Environment, " ")) == 0 {
+		return fmt.Errorf("the environment specified is invalid")
 	}
 	if len(strings.Trim(h.Service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
@@ -129,9 +114,7 @@ func (h *WatchHandle) Validate() error {
 }
 
 func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
-	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
-
-	allPods, err := podsFinder.FindAll(h.kubeConfigKey, environment)
+	allPods, err := podsFinder.FindAll(h.Environment, h.Environment)
 	if err != nil {
 		return err
 	}
@@ -146,8 +129,8 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 		return err
 	}
 
-	h.syncer.SetKubeConfigKey(h.kubeConfigKey)
-	h.syncer.SetEnvironment(environment)
+	h.syncer.SetKubeConfigKey(h.Environment)
+	h.syncer.SetEnvironment(h.Environment)
 	h.syncer.SetPod(pod.GetName())
 	h.syncer.SetIndividualFileSyncThreshold(h.IndividualFileSyncThreshold)
 	h.syncer.SetRemoteProjectPath(h.RemoteProjectPath)

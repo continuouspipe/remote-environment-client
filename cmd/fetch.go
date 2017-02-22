@@ -59,15 +59,12 @@ with the default container specified during setup but you can specify another co
 		},
 	}
 
-	projectKey, err := settings.GetString(config.ProjectKey)
-	checkErr(err)
-	remoteBranch, err := settings.GetString(config.RemoteBranch)
+	environment, err := settings.GetString(config.KubeEnvironmentName)
 	checkErr(err)
 	service, err := settings.GetString(config.Service)
 	checkErr(err)
 
-	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", projectKey, "Continuous Pipe project key")
-	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", remoteBranch, "Name of the Git branch you are using for your remote environment")
+	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "r", environment, "The full remote environment name: project-key-git-branch")
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 	command.PersistentFlags().StringVarP(&handler.File, "file", "f", "", "Allows to specify a file that needs to be fetch from the pod")
 	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
@@ -76,10 +73,8 @@ with the default container specified during setup but you can specify another co
 
 type FetchHandle struct {
 	Command           *cobra.Command
-	ProjectKey        string
-	RemoteBranch      string
+	Environment        string
 	Service           string
-	kubeConfigKey     string
 	File              string
 	RemoteProjectPath string
 }
@@ -89,16 +84,8 @@ func (h *FetchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *co
 	h.Command = cmd
 
 	var err error
-
-	h.kubeConfigKey, err = settings.GetString(config.KubeConfigKey)
-	checkErr(err)
-
-	if h.ProjectKey == "" {
-		h.ProjectKey, err = settings.GetString(config.ProjectKey)
-		checkErr(err)
-	}
-	if h.RemoteBranch == "" {
-		h.RemoteBranch, err = settings.GetString(config.RemoteBranch)
+	if h.Environment == "" {
+		h.Environment, err = settings.GetString(config.KubeEnvironmentName)
 		checkErr(err)
 	}
 	if h.Service == "" {
@@ -113,11 +100,8 @@ func (h *FetchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *co
 
 // Validate checks that the provided fetch options are specified.
 func (h *FetchHandle) Validate() error {
-	if len(strings.Trim(h.ProjectKey, " ")) == 0 {
-		return fmt.Errorf("the project key specified is invalid")
-	}
-	if len(strings.Trim(h.RemoteBranch, " ")) == 0 {
-		return fmt.Errorf("the remote branch specified is invalid")
+	if len(strings.Trim(h.Environment, " ")) == 0 {
+		return fmt.Errorf("the environment specified is invalid")
 	}
 	if len(strings.Trim(h.Service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
@@ -130,9 +114,7 @@ func (h *FetchHandle) Validate() error {
 
 // Copies all the files and folders from the remote development environment into the current directory
 func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, fetcher sync.Fetcher) error {
-	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
-
-	allPods, err := podsFinder.FindAll(h.kubeConfigKey, environment)
+	allPods, err := podsFinder.FindAll(h.Environment, h.Environment)
 	if err != nil {
 		return err
 	}
@@ -142,8 +124,8 @@ func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter p
 		return err
 	}
 
-	fetcher.SetEnvironment(environment)
-	fetcher.SetKubeConfigKey(h.kubeConfigKey)
+	fetcher.SetEnvironment(h.Environment)
+	fetcher.SetKubeConfigKey(h.Environment)
 	fetcher.SetPod(pod.GetName())
 	fetcher.SetRemoteProjectPath(h.RemoteProjectPath)
 	return fetcher.Fetch(h.File)
