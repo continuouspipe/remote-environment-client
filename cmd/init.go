@@ -13,8 +13,11 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 )
 
-const InitStatusStarted = "started"
-const InitStatusCompleted = "completed"
+const InitStateParseSaveToken = "parse-save-token"
+const InitStateTriggerBuild = "trigger-build"
+const InitStateWaitEnvironmentReady = "wait-environment-ready"
+const InitStateApplyEnvironmentSettings = "apply-environment-settings"
+const InitStateCompleted = "completed"
 
 const RemoteEnvironmentReadinessProbePeriodSeconds = 60
 
@@ -22,11 +25,6 @@ func NewInitCmd() *cobra.Command {
 	settings := config.C
 	handler := &InitHandler{}
 	handler.config = settings
-	handler.commit = git.NewCommit()
-	handler.lsRemote = git.NewLsRemote()
-	handler.push = git.NewPush()
-	handler.revList = git.NewRevList()
-	handler.revParse = git.NewRevParse()
 
 	command := &cobra.Command{
 		Use:     "init [cp-remote-token]",
@@ -35,8 +33,8 @@ func NewInitCmd() *cobra.Command {
 		Long:    ``,
 		Run: func(cmd *cobra.Command, args []string) {
 
-			//Mock base64 token when 4 arguments are passed in
-			if len(args) == 4 {
+			//Mock base64 token when 5 arguments are passed in
+			if len(args) == 5 {
 				args = []string{base64.StdEncoding.EncodeToString([]byte(strings.Join(args, ",")))}
 			}
 
@@ -50,14 +48,9 @@ func NewInitCmd() *cobra.Command {
 }
 
 type InitHandler struct {
-	command  *cobra.Command
-	config   *config.Config
-	commit   git.CommitExecutor
-	lsRemote git.LsRemoteExecutor
-	push     git.PushExecutor
-	revList  git.RevListExecutor
-	revParse git.RevParseExecutor
-	token    string
+	command *cobra.Command
+	config  *config.Config
+	token   string
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -110,32 +103,60 @@ func (i InitHandler) Validate() error {
 //Handle Executes the initialization
 func (i InitHandler) Handle() error {
 
-	initStatus, err := i.config.GetString(config.InitStatus)
+	currentStatus, err := i.config.GetString(config.InitStatus)
 	if err != nil {
 		return err
 	}
 
-	//if the init status is not set, is the first time init has been called on the project.
-	if initStatus == "" {
-		return i.initializeNewRemoteEnvironment()
+	//TODO: Handle currentStatus === 'completed'
+	//e.g.: Will we ask the user if he want to rebuild using this new init token?
+
+	var initState initState
+
+	switch currentStatus {
+	case "", InitStateParseSaveToken:
+		initState = &parseSaveTokenInfo{i.config, i.token}
+	case InitStateTriggerBuild:
+		initState = NewTriggerBuild(i.config)
+	case InitStateWaitEnvironmentReady:
+		initState = &waitEnvironmentReady{i.config}
+	case InitStateApplyEnvironmentSettings:
+		initState = &applyEnvironmentSettings{i.config}
 	}
 
-	//init status started
-	//check what's the situation: do we have api-key? is it building on CP? do we have git-branch to push if necessary?
+	for initState != nil {
+		err := initState.handle()
+		if err != nil {
+			return err
+		}
+		initState = initState.next()
+	}
+	i.config.Set(config.InitStatus, InitStateCompleted)
 
-	//init status completed
-	//do we ask the user if he want to rebuild using this new init token?
 	return nil
 }
 
-func (i InitHandler) initializeNewRemoteEnvironment() error {
-	//set the init-status as "STARTED"
-	i.config.Set(config.InitStatus, InitStatusStarted)
+type initState interface {
+	handle() error
+	next() initState
+}
 
-	//we expect the token to have: api-key, remote-environment-id, cp-username, git-branch
-	splitToken := strings.Split(i.token, ",")
+type parseSaveTokenInfo struct {
+	config *config.Config
+	token  string
+}
+
+func (p parseSaveTokenInfo) next() initState {
+	return NewTriggerBuild(p.config)
+}
+
+func (p parseSaveTokenInfo) handle() error {
+	p.config.Set(config.InitStatus, InitStateParseSaveToken)
+
+	//we expect the token to have: api-key, remote-environment-id, project, cp-username, git-branch
+	splitToken := strings.Split(p.token, ",")
 	apiKey := splitToken[0]
-	remoteEnvironmentId := splitToken[1]
+	remoteEnvId := splitToken[1]
 	project := splitToken[2]
 	cpUsername := splitToken[3]
 	gitBranch := splitToken[4]
@@ -144,28 +165,152 @@ func (i InitHandler) initializeNewRemoteEnvironment() error {
 	api := cpapi.NewCpApi()
 	api.SetApiKey(apiKey)
 	cplogs.V(5).Infof("fetching remote environment info for user: %s", cpUsername)
-	remoteEnvironment, err := api.GetRemoteEnvironment(remoteEnvironmentId)
+	_, err := api.GetRemoteEnvironment(remoteEnvId)
 	if err != nil {
 		return err
 	}
 
+	cplogs.V(5).Infof("saving parsed token info for user: %s", cpUsername)
 	//if there are no errors when fetching the remote environment information we can store the token info
-	i.config.Set(config.Username, cpUsername)
-	i.config.Set(config.ApiKey, apiKey)
-	i.config.Set(config.Project, project)
-	i.config.Set(config.RemoteBranch, gitBranch)
-	i.config.Set(config.RemoteEnvironmentId, remoteEnvironmentId)
-	i.config.Save()
+	p.config.Set(config.Username, cpUsername)
+	p.config.Set(config.ApiKey, apiKey)
+	p.config.Set(config.Project, project)
+	p.config.Set(config.RemoteBranch, gitBranch)
+	p.config.Set(config.RemoteEnvironmentId, remoteEnvId)
+	p.config.Save()
+	cplogs.V(5).Infof("saved parsed token info for user: %s", cpUsername)
+	cplogs.Flush()
+	return nil
+}
+
+type triggerBuild struct {
+	config   *config.Config
+	commit   git.CommitExecutor
+	lsRemote git.LsRemoteExecutor
+	push     git.PushExecutor
+	revList  git.RevListExecutor
+	revParse git.RevParseExecutor
+}
+
+func NewTriggerBuild(config *config.Config) *triggerBuild {
+	return &triggerBuild{
+		config,
+		git.NewCommit(),
+		git.NewLsRemote(),
+		git.NewPush(),
+		git.NewRevList(),
+		git.NewRevParse()}
+}
+
+func (p triggerBuild) next() initState {
+	return &waitEnvironmentReady{p.config}
+}
+
+func (p triggerBuild) handle() error {
+	p.config.Set(config.InitStatus, InitStateTriggerBuild)
+
+	apiKey, err := p.config.GetString(config.ApiKey)
+	if err != nil {
+		return err
+	}
+	remoteEnvId, err := p.config.GetString(config.RemoteEnvironmentId)
+	if err != nil {
+		return err
+	}
+	cpUsername, err := p.config.GetString(config.Username)
+	if err != nil {
+		return err
+	}
+	remoteName, err := p.config.GetString(config.RemoteName)
+	if err != nil {
+		return err
+	}
+	gitBranch, err := p.config.GetString(config.RemoteBranch)
+	if err != nil {
+		return err
+	}
+
+	api := cpapi.NewCpApi()
+	api.SetApiKey(apiKey)
+	remoteEnv, err := api.GetRemoteEnvironment(remoteEnvId)
+	if err != nil {
+		return err
+	}
 
 	//if the remote environment is not already building, make sure the remote git branch exists
 	//and then trigger a build via api
-	if remoteEnvironment.Status != cpapi.RemoteEnvironmentStatusBuilding {
-		remoteName, err := i.config.GetString(config.RemoteName)
-		if err != nil {
-			return err
-		}
-		i.createRemoteBranch(remoteName, gitBranch)
-		api.RemoteEnvironmentBuild(remoteEnvironmentId)
+	if remoteEnv.Status != cpapi.RemoteEnvironmentStatusBuilding {
+		cplogs.V(5).Infof("triggering build for the remote environment", cpUsername)
+
+		fmt.Println("Pushing to remote")
+		p.createRemoteBranch(remoteName, gitBranch)
+		api.RemoteEnvironmentBuild(remoteEnvId)
+		fmt.Println("Continuous Pipe will now build your developer environment")
+		fmt.Println("You can see when it is complete and find its IP address at https://ui.continuouspipe.io/")
+		fmt.Println("Please wait until the build is complete to use any of this tool's other commands.")
+
+	}
+	return nil
+}
+
+func (i triggerBuild) createRemoteBranch(remoteName string, gitBranch string) error {
+	remoteExists, err := i.hasRemote(remoteName, gitBranch)
+	if err != nil {
+		return err
+	}
+	if remoteExists == true {
+		return nil
+	}
+	return i.pushLocalBranchToRemote(remoteName, gitBranch)
+}
+
+func (i triggerBuild) pushLocalBranchToRemote(remoteName string, gitBranch string) error {
+	lbn, err := i.revParse.GetLocalBranchName()
+	cplogs.V(5).Infof("local branch name value is %s", lbn)
+	if err != nil {
+		return err
+	}
+	i.push.Push(lbn, remoteName, gitBranch)
+	return nil
+}
+
+func (i triggerBuild) hasRemote(remoteName string, gitBranch string) (bool, error) {
+	list, err := i.lsRemote.GetList(remoteName, gitBranch)
+	cplogs.V(5).Infof("list of remote branches that matches remote name and branch are %s", list)
+	if err != nil {
+		return false, err
+	}
+	if len(list) == 0 {
+		return false, err
+	}
+	return true, err
+}
+
+type waitEnvironmentReady struct {
+	config *config.Config
+}
+
+func (p waitEnvironmentReady) next() initState {
+	return &applyEnvironmentSettings{p.config}
+}
+
+func (p waitEnvironmentReady) handle() error {
+	p.config.Set(config.InitStatus, InitStateWaitEnvironmentReady)
+
+	apiKey, err := p.config.GetString(config.ApiKey)
+	if err != nil {
+		return err
+	}
+	remoteEnvId, err := p.config.GetString(config.RemoteEnvironmentId)
+	if err != nil {
+		return err
+	}
+
+	api := cpapi.NewCpApi()
+	api.SetApiKey(apiKey)
+	remoteEnv, err := api.GetRemoteEnvironment(remoteEnvId)
+	if err != nil {
+		return err
 	}
 
 	//wait until the remote environment has been built
@@ -173,37 +318,81 @@ func (i InitHandler) initializeNewRemoteEnvironment() error {
 	for t := range ticker.C {
 		cplogs.V(5).Infoln("environment readiness check at ", t)
 
-		remoteEnvironment, err = api.GetRemoteEnvironment(remoteEnvironmentId)
+		remoteEnv, err = api.GetRemoteEnvironment(remoteEnvId)
 		if err != nil {
 			return err
 		}
 
-		if remoteEnvironment.Status != cpapi.RemoteEnvironmentStatusNotStarted {
-			api.RemoteEnvironmentBuild(remoteEnvironmentId)
+		if remoteEnv.Status != cpapi.RemoteEnvironmentStatusNotStarted {
+			cplogs.V(5).Infof("re-trying triggering build for the remote environment, status: %s", cpapi.RemoteEnvironmentStatusNotStarted)
+			api.RemoteEnvironmentBuild(remoteEnvId)
 		}
 
-		if remoteEnvironment.Status != cpapi.RemoteEnvironmentStatusFailed {
-			return fmt.Errorf("remote environment id %s failed to create.", remoteEnvironment.RemoteEnvironmentId)
+		if remoteEnv.Status != cpapi.RemoteEnvironmentStatusFailed {
+			cplogs.V(5).Infof("remote environment status is %s", cpapi.RemoteEnvironmentStatusFailed)
+			return fmt.Errorf("remote environment id %s failed to create.", remoteEnv.RemoteEnvironmentId)
 		}
 
-		if remoteEnvironment.Status != cpapi.RemoteEnvironmentStatusOk {
+		if remoteEnv.Status != cpapi.RemoteEnvironmentStatusOk {
+			cplogs.V(5).Infof("remote environment status is %s", cpapi.RemoteEnvironmentStatusOk)
 			continue
 		}
+		cplogs.Flush()
 	}
-
-	//the environment has been built, so save locally the settings received from the server
-	i.config.Set(config.RemoteEnvironmentConfigModifiedAt, remoteEnvironment.ModifiedAt)
-	i.config.Set(config.ClusterIdentifier, remoteEnvironment.ClusterIdentifier)
-	i.config.Set(config.KubeEnvironmentName, remoteEnvironment.KubeEnvironmentName)
-	i.config.Set(config.KeenEventCollection, remoteEnvironment.KeenEventCollection)
-	i.config.Set(config.KeenProjectId, remoteEnvironment.KeenId)
-	i.config.Set(config.KeenWriteKey, remoteEnvironment.KeenWriteKey)
-	i.config.Save()
-
-	return i.applySettingsToCubeCtlConfig()
+	return nil
 }
 
-func (i InitHandler) applySettingsToCubeCtlConfig() error {
+type applyEnvironmentSettings struct {
+	config *config.Config
+}
+
+func (p applyEnvironmentSettings) next() initState {
+	return nil
+}
+
+func (p applyEnvironmentSettings) handle() error {
+	p.config.Set(config.InitStatus, InitStateApplyEnvironmentSettings)
+
+	apiKey, err := p.config.GetString(config.ApiKey)
+	if err != nil {
+		return err
+	}
+	remoteEnvId, err := p.config.GetString(config.RemoteEnvironmentId)
+	if err != nil {
+		return err
+	}
+
+	api := cpapi.NewCpApi()
+	api.SetApiKey(apiKey)
+
+	remoteEnv, err := api.GetRemoteEnvironment(remoteEnvId)
+	if err != nil {
+		return err
+	}
+
+	cplogs.V(5).Infof("saving remote environment info for environment name: %s, environment id: %s", remoteEnv.KubeEnvironmentName, remoteEnv.RemoteEnvironmentId)
+	//the environment has been built, so save locally the settings received from the server
+	p.config.Set(config.RemoteEnvironmentConfigModifiedAt, remoteEnv.ModifiedAt)
+	p.config.Set(config.ClusterIdentifier, remoteEnv.ClusterIdentifier)
+	p.config.Set(config.AnybarPort, remoteEnv.AnyBarPort)
+	p.config.Set(config.KubeEnvironmentName, remoteEnv.KubeEnvironmentName)
+	p.config.Set(config.KeenEventCollection, remoteEnv.KeenEventCollection)
+	p.config.Set(config.KeenProjectId, remoteEnv.KeenId)
+	p.config.Set(config.KeenWriteKey, remoteEnv.KeenWriteKey)
+	p.config.Save()
+	cplogs.V(5).Infoln("saved remote environment info")
+	cplogs.Flush()
+
+	err = p.applySettingsToCubeCtlConfig()
+	if err != nil {
+		return err
+	}
+	p.config.Save()
+	cplogs.Flush()
+	return nil
+}
+
+func (i applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 	environment, err := i.config.GetString(config.KubeEnvironmentName)
 	if err != nil {
 		return err
@@ -228,37 +417,10 @@ func (i InitHandler) applySettingsToCubeCtlConfig() error {
 	kubectlapi.ConfigSetAuthInfo(environment, username, apiKey)
 	kubectlapi.ConfigSetCluster(environment, "kube-proxy-staging.continuouspipe.io:8080", project, clusterId)
 	kubectlapi.ConfigSetContext(environment, username)
-}
 
-func (i InitHandler) createRemoteBranch(remoteName string, gitBranch string) error {
-	remoteExists, err := i.hasRemote(remoteName, gitBranch)
-	if err != nil {
-		return err
-	}
-	if remoteExists == true {
-		return nil
-	}
-	return i.pushLocalBranchToRemote(remoteName, gitBranch)
-}
-
-func (i InitHandler) pushLocalBranchToRemote(remoteName string, gitBranch string) error {
-	lbn, err := i.revParse.GetLocalBranchName()
-	cplogs.V(5).Infof("local branch name value is %s", lbn)
-	if err != nil {
-		return err
-	}
-	i.push.Push(lbn, remoteName, gitBranch)
+	fmt.Printf("\nRemote settings written to %s\n", i.config.ConfigFileUsed(config.LocalConfigType))
+	fmt.Printf("\nRemote settings written to %s\n", i.config.ConfigFileUsed(config.GlobalConfigType))
+	fmt.Printf("Created the kubernetes config key %s\n", environment)
+	fmt.Println(kubectlapi.ClusterInfo(environment))
 	return nil
-}
-
-func (i InitHandler) hasRemote(remoteName string, gitBranch string) (bool, error) {
-	list, err := i.lsRemote.GetList(remoteName, gitBranch)
-	cplogs.V(5).Infof("list of remote branches that matches remote name and branch are %s", list)
-	if err != nil {
-		return false, err
-	}
-	if len(list) == 0 {
-		return false, err
-	}
-	return true, err
 }

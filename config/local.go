@@ -11,13 +11,11 @@ type localConfig struct {
 }
 
 const Project = "project"
-const Flow = "flow"
 const ClusterIdentifier = "cluster-identifier"
 const KubeEnvironmentName = "kube-environment-name"
 const RemoteName = "remote-name"
 const RemoteBranch = "remote-branch"
 const Service = "service"
-const KubeConfigKey = "kubernetes-config-key"
 const AnybarPort = "anybar-port"
 const KeenWriteKey = "keen-write-key"
 const KeenProjectId = "keen-project-id"
@@ -30,13 +28,11 @@ func newLocalConfig() *localConfig {
 	local := &localConfig{}
 	local.settings = []Setting{
 		{Project, "", true},              //CP project name (previously Team Name)
-		{Flow, "", true},                 //CP flow Name
 		{ClusterIdentifier, "", true},    //CP cluster Identifier
 		{KubeEnvironmentName, "", true},  //CP cluster Identifier
 		{RemoteName, "origin", true},     //Github remote name (origin by default)
 		{RemoteBranch, "", true},         //Git name of the git branch used for the remote environment
 		{Service, "web", true},           //Kubernetes service name for the commands like (watch, bash, fetch and resync)
-		{KubeConfigKey, "", true},        //Kubernetes configuration file key
 		{AnybarPort, "", false},          //AnyBar port number
 		{KeenWriteKey, "", false},        //Keen.io write key
 		{KeenProjectId, "", false},       //Keen.io project id

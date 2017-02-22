@@ -69,6 +69,7 @@ type ApiRemoteEnvironment struct {
 	RemoteEnvironmentId string `json:"remote_environment_id"`
 	KubeEnvironmentName string `json:"kubernetes_environment_name"`
 	ClusterIdentifier   string `json:"cluster_identifier"`
+	AnyBarPort          string `json:"any_bar_port"`
 	KeenId              string `json:"keen_id"`
 	KeenWriteKey        string `json:"keen_write_key"`
 	KeenEventCollection string `json:"keen_event_collection"`
