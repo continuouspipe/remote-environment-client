@@ -3,6 +3,10 @@ package cmd
 import (
 	"encoding/base64"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/continuouspipe/kube-proxy/cplogs"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
@@ -11,9 +15,6 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/services"
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/spf13/cobra"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const initStateParseSaveToken = "parse-save-token"
@@ -25,9 +26,10 @@ const initStateCompleted = "completed"
 
 const remoteEnvironmentReadinessProbePeriodSeconds = 60
 
+//NewInitCmd Initialises the remote environment
 func NewInitCmd() *cobra.Command {
 	settings := config.C
-	handler := &InitHandler{}
+	handler := &initHandler{}
 	handler.config = settings
 	handler.qp = util.NewQuestionPrompt()
 
@@ -66,7 +68,7 @@ func addApplicationFilesToGitIgnore() {
 	gitIgnore.AddToIgnore(cplogs.LogDir)
 }
 
-type InitHandler struct {
+type initHandler struct {
 	command    *cobra.Command
 	config     *config.Config
 	token      string
@@ -75,7 +77,7 @@ type InitHandler struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (i *InitHandler) Complete(argsIn []string) error {
+func (i *initHandler) Complete(argsIn []string) error {
 	var err error
 	if len(argsIn) > 0 && argsIn[0] != "" {
 		i.token = argsIn[0]
@@ -88,23 +90,23 @@ func (i *InitHandler) Complete(argsIn []string) error {
 		}
 		i.config.Set(config.RemoteName, i.remoteName)
 	}
-	return fmt.Errorf("Invalid token. Please go to continouspipe.io to obtain a valid token.")
+	return fmt.Errorf("invalid token. Please go to continouspipe.io to obtain a valid token")
 }
 
 // Validate checks that the token provided has at least 4 values comma separated
-func (i InitHandler) Validate() error {
+func (i initHandler) Validate() error {
 	if len(strings.Trim(i.remoteName, " ")) == 0 {
 		return fmt.Errorf("the remote name specified is invalid")
 	}
 
 	decodedToken, err := base64.StdEncoding.DecodeString(i.token)
 	if err != nil {
-		return fmt.Errorf("Malformed token. Please go to continouspipe.io to obtain a valid token.")
+		return fmt.Errorf("malformed token. Please go to continouspipe.io to obtain a valid token")
 	}
 	splitToken := strings.Split(string(decodedToken), ",")
 	if len(splitToken) != 5 {
 		cplogs.V(5).Infof("Token provided %s has %d parts, expected 4", splitToken, len(splitToken))
-		return fmt.Errorf("Malformed token. Please go to continouspipe.io to obtain a valid token.")
+		return fmt.Errorf("malformed token. Please go to continouspipe.io to obtain a valid token")
 	}
 
 	for key, val := range splitToken {
@@ -122,8 +124,8 @@ func (i InitHandler) Validate() error {
 			case 4:
 				element = "git-branch"
 			}
-			cplogs.V(4).Infof("Element %s is not specified in the token.", element)
-			return fmt.Errorf("Malformed token. Please go to continouspipe.io to obtain a valid token.")
+			cplogs.V(4).Infof("element %s is not specified in the token.", element)
+			return fmt.Errorf("malformed token. Please go to continouspipe.io to obtain a valid token")
 		}
 	}
 
@@ -131,7 +133,7 @@ func (i InitHandler) Validate() error {
 }
 
 //Handle Executes the initialization
-func (i InitHandler) Handle() error {
+func (i initHandler) Handle() error {
 
 	currentStatus, err := i.config.GetString(config.InitStatus)
 	if err != nil {
@@ -154,7 +156,7 @@ func (i InitHandler) Handle() error {
 	case "", initStateParseSaveToken:
 		initState = &parseSaveTokenInfo{i.config, i.token}
 	case initStateTriggerBuild:
-		initState = NewTriggerBuild(i.config)
+		initState = newTriggerBuild(i.config)
 	case initStateWaitEnvironmentReady:
 		initState = &waitEnvironmentReady{i.config}
 	case initStateApplyEnvironmentSettings:
@@ -186,7 +188,7 @@ type parseSaveTokenInfo struct {
 }
 
 func (p parseSaveTokenInfo) next() initState {
-	return NewTriggerBuild(p.config)
+	return newTriggerBuild(p.config)
 }
 
 func (p parseSaveTokenInfo) handle() error {
@@ -196,7 +198,7 @@ func (p parseSaveTokenInfo) handle() error {
 	//we expect the token to have: api-key, remote-environment-id, project, cp-username, git-branch
 	splitToken := strings.Split(p.token, ",")
 	apiKey := splitToken[0]
-	remoteEnvId := splitToken[1]
+	remoteEnvID := splitToken[1]
 	project := splitToken[2]
 	cpUsername := splitToken[3]
 	gitBranch := splitToken[4]
@@ -205,7 +207,7 @@ func (p parseSaveTokenInfo) handle() error {
 	api := cpapi.NewCpApi()
 	api.SetApiKey(apiKey)
 	cplogs.V(5).Infof("fetching remote environment info for user: %s", cpUsername)
-	_, err := api.GetRemoteEnvironment(remoteEnvId)
+	_, err := api.GetRemoteEnvironment(remoteEnvID)
 	if err != nil {
 		return err
 	}
@@ -216,7 +218,7 @@ func (p parseSaveTokenInfo) handle() error {
 	p.config.Set(config.ApiKey, apiKey)
 	p.config.Set(config.Project, project)
 	p.config.Set(config.RemoteBranch, gitBranch)
-	p.config.Set(config.RemoteEnvironmentId, remoteEnvId)
+	p.config.Set(config.RemoteEnvironmentId, remoteEnvID)
 	p.config.Save()
 	cplogs.V(5).Infof("saved parsed token info for user: %s", cpUsername)
 	cplogs.Flush()
@@ -232,7 +234,7 @@ type triggerBuild struct {
 	revParse git.RevParseExecutor
 }
 
-func NewTriggerBuild(config *config.Config) *triggerBuild {
+func newTriggerBuild(config *config.Config) *triggerBuild {
 	return &triggerBuild{
 		config,
 		git.NewCommit(),
@@ -254,7 +256,7 @@ func (p triggerBuild) handle() error {
 	if err != nil {
 		return err
 	}
-	remoteEnvId, err := p.config.GetString(config.RemoteEnvironmentId)
+	remoteEnvID, err := p.config.GetString(config.RemoteEnvironmentId)
 	if err != nil {
 		return err
 	}
@@ -273,7 +275,7 @@ func (p triggerBuild) handle() error {
 
 	api := cpapi.NewCpApi()
 	api.SetApiKey(apiKey)
-	remoteEnv, err := api.GetRemoteEnvironment(remoteEnvId)
+	remoteEnv, err := api.GetRemoteEnvironment(remoteEnvID)
 	if err != nil {
 		return err
 	}
@@ -285,7 +287,7 @@ func (p triggerBuild) handle() error {
 
 		fmt.Println("Pushing to remote")
 		p.createRemoteBranch(remoteName, gitBranch)
-		api.RemoteEnvironmentBuild(remoteEnvId)
+		api.RemoteEnvironmentBuild(remoteEnvID)
 		fmt.Println("Continuous Pipe will now build your developer environment")
 		fmt.Println("You can see when it is complete and find its IP address at https://ui.continuouspipe.io/")
 		fmt.Println("Please wait until the build is complete to use any of this tool's other commands.")
@@ -343,14 +345,14 @@ func (p waitEnvironmentReady) handle() error {
 	if err != nil {
 		return err
 	}
-	remoteEnvId, err := p.config.GetString(config.RemoteEnvironmentId)
+	remoteEnvID, err := p.config.GetString(config.RemoteEnvironmentId)
 	if err != nil {
 		return err
 	}
 
 	api := cpapi.NewCpApi()
 	api.SetApiKey(apiKey)
-	remoteEnv, err := api.GetRemoteEnvironment(remoteEnvId)
+	remoteEnv, err := api.GetRemoteEnvironment(remoteEnvID)
 	if err != nil {
 		return err
 	}
@@ -360,19 +362,19 @@ func (p waitEnvironmentReady) handle() error {
 	for t := range ticker.C {
 		cplogs.V(5).Infoln("environment readiness check at ", t)
 
-		remoteEnv, err = api.GetRemoteEnvironment(remoteEnvId)
+		remoteEnv, err = api.GetRemoteEnvironment(remoteEnvID)
 		if err != nil {
 			return err
 		}
 
 		if remoteEnv.Status != cpapi.RemoteEnvironmentStatusNotStarted {
 			cplogs.V(5).Infof("re-trying triggering build for the remote environment, status: %s", cpapi.RemoteEnvironmentStatusNotStarted)
-			api.RemoteEnvironmentBuild(remoteEnvId)
+			api.RemoteEnvironmentBuild(remoteEnvID)
 		}
 
 		if remoteEnv.Status != cpapi.RemoteEnvironmentStatusFailed {
 			cplogs.V(5).Infof("remote environment status is %s", cpapi.RemoteEnvironmentStatusFailed)
-			return fmt.Errorf("remote environment id %s failed to create.", remoteEnv.RemoteEnvironmentId)
+			return fmt.Errorf("remote environment id %s failed to create", remoteEnv.RemoteEnvironmentId)
 		}
 
 		if remoteEnv.Status != cpapi.RemoteEnvironmentStatusOk {
@@ -401,7 +403,7 @@ func (p applyEnvironmentSettings) handle() error {
 	if err != nil {
 		return err
 	}
-	remoteEnvId, err := p.config.GetString(config.RemoteEnvironmentId)
+	remoteEnvID, err := p.config.GetString(config.RemoteEnvironmentId)
 	if err != nil {
 		return err
 	}
@@ -409,7 +411,7 @@ func (p applyEnvironmentSettings) handle() error {
 	api := cpapi.NewCpApi()
 	api.SetApiKey(apiKey)
 
-	remoteEnv, err := api.GetRemoteEnvironment(remoteEnvId)
+	remoteEnv, err := api.GetRemoteEnvironment(remoteEnvID)
 	if err != nil {
 		return err
 	}
@@ -453,13 +455,13 @@ func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 	if err != nil {
 		return err
 	}
-	clusterId, err := p.config.GetString(config.ClusterIdentifier)
+	clusterID, err := p.config.GetString(config.ClusterIdentifier)
 	if err != nil {
 		return err
 	}
 
 	kubectlapi.ConfigSetAuthInfo(environment, username, apiKey)
-	kubectlapi.ConfigSetCluster(environment, "kube-proxy-staging.continuouspipe.io:8080", project, clusterId)
+	kubectlapi.ConfigSetCluster(environment, "kube-proxy-staging.continuouspipe.io:8080", project, clusterID)
 	kubectlapi.ConfigSetContext(environment, username)
 
 	localConfigFile, err := p.config.ConfigFileUsed(config.LocalConfigType)
@@ -522,7 +524,7 @@ func (p applyDefaultService) handle() error {
 	Choose an option [0-%[1]d]
 	%[2]s`, list.Size(), options)
 	serviceKey := p.qp.RepeatUntilValid(question, func(answer string) (bool, error) {
-		for key, _ := range list.Items {
+		for key := range list.Items {
 			if strconv.Itoa(key) == answer {
 				return true, nil
 			}
