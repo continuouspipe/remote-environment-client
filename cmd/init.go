@@ -13,6 +13,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/services"
 	"github.com/continuouspipe/remote-environment-client/util"
+	"strconv"
 )
 
 const initStateParseSaveToken = "parse-save-token"
@@ -158,6 +159,8 @@ func (i InitHandler) Handle() error {
 		initState = &waitEnvironmentReady{i.config}
 	case initStateApplyEnvironmentSettings:
 		initState = &applyEnvironmentSettings{i.config}
+	case initStateApplyDefaultService:
+		initState = &applyDefaultService{i.config, i.qp}
 	}
 
 	for initState != nil {
@@ -497,9 +500,22 @@ func (p applyDefaultService) handle() error {
 	if err != nil {
 		return err
 	}
+
+	if list.Size() == 0 {
+		cplogs.V(5).Infoln("No services where found.")
+		return nil
+	}
+
+	if list.Size() == 1 {
+		cplogs.V(5).Infoln("Only 1 service found, setting that one as default.")
+		p.config.Set(list.Items[0].GetName(), config.Service)
+		p.config.Save()
+		return nil
+	}
+
 	var options string
 	for key, s := range list.Items {
-		options = fmt.Sprintf("[%d] %s\n", key, s)
+		options = fmt.Sprintf("[%d] %s\n", key, s.GetName())
 	}
 	question := fmt.Sprintf(`You have %[1]d services available in you remote environment.
 	Which one you want to be the default service to be used for commands like: watch, fetch, bash and exec?
@@ -507,14 +523,18 @@ func (p applyDefaultService) handle() error {
 	%[2]s`, list.Size(), options)
 	serviceKey := p.qp.RepeatUntilValid(question, func(answer string) (bool, error) {
 		for key, _ := range list.Items {
-			if string(key) == answer {
+			if strconv.Itoa(key) == answer {
 				return true, nil
 			}
 		}
 		return false, fmt.Errorf("Please select an option between [0-%d]", list.Size())
 
 	})
-	serviceName := list.Items[serviceKey].GetName()
+	key, err := strconv.Atoi(serviceKey)
+	if err != nil {
+		return err
+	}
+	serviceName := list.Items[key].GetName()
 	p.config.Set(serviceName, config.Service)
 	p.config.Save()
 	return nil
