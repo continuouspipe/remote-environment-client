@@ -34,6 +34,7 @@ func NewInitCmd() *cobra.Command {
 		Short:   "Initialises the remote environment",
 		Long:    ``,
 		Run: func(cmd *cobra.Command, args []string) {
+			addApplicationFilesToGitIgnore()
 
 			//Mock base64 token when 5 arguments are passed in
 			if len(args) == 5 {
@@ -46,6 +47,10 @@ func NewInitCmd() *cobra.Command {
 		},
 		Example: portforwardExample,
 	}
+
+	remoteName, err := settings.GetString(config.RemoteName)
+	checkErr(err)
+	command.PersistentFlags().StringVarP(&handler.remoteName, config.KubeEnvironmentName, "r", remoteName, "Override the default remote name (origin)")
 	return command
 }
 
@@ -59,23 +64,36 @@ func addApplicationFilesToGitIgnore() {
 }
 
 type InitHandler struct {
-	command *cobra.Command
-	config  *config.Config
-	token   string
-	qp      util.QuestionPrompter
+	command    *cobra.Command
+	config     *config.Config
+	token      string
+	remoteName string
+	qp         util.QuestionPrompter
 }
 
 // Complete verifies command line arguments and loads data from the command environment
 func (i *InitHandler) Complete(argsIn []string) error {
+	var err error
 	if len(argsIn) > 0 && argsIn[0] != "" {
 		i.token = argsIn[0]
 		return nil
+	}
+	if i.remoteName == "" {
+		i.remoteName, err = i.config.GetString(config.RemoteName)
+		if err != nil {
+			return err
+		}
+		i.config.Set(config.RemoteName, i.remoteName)
 	}
 	return fmt.Errorf("Invalid token. Please go to continouspipe.io to obtain a valid token.")
 }
 
 // Validate checks that the token provided has at least 4 values comma separated
 func (i InitHandler) Validate() error {
+	if len(strings.Trim(i.remoteName, " ")) == 0 {
+		return fmt.Errorf("the remote name specified is invalid")
+	}
+
 	decodedToken, err := base64.StdEncoding.DecodeString(i.token)
 	if err != nil {
 		return fmt.Errorf("Malformed token. Please go to continouspipe.io to obtain a valid token.")
