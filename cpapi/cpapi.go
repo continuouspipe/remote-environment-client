@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/continuouspipe/remote-environment-client/config"
 )
 
 type CpApiProvider interface {
@@ -84,7 +86,10 @@ func (c CpApi) GetApiTeams() ([]ApiTeam, error) {
 		return nil, fmt.Errorf("Api key not provided.")
 	}
 
-	url := c.getAuthenticatorUrl()
+	url, err := c.getAuthenticatorURL()
+	if err != nil {
+		return nil, err
+	}
 	url.Path = "/api/teams"
 
 	req, err := http.NewRequest("GET", url.String(), nil)
@@ -114,7 +119,10 @@ func (c CpApi) GetApiBucketClusters(bucketUuid string) ([]ApiCluster, error) {
 		return nil, fmt.Errorf("Api key not provided.")
 	}
 
-	url := c.getAuthenticatorUrl()
+	url, err := c.getAuthenticatorURL()
+	if err != nil {
+		return nil, err
+	}
 	url.Path = "/api/bucket/" + bucketUuid + "/clusters"
 
 	req, err := http.NewRequest("GET", url.String(), nil)
@@ -143,7 +151,10 @@ func (c CpApi) GetApiUser(user string) (*ApiUser, error) {
 		return nil, fmt.Errorf("Api key not provided.")
 	}
 
-	url := c.getAuthenticatorUrl()
+	url, err := c.getAuthenticatorURL()
+	if err != nil {
+		return nil, err
+	}
 	url.Path = "/api/user/" + user
 
 	req, err := http.NewRequest("GET", url.String(), nil)
@@ -166,13 +177,17 @@ func (c CpApi) GetApiUser(user string) (*ApiUser, error) {
 	return apiUserResponse, nil
 }
 
-func (c CpApi) GetRemoteEnvironment(remoteEnvironmentId string) (*ApiRemoteEnvironment, error) {
+//GetRemoteEnvironment call CP Api to retrieve information about the remote environment
+func (c CpApi) GetRemoteEnvironment(remoteEnvironmentID string) (*ApiRemoteEnvironment, error) {
 	if c.apiKey == "" {
-		return nil, fmt.Errorf("Api key not provided.")
+		return nil, fmt.Errorf("api key not provided")
 	}
 
-	url := c.getAuthenticatorUrl()
-	url.Path = "/api/remote-environment/" + remoteEnvironmentId
+	url, err := c.getAuthenticatorURL()
+	if err != nil {
+		return nil, err
+	}
+	url.Path = "/api/remote-environment/" + remoteEnvironmentID
 
 	req, err := http.NewRequest("GET", url.String(), nil)
 	req.Header.Add("X-Api-Key", c.apiKey)
@@ -182,7 +197,7 @@ func (c CpApi) GetRemoteEnvironment(remoteEnvironmentId string) (*ApiRemoteEnvir
 
 	respBody, err := c.getResponseBody(c.client, req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting remote environment, %s", err.Error())
 	}
 
 	apiRemoteEnvironment := &ApiRemoteEnvironment{}
@@ -194,13 +209,17 @@ func (c CpApi) GetRemoteEnvironment(remoteEnvironmentId string) (*ApiRemoteEnvir
 	return apiRemoteEnvironment, nil
 }
 
-func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentId string) error {
+//RemoteEnvironmentBuild call CP API to request to build a new remote environment
+func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentID string) error {
 	if c.apiKey == "" {
-		return fmt.Errorf("Api key not provided.")
+		return fmt.Errorf("api key not provided")
 	}
 
-	url := c.getAuthenticatorUrl()
-	url.Path = "/api/remote-environment/" + remoteEnvironmentId + "/build"
+	url, err := c.getAuthenticatorURL()
+	if err != nil {
+		return err
+	}
+	url.Path = "/api/remote-environment/" + remoteEnvironmentID + "/build"
 
 	req, err := http.NewRequest("GET", url.String(), nil)
 	req.Header.Add("X-Api-Key", c.apiKey)
@@ -223,7 +242,7 @@ func (c CpApi) getResponseBody(client *http.Client, req *http.Request) ([]byte, 
 		return nil, err
 	}
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Error requesting user information, request status: %s", res.StatusCode)
+		return nil, fmt.Errorf("error getting response body, status: %d", res.StatusCode)
 	}
 	resBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -232,10 +251,14 @@ func (c CpApi) getResponseBody(client *http.Client, req *http.Request) ([]byte, 
 	return resBody, nil
 }
 
-func (c CpApi) getAuthenticatorUrl() *url.URL {
-	//TODO: Read this from global config
-	return &url.URL{
-		Scheme: "https",
-		Host:   "authenticator-staging.continuouspipe.io",
+func (c CpApi) getAuthenticatorURL() (*url.URL, error) {
+	cpApiAddr, err := config.C.GetString(config.CpApiAddr)
+	if err != nil {
+		return nil, err
 	}
+	u, err := url.Parse(cpApiAddr)
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
 }

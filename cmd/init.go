@@ -80,7 +80,11 @@ type initHandler struct {
 func (i *initHandler) Complete(argsIn []string) error {
 	var err error
 	if len(argsIn) > 0 && argsIn[0] != "" {
-		i.token = argsIn[0]
+		decodedToken, err := base64.StdEncoding.DecodeString(argsIn[0])
+		if err != nil {
+			return fmt.Errorf("malformed token. Please go to continouspipe.io to obtain a valid token")
+		}
+		i.token = string(decodedToken)
 		return nil
 	}
 	if i.remoteName == "" {
@@ -95,15 +99,7 @@ func (i *initHandler) Complete(argsIn []string) error {
 
 // Validate checks that the token provided has at least 4 values comma separated
 func (i initHandler) Validate() error {
-	if len(strings.Trim(i.remoteName, " ")) == 0 {
-		return fmt.Errorf("the remote name specified is invalid")
-	}
-
-	decodedToken, err := base64.StdEncoding.DecodeString(i.token)
-	if err != nil {
-		return fmt.Errorf("malformed token. Please go to continouspipe.io to obtain a valid token")
-	}
-	splitToken := strings.Split(string(decodedToken), ",")
+	splitToken := strings.Split(string(i.token), ",")
 	if len(splitToken) != 5 {
 		cplogs.V(5).Infof("Token provided %s has %d parts, expected 4", splitToken, len(splitToken))
 		return fmt.Errorf("malformed token. Please go to continouspipe.io to obtain a valid token")
@@ -209,6 +205,7 @@ func (p parseSaveTokenInfo) handle() error {
 	cplogs.V(5).Infof("fetching remote environment info for user: %s", cpUsername)
 	_, err := api.GetRemoteEnvironment(remoteEnvID)
 	if err != nil {
+		cplogs.Flush()
 		return err
 	}
 
