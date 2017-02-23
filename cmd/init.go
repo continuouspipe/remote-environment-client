@@ -11,16 +11,18 @@ import (
 	"strings"
 	"time"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi/services"
 	"github.com/continuouspipe/remote-environment-client/util"
 )
 
-const InitStateParseSaveToken = "parse-save-token"
-const InitStateTriggerBuild = "trigger-build"
-const InitStateWaitEnvironmentReady = "wait-environment-ready"
-const InitStateApplyEnvironmentSettings = "apply-environment-settings"
-const InitStateCompleted = "completed"
+const initStateParseSaveToken = "parse-save-token"
+const initStateTriggerBuild = "trigger-build"
+const initStateWaitEnvironmentReady = "wait-environment-ready"
+const initStateApplyEnvironmentSettings = "apply-environment-settings"
+const initStateApplyDefaultService = "apply-default-service"
+const initStateCompleted = "completed"
 
-const RemoteEnvironmentReadinessProbePeriodSeconds = 60
+const remoteEnvironmentReadinessProbePeriodSeconds = 60
 
 func NewInitCmd() *cobra.Command {
 	settings := config.C
@@ -135,7 +137,7 @@ func (i InitHandler) Handle() error {
 		return err
 	}
 
-	if currentStatus == InitStateCompleted {
+	if currentStatus == initStateCompleted {
 		answer := i.qp.RepeatIfEmpty("The environment is already initialized, do you want to re-initialize? (yes/no)")
 		if answer == "no" {
 			return nil
@@ -148,13 +150,13 @@ func (i InitHandler) Handle() error {
 	var initState initState
 
 	switch currentStatus {
-	case "", InitStateParseSaveToken:
+	case "", initStateParseSaveToken:
 		initState = &parseSaveTokenInfo{i.config, i.token}
-	case InitStateTriggerBuild:
+	case initStateTriggerBuild:
 		initState = NewTriggerBuild(i.config)
-	case InitStateWaitEnvironmentReady:
+	case initStateWaitEnvironmentReady:
 		initState = &waitEnvironmentReady{i.config}
-	case InitStateApplyEnvironmentSettings:
+	case initStateApplyEnvironmentSettings:
 		initState = &applyEnvironmentSettings{i.config}
 	}
 
@@ -165,7 +167,7 @@ func (i InitHandler) Handle() error {
 		}
 		initState = initState.next()
 	}
-	i.config.Set(config.InitStatus, InitStateCompleted)
+	i.config.Set(config.InitStatus, initStateCompleted)
 
 	return nil
 }
@@ -185,7 +187,8 @@ func (p parseSaveTokenInfo) next() initState {
 }
 
 func (p parseSaveTokenInfo) handle() error {
-	p.config.Set(config.InitStatus, InitStateParseSaveToken)
+	p.config.Set(config.InitStatus, initStateParseSaveToken)
+	p.config.Save()
 
 	//we expect the token to have: api-key, remote-environment-id, project, cp-username, git-branch
 	splitToken := strings.Split(p.token, ",")
@@ -241,7 +244,8 @@ func (p triggerBuild) next() initState {
 }
 
 func (p triggerBuild) handle() error {
-	p.config.Set(config.InitStatus, InitStateTriggerBuild)
+	p.config.Set(config.InitStatus, initStateTriggerBuild)
+	p.config.Save()
 
 	apiKey, err := p.config.GetString(config.ApiKey)
 	if err != nil {
@@ -287,29 +291,29 @@ func (p triggerBuild) handle() error {
 	return nil
 }
 
-func (i triggerBuild) createRemoteBranch(remoteName string, gitBranch string) error {
-	remoteExists, err := i.hasRemote(remoteName, gitBranch)
+func (p triggerBuild) createRemoteBranch(remoteName string, gitBranch string) error {
+	remoteExists, err := p.hasRemote(remoteName, gitBranch)
 	if err != nil {
 		return err
 	}
 	if remoteExists == true {
 		return nil
 	}
-	return i.pushLocalBranchToRemote(remoteName, gitBranch)
+	return p.pushLocalBranchToRemote(remoteName, gitBranch)
 }
 
-func (i triggerBuild) pushLocalBranchToRemote(remoteName string, gitBranch string) error {
-	lbn, err := i.revParse.GetLocalBranchName()
+func (p triggerBuild) pushLocalBranchToRemote(remoteName string, gitBranch string) error {
+	lbn, err := p.revParse.GetLocalBranchName()
 	cplogs.V(5).Infof("local branch name value is %s", lbn)
 	if err != nil {
 		return err
 	}
-	i.push.Push(lbn, remoteName, gitBranch)
+	p.push.Push(lbn, remoteName, gitBranch)
 	return nil
 }
 
-func (i triggerBuild) hasRemote(remoteName string, gitBranch string) (bool, error) {
-	list, err := i.lsRemote.GetList(remoteName, gitBranch)
+func (p triggerBuild) hasRemote(remoteName string, gitBranch string) (bool, error) {
+	list, err := p.lsRemote.GetList(remoteName, gitBranch)
 	cplogs.V(5).Infof("list of remote branches that matches remote name and branch are %s", list)
 	if err != nil {
 		return false, err
@@ -329,7 +333,8 @@ func (p waitEnvironmentReady) next() initState {
 }
 
 func (p waitEnvironmentReady) handle() error {
-	p.config.Set(config.InitStatus, InitStateWaitEnvironmentReady)
+	p.config.Set(config.InitStatus, initStateWaitEnvironmentReady)
+	p.config.Save()
 
 	apiKey, err := p.config.GetString(config.ApiKey)
 	if err != nil {
@@ -348,7 +353,7 @@ func (p waitEnvironmentReady) handle() error {
 	}
 
 	//wait until the remote environment has been built
-	ticker := time.NewTicker(time.Second * RemoteEnvironmentReadinessProbePeriodSeconds)
+	ticker := time.NewTicker(time.Second * remoteEnvironmentReadinessProbePeriodSeconds)
 	for t := range ticker.C {
 		cplogs.V(5).Infoln("environment readiness check at ", t)
 
@@ -381,11 +386,13 @@ type applyEnvironmentSettings struct {
 }
 
 func (p applyEnvironmentSettings) next() initState {
-	return nil
+	qp := util.NewQuestionPrompt()
+	return &applyDefaultService{p.config, qp}
 }
 
 func (p applyEnvironmentSettings) handle() error {
-	p.config.Set(config.InitStatus, InitStateApplyEnvironmentSettings)
+	p.config.Set(config.InitStatus, initStateApplyEnvironmentSettings)
+	p.config.Save()
 
 	apiKey, err := p.config.GetString(config.ApiKey)
 	if err != nil {
@@ -426,24 +433,24 @@ func (p applyEnvironmentSettings) handle() error {
 	return nil
 }
 
-func (i applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
-	environment, err := i.config.GetString(config.KubeEnvironmentName)
+func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
+	environment, err := p.config.GetString(config.KubeEnvironmentName)
 	if err != nil {
 		return err
 	}
-	username, err := i.config.GetString(config.Username)
+	username, err := p.config.GetString(config.Username)
 	if err != nil {
 		return err
 	}
-	apiKey, err := i.config.GetString(config.ApiKey)
+	apiKey, err := p.config.GetString(config.ApiKey)
 	if err != nil {
 		return err
 	}
-	project, err := i.config.GetString(config.Project)
+	project, err := p.config.GetString(config.Project)
 	if err != nil {
 		return err
 	}
-	clusterId, err := i.config.GetString(config.ClusterIdentifier)
+	clusterId, err := p.config.GetString(config.ClusterIdentifier)
 	if err != nil {
 		return err
 	}
@@ -452,11 +459,11 @@ func (i applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 	kubectlapi.ConfigSetCluster(environment, "kube-proxy-staging.continuouspipe.io:8080", project, clusterId)
 	kubectlapi.ConfigSetContext(environment, username)
 
-	localConfigFile, err := i.config.ConfigFileUsed(config.LocalConfigType)
+	localConfigFile, err := p.config.ConfigFileUsed(config.LocalConfigType)
 	if err != nil {
 		return err
 	}
-	globalConfigFile, err := i.config.ConfigFileUsed(config.GlobalConfigType)
+	globalConfigFile, err := p.config.ConfigFileUsed(config.GlobalConfigType)
 	if err != nil {
 		return err
 	}
@@ -465,5 +472,50 @@ func (i applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 	fmt.Printf("\nRemote settings written to %s\n", globalConfigFile)
 	fmt.Printf("Created the kubernetes config key %s\n", environment)
 	fmt.Println(kubectlapi.ClusterInfo(environment))
+	return nil
+}
+
+type applyDefaultService struct {
+	config *config.Config
+	qp     util.QuestionPrompter
+}
+
+func (p applyDefaultService) next() initState {
+	return nil
+}
+
+func (p applyDefaultService) handle() error {
+	p.config.Set(config.InitStatus, initStateApplyDefaultService)
+	p.config.Save()
+
+	environment, err := p.config.GetString(config.KubeEnvironmentName)
+	if err != nil {
+		return err
+	}
+	ks := services.NewKubeService()
+	list, err := ks.FindAll(environment, environment)
+	if err != nil {
+		return err
+	}
+	var options string
+	for key, s := range list.Items {
+		options = fmt.Sprintf("[%d] %s\n", key, s)
+	}
+	question := fmt.Sprintf(`You have %[1]d services available in you remote environment.
+	Which one you want to be the default service to be used for commands like: watch, fetch, bash and exec?
+	Choose an option [0-%[1]d]
+	%[2]s`, list.Size(), options)
+	serviceKey := p.qp.RepeatUntilValid(question, func(answer string) (bool, error) {
+		for key, _ := range list.Items {
+			if string(key) == answer {
+				return true, nil
+			}
+		}
+		return false, fmt.Errorf("Please select an option between [0-%d]", list.Size())
+
+	})
+	serviceName := list.Items[serviceKey].GetName()
+	p.config.Set(serviceName, config.Service)
+	p.config.Save()
 	return nil
 }
