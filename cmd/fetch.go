@@ -73,7 +73,7 @@ with the default container specified during setup but you can specify another co
 
 type FetchHandle struct {
 	Command           *cobra.Command
-	Environment        string
+	Environment       string
 	Service           string
 	File              string
 	RemoteProjectPath string

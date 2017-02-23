@@ -7,13 +7,13 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/git"
-	"github.com/spf13/cobra"
-	"strings"
-	"time"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/services"
 	"github.com/continuouspipe/remote-environment-client/util"
+	"github.com/spf13/cobra"
 	"strconv"
+	"strings"
+	"time"
 )
 
 const initStateParseSaveToken = "parse-save-token"

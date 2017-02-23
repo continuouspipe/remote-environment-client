@@ -16,9 +16,9 @@ func init() {
 }
 
 type RsyncRshFetch struct {
-	kubeConfigKey, environment  string
-	pod                         string
-	remoteProjectPath           string
+	kubeConfigKey, environment string
+	pod                        string
+	remoteProjectPath          string
 }
 
 func NewRsyncRshFetch() *RsyncRshFetch {
