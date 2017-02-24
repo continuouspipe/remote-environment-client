@@ -2,23 +2,47 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/continuouspipe/remote-environment-client/test"
 	"testing"
+
+	"encoding/base64"
+	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/test"
+	"github.com/continuouspipe/remote-environment-client/test/mocks"
+	"github.com/continuouspipe/remote-environment-client/test/spies"
 )
 
 func TestInitHandler_Complete(t *testing.T) {
 	fmt.Println("Running TestInitHandler_Complete")
 	defer fmt.Println("TestInitHandler_Complete Done")
 
-	handler := &InitHandler{}
+	//get mocked dependencies
+	mockConfig := mocks.NewMockConfig()
+	mockConfig.MockGetString(func(key string) (string, error) {
+		return "origin", nil
+	})
+	mockConfig.MockSet(func(key string, value interface{}) error {
+		return nil
+	})
 
-	//missing token
-	expected := "Invalid token. Please go to continouspipe.io to obtain a valid token."
+	//init is called without providing a token
+	handler := &initHandler{}
+	handler.config = mockConfig
 	err := handler.Complete([]string{""})
+
+	//we expect an error back
+	expected := "Invalid token. Please go to continouspipe.io to obtain a valid token"
 	test.AssertError(t, expected, err)
 
-	//token present
+	//init is called with a token that is not a base64 string
 	err = handler.Complete([]string{"some-token"})
+
+	//we expect an error back
+	expected = "Malformed token. Please go to continouspipe.io to obtain a valid token"
+	test.AssertError(t, expected, err)
+
+	//init is called providing a valid base64 string
+	err = handler.Complete([]string{base64.StdEncoding.EncodeToString([]byte("somethings"))})
+	//we don't expect any error
 	test.AssertNotError(t, err)
 }
 
@@ -26,22 +50,53 @@ func TestInitHandler_Validate(t *testing.T) {
 	fmt.Println("Running TestInitHandler_Validate")
 	defer fmt.Println("TestInitHandler_Validate Done")
 
-	handler := &InitHandler{}
+	handler := &initHandler{}
 
 	//Malformed token (not base64 encoded)
-	malformedErrorText := "Malformed token. Please go to continouspipe.io to obtain a valid token."
+	malformedErrorText := "Malformed token. Please go to continouspipe.io to obtain a valid token"
 
 	handler.Complete([]string{"some-token"})
 	err := handler.Validate()
 	test.AssertError(t, malformedErrorText, err)
 
-	//Malformed token (base64 encoded but not with the expected decoded values)
-	handler.Complete([]string{"dGhpcyxpcyxtYWxmb3JtZWQ="})
+	//Token in base64 but with parts missing
+	handler.Complete([]string{base64.StdEncoding.EncodeToString([]byte("some-api-key,project,cp-user,my-branch"))})
 	err = handler.Validate()
 	test.AssertError(t, malformedErrorText, err)
 
 	//Valid token
-	handler.Complete([]string{"dGhpcyxpcyxhLHZhbGlk"})
+	handler.Complete([]string{base64.StdEncoding.EncodeToString([]byte("some-api-key,remote-env-id,project,cp-user,my-branch"))})
 	err = handler.Validate()
 	test.AssertNotError(t, err)
+}
+
+func TestInitHandler_Handle(t *testing.T) {
+	fmt.Println("Running TestInitHandler_Validate")
+	defer fmt.Println("TestInitHandler_Validate Done")
+
+	//get mocked dependencies
+	mockConfig := mocks.NewMockConfig()
+	spyQuestionPrompt := spies.NewSpyQuestionPrompt()
+	spyQuestionPrompt.MockRepeatIfEmpty(func(question string) string {
+		return "no"
+	})
+
+	//if the initialization status is completed
+	mockConfig.MockGetString(func(key string) (string, error) {
+		if key == config.InitStatus {
+			return initStateCompleted, nil
+		}
+		return "", nil
+	})
+
+	//get test subject
+	handler := &initHandler{}
+	handler.config = mockConfig
+	handler.qp = spyQuestionPrompt
+	handler.Handle()
+
+	//Expect that we ask the user if we want to re-initialize
+	expectedQuestion := "The environment is already initialized, do you want to re-initialize? (yes/no)"
+	spyQuestionPrompt.ExpectsCallCount(t, "RepeatIfEmpty", 1)
+	spyQuestionPrompt.ExpectsFirstCallArgument(t, "RepeatIfEmpty", "question", expectedQuestion)
 }

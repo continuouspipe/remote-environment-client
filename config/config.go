@@ -3,8 +3,9 @@ package config
 import (
 	"bufio"
 	"fmt"
-	"github.com/spf13/viper"
 	"os"
+
+	"github.com/spf13/viper"
 )
 
 var C *Config
@@ -18,6 +19,17 @@ type Setting struct {
 	Name         string
 	DefaultValue string
 	Mandatory    bool
+}
+
+type ConfigProvider interface {
+	Set(key string, value interface{}) error
+	GetBool(key string) (bool, error)
+	GetString(key string) (string, error)
+	SetConfigFile(configType ConfigType, in string) error
+	SetConfigPath(configType ConfigType, in string) error
+	ConfigFileUsed(configType ConfigType) (string, error)
+	ReadInConfig(configType ConfigType) error
+	Save() error
 }
 
 //allows to fetch settings either from global or local config

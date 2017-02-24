@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"k8s.io/client-go/pkg/api/v1"
-	"os"
-	"testing"
 )
 
 func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
@@ -32,14 +33,12 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 
 	//test subject called
 	handler := &BashHandle{}
-	handler.kubeConfigKey = "my-config-key"
-	handler.ProjectKey = "proj"
-	handler.RemoteBranch = "feature-testing"
+	handler.Environment = "proj-feature-testing"
 	handler.Service = "web"
 	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spyLocalExecutor)
 
 	kscmd := kexec.KSCommand{}
-	kscmd.KubeConfigKey = "my-config-key"
+	kscmd.KubeConfigKey = "proj-feature-testing"
 	kscmd.Environment = "proj-feature-testing"
 	kscmd.Pod = "web-123456"
 	kscmd.Stdin = os.Stdin

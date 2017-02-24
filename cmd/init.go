@@ -70,7 +70,7 @@ func addApplicationFilesToGitIgnore() {
 
 type initHandler struct {
 	command    *cobra.Command
-	config     *config.Config
+	config     config.ConfigProvider
 	token      string
 	remoteName string
 	qp         util.QuestionPrompter
@@ -82,7 +82,7 @@ func (i *initHandler) Complete(argsIn []string) error {
 	if len(argsIn) > 0 && argsIn[0] != "" {
 		decodedToken, err := base64.StdEncoding.DecodeString(argsIn[0])
 		if err != nil {
-			return fmt.Errorf("malformed token. Please go to continouspipe.io to obtain a valid token")
+			return fmt.Errorf("Malformed token. Please go to continouspipe.io to obtain a valid token")
 		}
 		i.token = string(decodedToken)
 		return nil
@@ -94,15 +94,15 @@ func (i *initHandler) Complete(argsIn []string) error {
 		}
 		i.config.Set(config.RemoteName, i.remoteName)
 	}
-	return fmt.Errorf("invalid token. Please go to continouspipe.io to obtain a valid token")
+	return fmt.Errorf("Invalid token. Please go to continouspipe.io to obtain a valid token")
 }
 
-// Validate checks that the token provided has at least 4 values comma separated
+// Validate checks that the token provided has at least 5 values comma separated
 func (i initHandler) Validate() error {
 	splitToken := strings.Split(string(i.token), ",")
 	if len(splitToken) != 5 {
 		cplogs.V(5).Infof("Token provided %s has %d parts, expected 4", splitToken, len(splitToken))
-		return fmt.Errorf("malformed token. Please go to continouspipe.io to obtain a valid token")
+		return fmt.Errorf("Malformed token. Please go to continouspipe.io to obtain a valid token")
 	}
 
 	for key, val := range splitToken {
@@ -121,7 +121,7 @@ func (i initHandler) Validate() error {
 				element = "git-branch"
 			}
 			cplogs.V(4).Infof("element %s is not specified in the token.", element)
-			return fmt.Errorf("malformed token. Please go to continouspipe.io to obtain a valid token")
+			return fmt.Errorf("Malformed token. Please go to continouspipe.io to obtain a valid token")
 		}
 	}
 
@@ -130,7 +130,6 @@ func (i initHandler) Validate() error {
 
 //Handle Executes the initialization
 func (i initHandler) Handle() error {
-
 	currentStatus, err := i.config.GetString(config.InitStatus)
 	if err != nil {
 		return err
@@ -179,7 +178,7 @@ type initState interface {
 }
 
 type parseSaveTokenInfo struct {
-	config *config.Config
+	config config.ConfigProvider
 	token  string
 }
 
@@ -223,7 +222,7 @@ func (p parseSaveTokenInfo) handle() error {
 }
 
 type triggerBuild struct {
-	config   *config.Config
+	config   config.ConfigProvider
 	commit   git.CommitExecutor
 	lsRemote git.LsRemoteExecutor
 	push     git.PushExecutor
@@ -231,7 +230,7 @@ type triggerBuild struct {
 	revParse git.RevParseExecutor
 }
 
-func newTriggerBuild(config *config.Config) *triggerBuild {
+func newTriggerBuild(config config.ConfigProvider) *triggerBuild {
 	return &triggerBuild{
 		config,
 		git.NewCommit(),
@@ -327,7 +326,7 @@ func (p triggerBuild) hasRemote(remoteName string, gitBranch string) (bool, erro
 }
 
 type waitEnvironmentReady struct {
-	config *config.Config
+	config config.ConfigProvider
 }
 
 func (p waitEnvironmentReady) next() initState {
@@ -384,7 +383,7 @@ func (p waitEnvironmentReady) handle() error {
 }
 
 type applyEnvironmentSettings struct {
-	config *config.Config
+	config config.ConfigProvider
 }
 
 func (p applyEnvironmentSettings) next() initState {
@@ -478,7 +477,7 @@ func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 }
 
 type applyDefaultService struct {
-	config *config.Config
+	config config.ConfigProvider
 	qp     util.QuestionPrompter
 }
 

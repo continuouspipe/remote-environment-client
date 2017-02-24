@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"fmt"
+
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"k8s.io/client-go/pkg/api/v1"
@@ -31,9 +32,7 @@ func TestFetch(t *testing.T) {
 
 	//test subject called
 	handler := &FetchHandle{}
-	handler.kubeConfigKey = "my-config-key"
-	handler.ProjectKey = "proj"
-	handler.RemoteBranch = "feature-testing"
+	handler.Environment = "proj-feature-testing"
 	handler.Service = "web"
 	handler.File = "some-file.txt"
 	handler.RemoteProjectPath = "/my/sub/path/"
@@ -44,7 +43,7 @@ func TestFetch(t *testing.T) {
 	spyFetcher.ExpectsCallCount(t, "SetEnvironment", 1)
 	spyFetcher.ExpectsCallCount(t, "SetPod", 1)
 	spyFetcher.ExpectsCallCount(t, "Fetch", 1)
-	spyFetcher.ExpectsFirstCallArgument(t, "SetKubeConfigKey", "kubeConfigKey", "my-config-key")
+	spyFetcher.ExpectsFirstCallArgument(t, "SetKubeConfigKey", "kubeConfigKey", "proj-feature-testing")
 	spyFetcher.ExpectsFirstCallArgument(t, "SetRemoteProjectPath", "remoteProjectPath", "/my/sub/path/")
 	spyFetcher.ExpectsFirstCallArgument(t, "SetEnvironment", "environment", "proj-feature-testing")
 	spyFetcher.ExpectsFirstCallArgument(t, "SetPod", "pod", "web-123456")
