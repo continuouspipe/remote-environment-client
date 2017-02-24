@@ -149,7 +149,7 @@ func (i initHandler) Handle() error {
 
 	switch currentStatus {
 	case "", initStateParseSaveToken:
-		initState = &parseSaveTokenInfo{i.config, i.token}
+		initState = &parseSaveTokenInfo{i.config, i.token, cpapi.NewCpApi()}
 	case initStateTriggerBuild:
 		initState = newTriggerBuild(i.config)
 	case initStateWaitEnvironmentReady:
@@ -180,6 +180,7 @@ type initState interface {
 type parseSaveTokenInfo struct {
 	config config.ConfigProvider
 	token  string
+	api    cpapi.CpApiProvider
 }
 
 func (p parseSaveTokenInfo) next() initState {
@@ -199,10 +200,9 @@ func (p parseSaveTokenInfo) handle() error {
 	gitBranch := splitToken[4]
 
 	//check the status of the build on CP to determine if we need to force push or not
-	api := cpapi.NewCpApi()
-	api.SetApiKey(apiKey)
+	p.api.SetApiKey(apiKey)
 	cplogs.V(5).Infof("fetching remote environment info for user: %s", cpUsername)
-	_, err := api.GetRemoteEnvironment(remoteEnvID)
+	_, err := p.api.GetRemoteEnvironment(remoteEnvID)
 	if err != nil {
 		cplogs.Flush()
 		return err

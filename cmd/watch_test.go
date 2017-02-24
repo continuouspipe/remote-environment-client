@@ -32,7 +32,7 @@ func TestWatch(t *testing.T) {
 		return nil
 	})
 
-	mockStdout := mocks.NewMockWriter()
+	mockStdout := spies.NewSpyWriter()
 	mockStdout.MockWrite(func(p []byte) (n int, err error) {
 		return 100, nil
 	})
