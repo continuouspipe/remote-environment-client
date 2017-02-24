@@ -4,3 +4,4 @@ bin/
 .cp-remote-env-settings.yml
 cp-remote-go
 glide.lock
+.idea
