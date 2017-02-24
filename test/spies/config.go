@@ -17,6 +17,12 @@ func (m *SpyWriter) MockWrite(mocked func(p []byte) (n int, err error)) {
 }
 
 func (m *SpyWriter) Write(p []byte) (n int, err error) {
+	args := make(Arguments)
+	args["p"] = p
+
+	function := &Function{Name: "Write", Arguments: args}
+	m.calledFunctions = append(m.calledFunctions, *function)
+
 	return m.write(p)
 }
 

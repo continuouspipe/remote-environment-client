@@ -16,6 +16,7 @@ type CpApiProvider interface {
 	GetApiBucketClusters(bucketUuid string) ([]ApiCluster, error)
 	GetApiUser(user string) (*ApiUser, error)
 	GetRemoteEnvironment(remoteEnvironmentID string) (*ApiRemoteEnvironment, error)
+	RemoteEnvironmentBuild(remoteEnvironmentID string) error
 }
 
 type CpApi struct {

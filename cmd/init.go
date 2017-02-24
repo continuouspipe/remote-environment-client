@@ -15,6 +15,8 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/services"
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/spf13/cobra"
+	"io"
+	"os"
 )
 
 const initStateParseSaveToken = "parse-save-token"
@@ -223,21 +225,23 @@ func (p parseSaveTokenInfo) handle() error {
 
 type triggerBuild struct {
 	config   config.ConfigProvider
+	api      cpapi.CpApiProvider
 	commit   git.CommitExecutor
 	lsRemote git.LsRemoteExecutor
 	push     git.PushExecutor
-	revList  git.RevListExecutor
 	revParse git.RevParseExecutor
+	writer   io.Writer
 }
 
 func newTriggerBuild(config config.ConfigProvider) *triggerBuild {
 	return &triggerBuild{
 		config,
+		cpapi.NewCpApi(),
 		git.NewCommit(),
 		git.NewLsRemote(),
 		git.NewPush(),
-		git.NewRevList(),
-		git.NewRevParse()}
+		git.NewRevParse(),
+		os.Stdout}
 }
 
 func (p triggerBuild) next() initState {
@@ -269,9 +273,8 @@ func (p triggerBuild) handle() error {
 		return err
 	}
 
-	api := cpapi.NewCpApi()
-	api.SetApiKey(apiKey)
-	remoteEnv, err := api.GetRemoteEnvironment(remoteEnvID)
+	p.api.SetApiKey(apiKey)
+	remoteEnv, err := p.api.GetRemoteEnvironment(remoteEnvID)
 	if err != nil {
 		return err
 	}
@@ -281,13 +284,12 @@ func (p triggerBuild) handle() error {
 	if remoteEnv.Status != cpapi.RemoteEnvironmentStatusBuilding {
 		cplogs.V(5).Infof("triggering build for the remote environment", cpUsername)
 
-		fmt.Println("Pushing to remote")
+		fmt.Fprintln(p.writer, "Pushing to remote")
 		p.createRemoteBranch(remoteName, gitBranch)
-		api.RemoteEnvironmentBuild(remoteEnvID)
-		fmt.Println("Continuous Pipe will now build your developer environment")
-		fmt.Println("You can see when it is complete and find its IP address at https://ui.continuouspipe.io/")
-		fmt.Println("Please wait until the build is complete to use any of this tool's other commands.")
-
+		p.api.RemoteEnvironmentBuild(remoteEnvID)
+		fmt.Fprintln(p.writer, "Continuous Pipe will now build your developer environment")
+		fmt.Fprintln(p.writer, "You can see when it is complete and find its IP address at https://ui.continuouspipe.io/")
+		fmt.Fprintln(p.writer, "Please wait until the build is complete to use any of this tool's other commands.")
 	}
 	return nil
 }

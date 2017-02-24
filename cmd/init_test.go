@@ -8,6 +8,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/test"
+	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 )
 
@@ -147,4 +148,90 @@ func TestParseSaveTokenInfo_Handle(t *testing.T) {
 
 	spyConfig.ExpectsCallNArgument(t, "Set", 6, "key", config.RemoteEnvironmentId)
 	spyConfig.ExpectsCallNArgument(t, "Set", 6, "value", "remote-env-id")
+}
+
+func TestTriggerBuild_Handle(t *testing.T) {
+	fmt.Println("Running TestTriggerBuild_Handle")
+	defer fmt.Println("TestTriggerBuild_Handle Done")
+
+	//get mocked dependencies
+	spyConfig := spies.NewSpyConfig()
+	spyConfig.MockGetString(func(key string) (string, error) {
+		switch key {
+		case config.ApiKey:
+			return "some-api-key", nil
+		case config.RemoteEnvironmentId:
+			return "987654321", nil
+		case config.Username:
+			return "user-foo", nil
+		case config.RemoteName:
+			return "origin", nil
+		case config.RemoteBranch:
+			return "remote-dev-user-foo", nil
+		}
+		return "", nil
+	})
+	spyConfig.MockSave(func() error {
+		return nil
+	})
+	spyConfig.MockSet(func(key string, value interface{}) error {
+		return nil
+	})
+
+	spyApi := spies.NewSpyApiProvider()
+	spyApi.MockGetRemoteEnvironment(func(remoteEnvId string) (*cpapi.ApiRemoteEnvironment, error) {
+		return &cpapi.ApiRemoteEnvironment{
+			Status: cpapi.RemoteEnvironmentStatusNotStarted,
+		}, nil
+	})
+	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string) error {
+		return nil
+	})
+
+	mocklsRemote := mocks.NewMockLsRemote()
+	mocklsRemote.MockGetList(func(remoteName string, remoteBranch string) (string, error) {
+		return "", nil
+	})
+	mockRevParse := mocks.NewMockRevParse()
+	mockRevParse.MockGetLocalBranchName(func() (string, error) {
+		return "feature-new", nil
+	})
+	spyCommit := spies.NewSpyCommit()
+	spyPush := spies.NewSpyPush()
+	spyPush.MockPush(func() (string, error) {
+		return "", nil
+	})
+
+	mockWriter := spies.NewSpyWriter()
+	mockWriter.MockWrite(func(p []byte) (n int, err error) {
+		return 100, nil
+	})
+
+	//get test subject
+	handler := &triggerBuild{
+		spyConfig,
+		spyApi,
+		spyCommit,
+		mocklsRemote,
+		spyPush,
+		mockRevParse,
+		mockWriter}
+
+	handler.handle()
+
+	//expectations
+	spyConfig.ExpectsCallCount(t, "Save", 1)
+	spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.InitStatus)
+	spyConfig.ExpectsFirstCallArgument(t, "Set", "value", initStateTriggerBuild)
+
+	spyApi.ExpectsCallCount(t, "SetApiKey", 1)
+	spyApi.ExpectsFirstCallArgument(t, "SetApiKey", "apiKey", "some-api-key")
+
+	spyApi.ExpectsCallCount(t, "GetRemoteEnvironment", 1)
+	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironment", "remoteEnvironmentID", "987654321")
+
+	spyPush.ExpectsCallCount(t, "Push", 1)
+	spyPush.ExpectsFirstCallArgument(t, "Push", "localBranch", "feature-new")
+	spyPush.ExpectsFirstCallArgument(t, "Push", "remoteName", "origin")
+	spyPush.ExpectsFirstCallArgument(t, "Push", "remoteBranch", "remote-dev-user-foo")
 }
