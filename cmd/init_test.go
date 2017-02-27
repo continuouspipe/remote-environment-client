@@ -302,6 +302,7 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 		spyConfig,
 		spyApi,
 		mockTicker,
+		ioutil.Discard,
 	}
 	handler.handle()
 

@@ -14,6 +14,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/services"
 	"github.com/continuouspipe/remote-environment-client/util"
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -293,7 +294,7 @@ func (p triggerBuild) handle() error {
 
 	//if the remote environment is not already building, make sure the remote git branch exists
 	//and then trigger a build via api
-	if remoteEnv.Status != cpapi.RemoteEnvironmentStatusBuilding {
+	if remoteEnv.Status == cpapi.RemoteEnvironmentStatusNotStarted {
 		cplogs.V(5).Infof("triggering build for the remote environment, user: %s", cpUsername)
 
 		fmt.Fprintln(p.writer, "Pushing to remote")
@@ -343,6 +344,7 @@ type waitEnvironmentReady struct {
 	config config.ConfigProvider
 	api    cpapi.CpApiProvider
 	ticker *time.Ticker
+	writer io.Writer
 }
 
 func newWaitEnvironmentReady() *waitEnvironmentReady {
@@ -350,6 +352,7 @@ func newWaitEnvironmentReady() *waitEnvironmentReady {
 		config.C,
 		cpapi.NewCpApi(),
 		time.NewTicker(time.Second * remoteEnvironmentReadinessProbePeriodSeconds),
+		os.Stdout,
 	}
 }
 
@@ -380,6 +383,10 @@ func (p waitEnvironmentReady) handle() error {
 
 	p.api.SetApiKey(apiKey)
 	var remoteEnv *cpapi.ApiRemoteEnvironment
+
+	color.Set(color.FgGreen)
+	fmt.Fprintln(p.writer, "Waiting for the envionment to be ready..")
+	color.Set(color.FgBlack)
 
 	//wait until the remote environment has been built
 	for t := range p.ticker.C {
