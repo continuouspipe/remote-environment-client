@@ -294,11 +294,11 @@ func (p triggerBuild) handle() error {
 	//if the remote environment is not already building, make sure the remote git branch exists
 	//and then trigger a build via api
 	if remoteEnv.Status != cpapi.RemoteEnvironmentStatusBuilding {
-		cplogs.V(5).Infof("triggering build for the remote environment", cpUsername)
+		cplogs.V(5).Infof("triggering build for the remote environment, user: %s", cpUsername)
 
 		fmt.Fprintln(p.writer, "Pushing to remote")
 		p.createRemoteBranch(remoteName, gitBranch)
-		p.api.RemoteEnvironmentBuild(remoteEnvID)
+		p.api.RemoteEnvironmentBuild(remoteEnvID, gitBranch)
 		fmt.Fprintln(p.writer, "Continuous Pipe will now build your developer environment")
 		fmt.Fprintln(p.writer, "You can see when it is complete and find its IP address at https://ui.continuouspipe.io/")
 		fmt.Fprintln(p.writer, "Please wait until the build is complete to use any of this tool's other commands.")
@@ -373,6 +373,10 @@ func (p waitEnvironmentReady) handle() error {
 	if err != nil {
 		return err
 	}
+	gitBranch, err := p.config.GetString(config.RemoteBranch)
+	if err != nil {
+		return err
+	}
 
 	p.api.SetApiKey(apiKey)
 	var remoteEnv *cpapi.ApiRemoteEnvironment
@@ -392,7 +396,7 @@ func (p waitEnvironmentReady) handle() error {
 		switch remoteEnv.Status {
 		case cpapi.RemoteEnvironmentStatusNotStarted:
 			cplogs.V(5).Infof("re-trying triggering build for the remote environment")
-			p.api.RemoteEnvironmentBuild(remoteEnvID)
+			p.api.RemoteEnvironmentBuild(remoteEnvID, gitBranch)
 			cplogs.Flush()
 
 		case cpapi.RemoteEnvironmentStatusFailed:

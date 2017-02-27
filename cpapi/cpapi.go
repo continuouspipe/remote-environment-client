@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"bytes"
 	"github.com/continuouspipe/remote-environment-client/config"
 )
 
@@ -16,7 +17,7 @@ type CpApiProvider interface {
 	GetApiBucketClusters(bucketUuid string) ([]ApiCluster, error)
 	GetApiUser(user string) (*ApiUser, error)
 	GetRemoteEnvironment(remoteEnvironmentID string) (*ApiRemoteEnvironment, error)
-	RemoteEnvironmentBuild(remoteEnvironmentID string) error
+	RemoteEnvironmentBuild(remoteEnvironmentID string, gitBranch string) error
 }
 
 type CpApi struct {
@@ -212,7 +213,7 @@ func (c CpApi) GetRemoteEnvironment(remoteEnvironmentID string) (*ApiRemoteEnvir
 }
 
 //RemoteEnvironmentBuild call CP API to request to build a new remote environment
-func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentID string) error {
+func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentID string, gitBranch string) error {
 	if c.apiKey == "" {
 		return fmt.Errorf("api key not provided")
 	}
@@ -223,7 +224,13 @@ func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentID string) error {
 	}
 	url.Path = "/api/remote-environment/" + remoteEnvironmentID + "/build"
 
-	req, err := http.NewRequest("GET", url.String(), nil)
+	type requestBody struct {
+		BranchName string `json:"branch_name"`
+	}
+	reqBodyJson, err := json.Marshal(&requestBody{gitBranch})
+
+	req, err := http.NewRequest("POST", url.String(), bytes.NewReader(reqBodyJson))
+	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
 		return err

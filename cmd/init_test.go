@@ -187,7 +187,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 			Status: cpapi.RemoteEnvironmentStatusNotStarted,
 		}, nil
 	})
-	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string) error {
+	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
 		return nil
 	})
 
@@ -237,6 +237,10 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	spyPush.ExpectsFirstCallArgument(t, "Push", "localBranch", "feature-new")
 	spyPush.ExpectsFirstCallArgument(t, "Push", "remoteName", "origin")
 	spyPush.ExpectsFirstCallArgument(t, "Push", "remoteBranch", "remote-dev-user-foo")
+
+	spyApi.ExpectsCallCount(t, "RemoteEnvironmentBuild", 1)
+	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentID", "987654321")
+	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "gitBranch", "remote-dev-user-foo")
 }
 
 func TestWaitEnvironmentReady_Handle(t *testing.T) {
@@ -251,6 +255,8 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 			return "some-api-key", nil
 		case config.RemoteEnvironmentId:
 			return "987654321", nil
+		case config.RemoteBranch:
+			return "remote-dev-user-foo", nil
 		}
 		return "", nil
 	})
@@ -266,7 +272,7 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 
 	spyApi := spies.NewSpyApiProvider()
 
-	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string) error {
+	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
 		return nil
 	})
 
@@ -311,6 +317,7 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 
 	spyApi.ExpectsCallCount(t, "RemoteEnvironmentBuild", 1)
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentID", "987654321")
+	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "gitBranch", "remote-dev-user-foo")
 }
 
 func TestApplyEnvironmentSettings_Handle(t *testing.T) {
@@ -362,7 +369,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 			"proj-events",
 		}, nil
 	})
-	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string) error {
+	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
 		return nil
 	})
 
