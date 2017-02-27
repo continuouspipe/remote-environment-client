@@ -11,6 +11,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"io/ioutil"
+	"k8s.io/client-go/pkg/api/v1"
 	"time"
 )
 
@@ -433,4 +434,69 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 
 	spyClusterInfoProvider.ExpectsCallCount(t, "ClusterInfo", 1)
 	spyClusterInfoProvider.ExpectsFirstCallArgument(t, "ClusterInfo", "kubeConfigKey", "837d92hd-19su1d91-dev-some-user")
+}
+
+func TestApplyDefaultService_Handle(t *testing.T) {
+	fmt.Println("Running TestApplyDefaultService_Handle")
+	defer fmt.Println("TestApplyDefaultService_Handle Done")
+
+	//get mocked dependencies
+	spyConfig := spies.NewSpyConfig()
+	spyConfig.MockGetString(func(key string) (string, error) {
+		switch key {
+		case config.KubeEnvironmentName:
+			return "837d92hd-19su1d91-dev-some-user", nil
+		}
+		return "", nil
+	})
+	spyConfig.MockSave(func() error {
+		return nil
+	})
+	spyConfig.MockSet(func(key string, value interface{}) error {
+		return nil
+	})
+
+	spyServiceFinder := spies.NewSpyServiceFinder()
+	spyServiceFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.ServiceList, error) {
+		mockWeb := v1.Service{}
+		mockWeb.Name = "app"
+		mockDb := v1.Service{}
+		mockDb.Name = "db"
+		sl := &v1.ServiceList{}
+		sl.Items = []v1.Service{mockWeb, mockDb}
+		return sl, nil
+	})
+
+	spyQuestionPrompt := spies.NewSpyQuestionPrompt()
+	spyQuestionPrompt.MockRepeatUntilValid(func(question string, isValid func(string) (bool, error)) string {
+		return "1"
+	})
+
+	//get test subject
+	handler := &applyDefaultService{
+		spyConfig,
+		spyQuestionPrompt,
+		spyServiceFinder}
+
+	handler.handle()
+
+	//expectations
+	spyServiceFinder.ExpectsCallCount(t, "FindAll", 1)
+	spyServiceFinder.ExpectsFirstCallArgument(t, "FindAll", "kubeConfigKey", "837d92hd-19su1d91-dev-some-user")
+	spyServiceFinder.ExpectsFirstCallArgument(t, "FindAll", "environment", "837d92hd-19su1d91-dev-some-user")
+
+	spyQuestionPrompt.ExpectsCallCount(t, "RepeatUntilValid", 1)
+	spyQuestionPrompt.ExpectsFirstCallArgument(t, "RepeatUntilValid", "question",
+		"You have 2 services available in you remote environment.\n"+
+			"Which one you want to be the default service to be used for commands like: watch, fetch, bash and exec?\n"+
+			"Choose an option [0-1]\n\n"+
+			"[0] app\n"+
+			"[1] db\n")
+
+	spyConfig.ExpectsCallCount(t, "Save", 2)
+	spyConfig.ExpectsCallCount(t, "Set", 2)
+	spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.InitStatus)
+	spyConfig.ExpectsFirstCallArgument(t, "Set", "value", initStateApplyDefaultService)
+	spyConfig.ExpectsCallNArgument(t, "Set", 2, "key", config.Service)
+	spyConfig.ExpectsCallNArgument(t, "Set", 2, "value", "db")
 }

@@ -1,5 +1,7 @@
 package spies
 
+import "k8s.io/client-go/pkg/api/v1"
+
 type SpyKubeCtlConfigProvider struct {
 	Spy
 	configSetAuthInfo func(environment string, username string, password string) (string, error)
@@ -76,4 +78,27 @@ func (s *SpyKubeCtlClusterInfoProvider) ClusterInfo(kubeConfigKey string) (strin
 
 func (s *SpyKubeCtlClusterInfoProvider) MockClusterInfo(mocked func(kubeConfigKey string) (string, error)) {
 	s.clusterInfo = mocked
+}
+
+type SpyServiceFinder struct {
+	Spy
+	findAll func(kubeConfigKey string, environment string) (*v1.ServiceList, error)
+}
+
+func NewSpyServiceFinder() *SpyServiceFinder {
+	return &SpyServiceFinder{}
+}
+
+func (s *SpyServiceFinder) FindAll(kubeConfigKey string, environment string) (*v1.ServiceList, error) {
+	args := make(Arguments)
+	args["kubeConfigKey"] = kubeConfigKey
+	args["environment"] = environment
+
+	function := &Function{Name: "FindAll", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
+	return s.findAll(kubeConfigKey, environment)
+}
+
+func (s *SpyServiceFinder) MockFindAll(mocked func(kubeConfigKey string, environment string) (*v1.ServiceList, error)) {
+	s.findAll = mocked
 }

@@ -517,10 +517,14 @@ func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 type applyDefaultService struct {
 	config config.ConfigProvider
 	qp     util.QuestionPrompter
+	ks     services.ServiceFinder
 }
 
 func newApplyDefaultService() *applyDefaultService {
-	return &applyDefaultService{config.C, util.NewQuestionPrompt()}
+	return &applyDefaultService{
+		config.C,
+		util.NewQuestionPrompt(),
+		services.NewKubeService()}
 }
 
 func (p applyDefaultService) next() initState {
@@ -535,8 +539,8 @@ func (p applyDefaultService) handle() error {
 	if err != nil {
 		return err
 	}
-	ks := services.NewKubeService()
-	list, err := ks.FindAll(environment, environment)
+
+	list, err := p.ks.FindAll(environment, environment)
 	if err != nil {
 		return err
 	}
@@ -555,12 +559,12 @@ func (p applyDefaultService) handle() error {
 
 	var options string
 	for key, s := range list.Items {
-		options = fmt.Sprintf("[%d] %s\n", key, s.GetName())
+		options = options + fmt.Sprintf("[%d] %s\n", key, s.GetName())
 	}
-	question := fmt.Sprintf(`You have %[1]d services available in you remote environment.
-	Which one you want to be the default service to be used for commands like: watch, fetch, bash and exec?
-	Choose an option [0-%[1]d]
-	%[2]s`, list.Size(), options)
+	question := fmt.Sprintf("You have %[1]d services available in you remote environment.\n"+
+		"Which one you want to be the default service to be used for commands like: watch, fetch, bash and exec?\n"+
+		"Choose an option [0-%[2]d]\n\n"+
+		"%[3]s", len(list.Items), len(list.Items)-1, options)
 	serviceKey := p.qp.RepeatUntilValid(question, func(answer string) (bool, error) {
 		for key := range list.Items {
 			if strconv.Itoa(key) == answer {
@@ -575,7 +579,7 @@ func (p applyDefaultService) handle() error {
 		return err
 	}
 	serviceName := list.Items[key].GetName()
-	p.config.Set(serviceName, config.Service)
+	p.config.Set(config.Service, serviceName)
 	p.config.Save()
 	return nil
 }
