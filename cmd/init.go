@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/continuouspipe/kube-proxy/cplogs"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/git"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/services"
@@ -153,9 +153,9 @@ func (i initHandler) Handle() error {
 	case "", initStateParseSaveToken:
 		initState = &parseSaveTokenInfo{i.config, i.token, cpapi.NewCpApi()}
 	case initStateTriggerBuild:
-		initState = newTriggerBuild(i.config)
+		initState = newTriggerBuild()
 	case initStateWaitEnvironmentReady:
-		initState = &waitEnvironmentReady{i.config}
+		initState = newWaitEnvironmentReady()
 	case initStateApplyEnvironmentSettings:
 		initState = &applyEnvironmentSettings{i.config}
 	case initStateApplyDefaultService:
@@ -186,7 +186,7 @@ type parseSaveTokenInfo struct {
 }
 
 func (p parseSaveTokenInfo) next() initState {
-	return newTriggerBuild(p.config)
+	return newTriggerBuild()
 }
 
 func (p parseSaveTokenInfo) handle() error {
@@ -233,9 +233,9 @@ type triggerBuild struct {
 	writer   io.Writer
 }
 
-func newTriggerBuild(config config.ConfigProvider) *triggerBuild {
+func newTriggerBuild() *triggerBuild {
 	return &triggerBuild{
-		config,
+		config.C,
 		cpapi.NewCpApi(),
 		git.NewCommit(),
 		git.NewLsRemote(),
@@ -245,7 +245,7 @@ func newTriggerBuild(config config.ConfigProvider) *triggerBuild {
 }
 
 func (p triggerBuild) next() initState {
-	return &waitEnvironmentReady{p.config}
+	return newWaitEnvironmentReady()
 }
 
 func (p triggerBuild) handle() error {
@@ -329,6 +329,16 @@ func (p triggerBuild) hasRemote(remoteName string, gitBranch string) (bool, erro
 
 type waitEnvironmentReady struct {
 	config config.ConfigProvider
+	api    cpapi.CpApiProvider
+	ticker *time.Ticker
+}
+
+func newWaitEnvironmentReady() *waitEnvironmentReady {
+	return &waitEnvironmentReady{
+		config.C,
+		cpapi.NewCpApi(),
+		time.NewTicker(time.Second * remoteEnvironmentReadinessProbePeriodSeconds),
+	}
 }
 
 func (p waitEnvironmentReady) next() initState {
@@ -348,39 +358,35 @@ func (p waitEnvironmentReady) handle() error {
 		return err
 	}
 
-	api := cpapi.NewCpApi()
-	api.SetApiKey(apiKey)
-	remoteEnv, err := api.GetRemoteEnvironment(remoteEnvID)
-	if err != nil {
-		return err
-	}
+	p.api.SetApiKey(apiKey)
+	var remoteEnv *cpapi.ApiRemoteEnvironment
 
 	//wait until the remote environment has been built
-	ticker := time.NewTicker(time.Second * remoteEnvironmentReadinessProbePeriodSeconds)
-	for t := range ticker.C {
+	for t := range p.ticker.C {
 		cplogs.V(5).Infoln("environment readiness check at ", t)
 
-		remoteEnv, err = api.GetRemoteEnvironment(remoteEnvID)
+		remoteEnv, err = p.api.GetRemoteEnvironment(remoteEnvID)
 		if err != nil {
 			return err
 		}
 
-		if remoteEnv.Status != cpapi.RemoteEnvironmentStatusNotStarted {
-			cplogs.V(5).Infof("re-trying triggering build for the remote environment, status: %s", cpapi.RemoteEnvironmentStatusNotStarted)
-			api.RemoteEnvironmentBuild(remoteEnvID)
-		}
-
-		if remoteEnv.Status != cpapi.RemoteEnvironmentStatusFailed {
-			cplogs.V(5).Infof("remote environment status is %s", cpapi.RemoteEnvironmentStatusFailed)
-			return fmt.Errorf("remote environment id %s failed to create", remoteEnv.RemoteEnvironmentId)
-		}
-
-		if remoteEnv.Status != cpapi.RemoteEnvironmentStatusOk {
-			cplogs.V(5).Infof("remote environment status is %s", cpapi.RemoteEnvironmentStatusOk)
-			continue
-		}
+		cplogs.V(5).Infof("remote environment status is %s", remoteEnv.Status)
 		cplogs.Flush()
+
+		switch remoteEnv.Status {
+		case cpapi.RemoteEnvironmentStatusNotStarted:
+			cplogs.V(5).Infof("re-trying triggering build for the remote environment")
+			p.api.RemoteEnvironmentBuild(remoteEnvID)
+			cplogs.Flush()
+
+		case cpapi.RemoteEnvironmentStatusFailed:
+			return fmt.Errorf("remote environment id %s failed to create", remoteEnv.RemoteEnvironmentId)
+
+		case cpapi.RemoteEnvironmentStatusOk:
+			return nil
+		}
 	}
+
 	return nil
 }
 

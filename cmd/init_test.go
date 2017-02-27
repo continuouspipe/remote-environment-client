@@ -10,6 +10,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/test"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
+	"time"
 )
 
 func TestInitHandler_Complete(t *testing.T) {
@@ -234,4 +235,78 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	spyPush.ExpectsFirstCallArgument(t, "Push", "localBranch", "feature-new")
 	spyPush.ExpectsFirstCallArgument(t, "Push", "remoteName", "origin")
 	spyPush.ExpectsFirstCallArgument(t, "Push", "remoteBranch", "remote-dev-user-foo")
+}
+
+func TestWaitEnvironmentReady_Handle(t *testing.T) {
+	fmt.Println("Running TestWaitEnvironmentReady_Handle")
+	defer fmt.Println("TestWaitEnvironmentReady_Handle Done")
+
+	//get mocked dependencies
+	spyConfig := spies.NewSpyConfig()
+	spyConfig.MockGetString(func(key string) (string, error) {
+		switch key {
+		case config.ApiKey:
+			return "some-api-key", nil
+		case config.RemoteEnvironmentId:
+			return "987654321", nil
+		}
+		return "", nil
+	})
+	spyConfig.MockSave(func() error {
+		return nil
+	})
+	spyConfig.MockSet(func(key string, value interface{}) error {
+		return nil
+	})
+
+	//make ticker really quick as is only a test
+	mockTicker := time.NewTicker(time.Millisecond * 1)
+
+	spyApi := spies.NewSpyApiProvider()
+
+	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string) error {
+		return nil
+	})
+
+	//mock a response with a status of:
+	//RemoteEnvironmentStatusNotStarted the first time
+	//RemoteEnvironmentStatusBuilding the second time
+	//RemoteEnvironmentStatusOk second time
+	spyApi.MockGetRemoteEnvironment(func(remoteEnvironmentID string) (*cpapi.ApiRemoteEnvironment, error) {
+		var s string
+		callCount := spyApi.CallsCountFor("GetRemoteEnvironment")
+
+		switch callCount {
+		case 1:
+			s = cpapi.RemoteEnvironmentStatusNotStarted
+		case 2:
+			s = cpapi.RemoteEnvironmentStatusBuilding
+		case 3:
+			s = cpapi.RemoteEnvironmentStatusOk
+		}
+		r := &cpapi.ApiRemoteEnvironment{}
+		r.Status = s
+		return r, nil
+	})
+
+	//get test subject
+	handler := waitEnvironmentReady{
+		spyConfig,
+		spyApi,
+		mockTicker,
+	}
+	handler.handle()
+
+	//expectations
+	spyConfig.ExpectsCallCount(t, "Save", 1)
+	spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.InitStatus)
+	spyConfig.ExpectsFirstCallArgument(t, "Set", "value", initStateWaitEnvironmentReady)
+
+	spyApi.ExpectsCallCount(t, "GetRemoteEnvironment", 3)
+	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironment", "remoteEnvironmentID", "987654321")
+	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironment", 2, "remoteEnvironmentID", "987654321")
+	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironment", 3, "remoteEnvironmentID", "987654321")
+
+	spyApi.ExpectsCallCount(t, "RemoteEnvironmentBuild", 1)
+	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentID", "987654321")
 }
