@@ -157,9 +157,9 @@ func (i initHandler) Handle() error {
 	case initStateWaitEnvironmentReady:
 		initState = newWaitEnvironmentReady()
 	case initStateApplyEnvironmentSettings:
-		initState = &applyEnvironmentSettings{i.config}
+		initState = newApplyEnvironmentSettings()
 	case initStateApplyDefaultService:
-		initState = &applyDefaultService{i.config, i.qp}
+		initState = newApplyDefaultService()
 	}
 
 	for initState != nil {
@@ -342,7 +342,7 @@ func newWaitEnvironmentReady() *waitEnvironmentReady {
 }
 
 func (p waitEnvironmentReady) next() initState {
-	return &applyEnvironmentSettings{p.config}
+	return newApplyEnvironmentSettings()
 }
 
 func (p waitEnvironmentReady) handle() error {
@@ -391,12 +391,25 @@ func (p waitEnvironmentReady) handle() error {
 }
 
 type applyEnvironmentSettings struct {
-	config config.ConfigProvider
+	config              config.ConfigProvider
+	api                 cpapi.CpApiProvider
+	kubeCtlConfig       kubectlapi.KubeCtlConfigProvider
+	clusterInfoProvider kubectlapi.KubeCtlClusterInfoProvider
+	writer              io.Writer
+}
+
+func newApplyEnvironmentSettings() *applyEnvironmentSettings {
+	return &applyEnvironmentSettings{
+		config.C,
+		cpapi.NewCpApi(),
+		kubectlapi.NewKubeCtlConfig(),
+		kubectlapi.NewKubeCtlClusterInfo(),
+		os.Stdout,
+	}
 }
 
 func (p applyEnvironmentSettings) next() initState {
-	qp := util.NewQuestionPrompt()
-	return &applyDefaultService{p.config, qp}
+	return newApplyDefaultService()
 }
 
 func (p applyEnvironmentSettings) handle() error {
@@ -412,10 +425,9 @@ func (p applyEnvironmentSettings) handle() error {
 		return err
 	}
 
-	api := cpapi.NewCpApi()
-	api.SetApiKey(apiKey)
+	p.api.SetApiKey(apiKey)
 
-	remoteEnv, err := api.GetRemoteEnvironment(remoteEnvID)
+	remoteEnv, err := p.api.GetRemoteEnvironment(remoteEnvID)
 	if err != nil {
 		return err
 	}
@@ -463,10 +475,23 @@ func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 	if err != nil {
 		return err
 	}
+	cpProxy, err := p.config.GetString(config.CpKubeProxyAddr)
+	if err != nil {
+		return err
+	}
 
-	kubectlapi.ConfigSetAuthInfo(environment, username, apiKey)
-	kubectlapi.ConfigSetCluster(environment, "kube-proxy-staging.continuouspipe.io:8080", project, clusterID)
-	kubectlapi.ConfigSetContext(environment, username)
+	_, err = p.kubeCtlConfig.ConfigSetAuthInfo(environment, username, apiKey)
+	if err != nil {
+		return err
+	}
+	_, err = p.kubeCtlConfig.ConfigSetCluster(environment, cpProxy, project, clusterID)
+	if err != nil {
+		return err
+	}
+	_, err = p.kubeCtlConfig.ConfigSetContext(environment, username)
+	if err != nil {
+		return err
+	}
 
 	localConfigFile, err := p.config.ConfigFileUsed(config.LocalConfigType)
 	if err != nil {
@@ -477,16 +502,25 @@ func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 		return err
 	}
 
-	fmt.Printf("\nRemote settings written to %s\n", localConfigFile)
-	fmt.Printf("\nRemote settings written to %s\n", globalConfigFile)
-	fmt.Printf("Created the kubernetes config key %s\n", environment)
-	fmt.Println(kubectlapi.ClusterInfo(environment))
+	clusterInfo, err := p.clusterInfoProvider.ClusterInfo(environment)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(p.writer, "\nRemote settings written to %s\n", localConfigFile)
+	fmt.Fprintf(p.writer, "\nRemote settings written to %s\n", globalConfigFile)
+	fmt.Fprintf(p.writer, "Created the kubernetes config key %s\n", environment)
+	fmt.Fprintln(p.writer, clusterInfo)
 	return nil
 }
 
 type applyDefaultService struct {
 	config config.ConfigProvider
 	qp     util.QuestionPrompter
+}
+
+func newApplyDefaultService() *applyDefaultService {
+	return &applyDefaultService{config.C, util.NewQuestionPrompt()}
 }
 
 func (p applyDefaultService) next() initState {

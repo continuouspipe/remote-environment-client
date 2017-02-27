@@ -10,6 +10,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/test"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
+	"io/ioutil"
 	"time"
 )
 
@@ -309,4 +310,127 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 
 	spyApi.ExpectsCallCount(t, "RemoteEnvironmentBuild", 1)
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentID", "987654321")
+}
+
+func TestApplyEnvironmentSettings_Handle(t *testing.T) {
+	fmt.Println("Running TestApplyEnvironmentSettings_Handle")
+	defer fmt.Println("TestApplyEnvironmentSettings_Handle Done")
+
+	//get  mocked dependencies
+	spyConfig := spies.NewSpyConfig()
+	spyConfig.MockGetString(func(key string) (string, error) {
+		switch key {
+		case config.ApiKey:
+			return "some-api-key", nil
+		case config.RemoteEnvironmentId:
+			return "987654321", nil
+		case config.Username:
+			return "user-foo", nil
+		case config.Project:
+			return "837d92hd-19su1d91", nil
+		case config.ClusterIdentifier:
+			return "the-cluster-one", nil
+		case config.CpKubeProxyAddr:
+			return "https://kube-proxy-address", nil
+		case config.KubeEnvironmentName:
+			return "837d92hd-19su1d91-dev-some-user", nil
+		}
+		return "", nil
+	})
+	spyConfig.MockConfigFileUsed(func(configType config.ConfigType) (string, error) {
+		return "", nil
+	})
+	spyConfig.MockSave(func() error {
+		return nil
+	})
+	spyConfig.MockSet(func(key string, value interface{}) error {
+		return nil
+	})
+
+	spyApi := spies.NewSpyApiProvider()
+	spyApi.MockGetRemoteEnvironment(func(remoteEnvId string) (*cpapi.ApiRemoteEnvironment, error) {
+		return &cpapi.ApiRemoteEnvironment{
+			cpapi.RemoteEnvironmentStatusOk,
+			"2017-01-01 10:20",
+			"2233445566",
+			"837d92hd-19su1d91-dev-some-user",
+			"the-cluster-one",
+			"59846",
+			"keen-id-123",
+			"keen-write-key-456",
+			"proj-events",
+		}, nil
+	})
+	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string) error {
+		return nil
+	})
+
+	spyKubeCtlConfig := spies.NewSpyKubeCtlConfigProvider()
+	spyKubeCtlConfig.MockConfigSetAuthInfo(func(environment string, username string, password string) (string, error) {
+		return "", nil
+	})
+	spyKubeCtlConfig.MockConfigSetCluster(func(environment string, clusterIp string, teamName string, clusterIdentifier string) (string, error) {
+		return "", nil
+	})
+	spyKubeCtlConfig.MockConfigSetContext(func(environment string, username string) (string, error) {
+		return "", nil
+	})
+	spyClusterInfoProvider := spies.NewSpyKubeCtlClusterInfoProvider()
+	spyClusterInfoProvider.MockClusterInfo(func(kubeConfigKey string) (string, error) {
+		return "", nil
+	})
+
+	//get test subject
+	handler := &applyEnvironmentSettings{
+		spyConfig,
+		spyApi,
+		spyKubeCtlConfig,
+		spyClusterInfoProvider,
+		ioutil.Discard,
+	}
+	handler.handle()
+
+	//expectations
+	spyConfig.ExpectsCallCount(t, "Save", 3)
+	spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.InitStatus)
+	spyConfig.ExpectsFirstCallArgument(t, "Set", "value", initStateApplyEnvironmentSettings)
+
+	spyApi.ExpectsCallCount(t, "SetApiKey", 1)
+	spyApi.ExpectsFirstCallArgument(t, "SetApiKey", "apiKey", "some-api-key")
+
+	spyApi.ExpectsCallCount(t, "GetRemoteEnvironment", 1)
+	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironment", "remoteEnvironmentID", "987654321")
+
+	spyConfig.ExpectsCallNArgument(t, "Set", 2, "key", config.RemoteEnvironmentConfigModifiedAt)
+	spyConfig.ExpectsCallNArgument(t, "Set", 2, "value", "2017-01-01 10:20")
+	spyConfig.ExpectsCallNArgument(t, "Set", 3, "key", config.ClusterIdentifier)
+	spyConfig.ExpectsCallNArgument(t, "Set", 3, "value", "the-cluster-one")
+	spyConfig.ExpectsCallNArgument(t, "Set", 4, "key", config.AnybarPort)
+	spyConfig.ExpectsCallNArgument(t, "Set", 4, "value", "59846")
+	spyConfig.ExpectsCallNArgument(t, "Set", 5, "key", config.KubeEnvironmentName)
+	spyConfig.ExpectsCallNArgument(t, "Set", 5, "value", "837d92hd-19su1d91-dev-some-user")
+	spyConfig.ExpectsCallNArgument(t, "Set", 6, "key", config.KeenEventCollection)
+	spyConfig.ExpectsCallNArgument(t, "Set", 6, "value", "proj-events")
+	spyConfig.ExpectsCallNArgument(t, "Set", 7, "key", config.KeenProjectId)
+	spyConfig.ExpectsCallNArgument(t, "Set", 7, "value", "keen-id-123")
+	spyConfig.ExpectsCallNArgument(t, "Set", 8, "key", config.KeenWriteKey)
+	spyConfig.ExpectsCallNArgument(t, "Set", 8, "value", "keen-write-key-456")
+
+	spyKubeCtlConfig.ExpectsCallCount(t, "ConfigSetAuthInfo", 1)
+	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetAuthInfo", "environment", "837d92hd-19su1d91-dev-some-user")
+	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetAuthInfo", "username", "user-foo")
+	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetAuthInfo", "password", "some-api-key")
+
+	spyKubeCtlConfig.ExpectsCallCount(t, "ConfigSetCluster", 1)
+	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetCluster", "environment", "837d92hd-19su1d91-dev-some-user")
+	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetCluster", "clusterIp", "https://kube-proxy-address")
+	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetCluster", "teamName", "837d92hd-19su1d91")
+	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetCluster", "clusterIdentifier", "the-cluster-one")
+
+	spyKubeCtlConfig.ExpectsCallCount(t, "ConfigSetContext", 1)
+	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetContext", "environment", "837d92hd-19su1d91-dev-some-user")
+	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetContext", "username", "user-foo")
+
+	spyClusterInfoProvider.ExpectsCallCount(t, "ClusterInfo", 1)
+	spyClusterInfoProvider.ExpectsFirstCallArgument(t, "ClusterInfo", "kubeConfigKey", "837d92hd-19su1d91-dev-some-user")
 }

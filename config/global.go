@@ -14,8 +14,11 @@ const Username = "username"
 //ApiKey of the user
 const ApiKey = "api-key"
 
-//CpApiAddr target address for cp api calls in the format host:port
+//CpApiAddr target address for cp api calls in the format protocol://host:port
 const CpApiAddr = "cp-api-addr"
+
+//CpKubeProxyAddr target address for cp proxy in the format protocol://host:port
+const CpKubeProxyAddr = "cp-kube-proxy-addr"
 
 func newGlobalConfig() *globalConfig {
 	global := &globalConfig{}
@@ -23,6 +26,7 @@ func newGlobalConfig() *globalConfig {
 		{Username, "", true},
 		{ApiKey, "", true},
 		{CpApiAddr, "https://authenticator.continuouspipe.io", true},
+		{CpKubeProxyAddr, "https://kube-proxy.continuouspipe.io", true},
 	}
 	global.viper = viper.New()
 	for _, setting := range global.settings {

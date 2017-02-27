@@ -6,7 +6,19 @@ import (
 	"github.com/continuouspipe/remote-environment-client/osapi"
 )
 
-func ConfigSetAuthInfo(environment string, username string, password string) (string, error) {
+type KubeCtlConfigProvider interface {
+	ConfigSetAuthInfo(environment string, username string, password string) (string, error)
+	ConfigSetCluster(environment string, clusterIp string, teamName string, clusterIdentifier string) (string, error)
+	ConfigSetContext(environment string, username string) (string, error)
+}
+
+type KubeCtlConfig struct{}
+
+func NewKubeCtlConfig() *KubeCtlConfig {
+	return &KubeCtlConfig{}
+}
+
+func (k KubeCtlConfig) ConfigSetAuthInfo(environment string, username string, password string) (string, error) {
 	args := []string{
 		config.KubeCtlName,
 		"config",
@@ -18,7 +30,7 @@ func ConfigSetAuthInfo(environment string, username string, password string) (st
 	return osapi.CommandExec(getScmd(), args...)
 }
 
-func ConfigSetCluster(environment string, clusterIp string, teamName string, clusterIdentifier string) (string, error) {
+func (k KubeCtlConfig) ConfigSetCluster(environment string, clusterIp string, teamName string, clusterIdentifier string) (string, error) {
 	args := []string{
 		config.KubeCtlName,
 		"config",
@@ -30,7 +42,7 @@ func ConfigSetCluster(environment string, clusterIp string, teamName string, clu
 	return osapi.CommandExec(getScmd(), args...)
 }
 
-func ConfigSetContext(environment string, username string) (string, error) {
+func (k KubeCtlConfig) ConfigSetContext(environment string, username string) (string, error) {
 	args := []string{
 		config.KubeCtlName,
 		"config",
