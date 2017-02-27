@@ -29,8 +29,5 @@ func newGlobalConfig() *globalConfig {
 		{CpKubeProxyAddr, "https://kube-proxy.continuouspipe.io", true},
 	}
 	global.viper = viper.New()
-	for _, setting := range global.settings {
-		global.viper.Set(setting.Name, setting.DefaultValue)
-	}
 	return global
 }

@@ -244,7 +244,7 @@ func (c CpApi) getResponseBody(client *http.Client, req *http.Request) ([]byte, 
 		return nil, err
 	}
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("error getting response body, status: %d", res.StatusCode)
+		return nil, fmt.Errorf("error getting response body, status: %d, url: %s", res.StatusCode, req.URL.String())
 	}
 	resBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {

@@ -163,6 +163,9 @@ func (i initHandler) Handle() error {
 	}
 
 	for initState != nil {
+		cplogs.V(5).Infof("Handling state %s", initState.name())
+		cplogs.Flush()
+
 		err := initState.handle()
 		if err != nil {
 			return err
@@ -177,6 +180,7 @@ func (i initHandler) Handle() error {
 type initState interface {
 	handle() error
 	next() initState
+	name() string
 }
 
 type parseSaveTokenInfo struct {
@@ -189,8 +193,12 @@ func (p parseSaveTokenInfo) next() initState {
 	return newTriggerBuild()
 }
 
+func (p parseSaveTokenInfo) name() string {
+	return initStateParseSaveToken
+}
+
 func (p parseSaveTokenInfo) handle() error {
-	p.config.Set(config.InitStatus, initStateParseSaveToken)
+	p.config.Set(config.InitStatus, p.name())
 	p.config.Save()
 
 	//we expect the token to have: api-key, remote-environment-id, project, cp-username, git-branch
@@ -248,8 +256,12 @@ func (p triggerBuild) next() initState {
 	return newWaitEnvironmentReady()
 }
 
+func (p triggerBuild) name() string {
+	return initStateTriggerBuild
+}
+
 func (p triggerBuild) handle() error {
-	p.config.Set(config.InitStatus, initStateTriggerBuild)
+	p.config.Set(config.InitStatus, p.name())
 	p.config.Save()
 
 	apiKey, err := p.config.GetString(config.ApiKey)
@@ -345,8 +357,12 @@ func (p waitEnvironmentReady) next() initState {
 	return newApplyEnvironmentSettings()
 }
 
+func (p waitEnvironmentReady) name() string {
+	return initStateWaitEnvironmentReady
+}
+
 func (p waitEnvironmentReady) handle() error {
-	p.config.Set(config.InitStatus, initStateWaitEnvironmentReady)
+	p.config.Set(config.InitStatus, p.name())
 	p.config.Save()
 
 	apiKey, err := p.config.GetString(config.ApiKey)
@@ -412,8 +428,12 @@ func (p applyEnvironmentSettings) next() initState {
 	return newApplyDefaultService()
 }
 
+func (p applyEnvironmentSettings) name() string {
+	return initStateApplyEnvironmentSettings
+}
+
 func (p applyEnvironmentSettings) handle() error {
-	p.config.Set(config.InitStatus, initStateApplyEnvironmentSettings)
+	p.config.Set(config.InitStatus, p.name())
 	p.config.Save()
 
 	apiKey, err := p.config.GetString(config.ApiKey)
@@ -531,8 +551,12 @@ func (p applyDefaultService) next() initState {
 	return nil
 }
 
+func (p applyDefaultService) name() string {
+	return initStateApplyDefaultService
+}
+
 func (p applyDefaultService) handle() error {
-	p.config.Set(config.InitStatus, initStateApplyDefaultService)
+	p.config.Set(config.InitStatus, p.name())
 	p.config.Save()
 
 	environment, err := p.config.GetString(config.KubeEnvironmentName)

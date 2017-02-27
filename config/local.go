@@ -43,8 +43,5 @@ func newLocalConfig() *localConfig {
 		{RemoteEnvironmentConfigModifiedAt, "", false},
 	}
 	local.viper = viper.New()
-	for _, setting := range local.settings {
-		local.viper.Set(setting.Name, setting.DefaultValue)
-	}
 	return local
 }
