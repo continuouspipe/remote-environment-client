@@ -17,7 +17,7 @@ type CpApiProvider interface {
 	GetApiBucketClusters(bucketUuid string) ([]ApiCluster, error)
 	GetApiUser(user string) (*ApiUser, error)
 	GetRemoteEnvironment(remoteEnvironmentID string) (*ApiRemoteEnvironment, error)
-	RemoteEnvironmentBuild(remoteEnvironmentID string, gitBranch string) error
+	RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error
 }
 
 type CpApi struct {
@@ -213,19 +213,19 @@ func (c CpApi) GetRemoteEnvironment(remoteEnvironmentID string) (*ApiRemoteEnvir
 }
 
 //RemoteEnvironmentBuild call CP API to request to build a new remote environment
-func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentID string, gitBranch string) error {
+func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error {
 	if c.apiKey == "" {
 		return fmt.Errorf("api key not provided")
 	}
 
-	url, err := c.getAuthenticatorURL()
+	url, err := c.getRiverURL()
 	if err != nil {
 		return err
 	}
-	url.Path = "/api/remote-environment/" + remoteEnvironmentID + "/build"
+	url.Path = fmt.Sprintf("/flows/%s/tides", remoteEnvironmentFlowID)
 
 	type requestBody struct {
-		BranchName string `json:"branch_name"`
+		BranchName string `json:"branch"`
 	}
 	reqBodyJson, err := json.Marshal(&requestBody{gitBranch})
 
@@ -261,7 +261,19 @@ func (c CpApi) getResponseBody(client *http.Client, req *http.Request) ([]byte, 
 }
 
 func (c CpApi) getAuthenticatorURL() (*url.URL, error) {
-	cpApiAddr, err := config.C.GetString(config.CpApiAddr)
+	cpApiAddr, err := config.C.GetString(config.CpAuthenticatorApiAddr)
+	if err != nil {
+		return nil, err
+	}
+	u, err := url.Parse(cpApiAddr)
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
+func (c CpApi) getRiverURL() (*url.URL, error) {
+	cpApiAddr, err := config.C.GetString(config.CpRiverApiAddr)
 	if err != nil {
 		return nil, err
 	}

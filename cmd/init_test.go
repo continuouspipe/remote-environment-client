@@ -239,7 +239,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	spyPush.ExpectsFirstCallArgument(t, "Push", "remoteBranch", "remote-dev-user-foo")
 
 	spyApi.ExpectsCallCount(t, "RemoteEnvironmentBuild", 1)
-	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentID", "987654321")
+	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentFlowID", "987654321")
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "gitBranch", "remote-dev-user-foo")
 }
 
@@ -317,7 +317,7 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironment", 3, "remoteEnvironmentID", "987654321")
 
 	spyApi.ExpectsCallCount(t, "RemoteEnvironmentBuild", 1)
-	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentID", "987654321")
+	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentFlowID", "987654321")
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "gitBranch", "remote-dev-user-foo")
 }
 

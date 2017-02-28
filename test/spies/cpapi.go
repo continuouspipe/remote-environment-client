@@ -8,7 +8,7 @@ type SpyApiProvider struct {
 	getApiBucketClusters   func(bucketUuid string) ([]cpapi.ApiCluster, error)
 	getApiUser             func(user string) (*cpapi.ApiUser, error)
 	getRemoteEnvironment   func(remoteEnvironmentID string) (*cpapi.ApiRemoteEnvironment, error)
-	remoteEnvironmentBuild func(remoteEnvironmentID string, gitBranch string) error
+	remoteEnvironmentBuild func(remoteEnvironmentFlowID string, gitBranch string) error
 }
 
 func NewSpyApiProvider() *SpyApiProvider {
@@ -58,14 +58,14 @@ func (s *SpyApiProvider) GetRemoteEnvironment(remoteEnvironmentID string) (*cpap
 	return s.getRemoteEnvironment(remoteEnvironmentID)
 }
 
-func (s *SpyApiProvider) RemoteEnvironmentBuild(remoteEnvironmentID string, gitBranch string) error {
+func (s *SpyApiProvider) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error {
 	args := make(Arguments)
-	args["remoteEnvironmentID"] = remoteEnvironmentID
+	args["remoteEnvironmentFlowID"] = remoteEnvironmentFlowID
 	args["gitBranch"] = gitBranch
 
 	function := &Function{Name: "RemoteEnvironmentBuild", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
-	return s.remoteEnvironmentBuild(remoteEnvironmentID, gitBranch)
+	return s.remoteEnvironmentBuild(remoteEnvironmentFlowID, gitBranch)
 }
 
 func (s *SpyApiProvider) MockGetApiTeams(mocked func() ([]cpapi.ApiTeam, error)) {
