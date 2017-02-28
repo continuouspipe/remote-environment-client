@@ -203,11 +203,16 @@ func (p parseSaveTokenInfo) handle() error {
 
 	//we expect the token to have: api-key, remote-environment-id, project, cp-username, git-branch
 	splitToken := strings.Split(p.token, ",")
-	flowId := splitToken[0]
+	apiKey := splitToken[0]
 	remoteEnvId := splitToken[1]
-	apiKey := splitToken[2]
+	flowId := splitToken[2]
 	cpUsername := splitToken[3]
 	gitBranch := splitToken[4]
+
+	cplogs.V(5).Infof("flowId: %s", flowId)
+	cplogs.V(5).Infof("remoteEnvId: %s", remoteEnvId)
+	cplogs.V(5).Infof("cpUsername: %s", cpUsername)
+	cplogs.V(5).Infof("gitBranch: %s", gitBranch)
 
 	//check the status of the build on CP to determine if we need to force push or not
 	p.api.SetApiKey(apiKey)
@@ -302,7 +307,10 @@ func (p triggerBuild) handle() error {
 
 		fmt.Fprintln(p.writer, "Pushing to remote")
 		p.createRemoteBranch(remoteName, gitBranch)
-		p.api.RemoteEnvironmentBuild(remoteEnvId, gitBranch)
+		err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
+		if err != nil {
+			return err
+		}
 		fmt.Fprintln(p.writer, "Continuous Pipe will now build your developer environment")
 		fmt.Fprintln(p.writer, "You can see when it is complete and find its IP address at https://ui.continuouspipe.io/")
 		fmt.Fprintln(p.writer, "Please wait until the build is complete to use any of this tool's other commands.")
@@ -415,9 +423,11 @@ func (p waitEnvironmentReady) handle() error {
 			fmt.Fprintln(p.writer, "The remote environment build did't start, triggering a re-build.")
 
 			cplogs.V(5).Infof("re-trying triggering build for the remote environment")
-			p.api.RemoteEnvironmentBuild(remoteEnvId, gitBranch)
 			cplogs.Flush()
-
+			err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
+			if err != nil {
+				return err
+			}
 		case cpapi.RemoteEnvironmentStatusFailed:
 			return fmt.Errorf("remote environment id %s failed to create", remoteEnvId)
 
