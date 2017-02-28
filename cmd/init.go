@@ -14,7 +14,6 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/services"
 	"github.com/continuouspipe/remote-environment-client/util"
-	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -27,7 +26,7 @@ const initStateApplyEnvironmentSettings = "apply-environment-settings"
 const initStateApplyDefaultService = "apply-default-service"
 const initStateCompleted = "completed"
 
-const remoteEnvironmentReadinessProbePeriodSeconds = 60
+const remoteEnvironmentReadinessProbePeriodSeconds = 30
 
 //NewInitCmd Initialises the remote environment
 func NewInitCmd() *cobra.Command {
@@ -384,13 +383,13 @@ func (p waitEnvironmentReady) handle() error {
 	p.api.SetApiKey(apiKey)
 	var remoteEnv *cpapi.ApiRemoteEnvironment
 
-	color.Set(color.FgGreen)
 	fmt.Fprintln(p.writer, "Waiting for the envionment to be ready..")
-	color.Set(color.FgBlack)
 
 	//wait until the remote environment has been built
 	for t := range p.ticker.C {
 		cplogs.V(5).Infoln("environment readiness check at ", t)
+
+		fmt.Fprintln(p.writer, "Checking at ", t)
 
 		remoteEnv, err = p.api.GetRemoteEnvironment(remoteEnvID)
 		if err != nil {
@@ -401,7 +400,12 @@ func (p waitEnvironmentReady) handle() error {
 		cplogs.Flush()
 
 		switch remoteEnv.Status {
+		case cpapi.RemoteEnvironmentStatusBuilding:
+			fmt.Fprintln(p.writer, "The remote environment is still building")
+
 		case cpapi.RemoteEnvironmentStatusNotStarted:
+			fmt.Fprintln(p.writer, "The remote environment build did't start, triggering a re-build.")
+
 			cplogs.V(5).Infof("re-trying triggering build for the remote environment")
 			p.api.RemoteEnvironmentBuild(remoteEnvID, gitBranch)
 			cplogs.Flush()
@@ -412,6 +416,7 @@ func (p waitEnvironmentReady) handle() error {
 		case cpapi.RemoteEnvironmentStatusOk:
 			return nil
 		}
+
 	}
 
 	return nil

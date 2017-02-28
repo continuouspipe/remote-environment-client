@@ -32,8 +32,8 @@ func NewCpApi() *CpApi {
 }
 
 const RemoteEnvironmentStatusOk = "Ok"
-const RemoteEnvironmentStatusFailed = "Failed"
-const RemoteEnvironmentStatusBuilding = "Building"
+const RemoteEnvironmentStatusFailed = "TideFailed"
+const RemoteEnvironmentStatusBuilding = "TideRunning"
 const RemoteEnvironmentStatusNotStarted = "NotStarted"
 
 type ApiTeam struct {
