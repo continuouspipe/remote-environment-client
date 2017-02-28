@@ -8,7 +8,7 @@ type localConfig struct {
 	viperWrapper
 }
 
-const Project = "project"
+const FlowId = "flow-id"
 const ClusterIdentifier = "cluster-identifier"
 const KubeEnvironmentName = "kube-environment-name"
 const RemoteName = "remote-name"
@@ -20,7 +20,6 @@ const KeenProjectId = "keen-project-id"
 const KeenEventCollection = "keen-event-collection"
 const RemoteEnvironmentId = "remote-environment-id"
 const InitStatus = "init-status"
-const RemoteEnvironmentConfigModifiedAt = "remote-environment-config-modified-at"
 
 //settings to disable the kube proxy if required
 const CpKubeProxyEnabled = "kube-proxy-enabled"
@@ -31,9 +30,9 @@ const KubeDirectClusterPassword = "kube-direct-cluster-password"
 func newLocalConfig() *localConfig {
 	local := &localConfig{}
 	local.settings = []Setting{
-		{Project, "", true},                    //CP project name (previously Team Name)
+		{FlowId, "", true},                     //CP flow uuid
 		{ClusterIdentifier, "", true},          //CP cluster Identifier
-		{KubeEnvironmentName, "", true},        //CP cluster Identifier
+		{KubeEnvironmentName, "", true},        //Kubernetes environment name
 		{RemoteName, "origin", true},           //Github remote name (origin by default)
 		{RemoteBranch, "", true},               //Git name of the git branch used for the remote environment
 		{Service, "web", true},                 //Kubernetes service name for the commands like (watch, bash, fetch and resync)
@@ -47,10 +46,6 @@ func newLocalConfig() *localConfig {
 		{KubeDirectClusterAddr, "", false},     //Cluster Address (Used only for direct connections to kubernetes)
 		{KubeDirectClusterUser, "", false},     //Cluster User (Used only for direct connections to kubernetes)
 		{KubeDirectClusterPassword, "", false}, //Cluster Password (Used only for direct connections to kubernetes)
-
-		//Timestamp that indicates when was the last time that the user has modified the remote environment config settings
-		//when the timestamp stored locally differs from the one in the server, it means that the config are out of sync and may need re-synced
-		{RemoteEnvironmentConfigModifiedAt, "", false},
 	}
 	local.viper = viper.New()
 	return local

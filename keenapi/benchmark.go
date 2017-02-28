@@ -23,7 +23,7 @@ func (b *BenchmarkPayload) GetJsonPayload() ([]byte, error) {
 	t := time.Now()
 	endTime := t.Format(time.RFC3339)
 
-	project, err := b.settings.GetString(config.Project)
+	flowId, err := b.settings.GetString(config.FlowId)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (b *BenchmarkPayload) GetJsonPayload() ([]byte, error) {
 	}
 
 	payload := make(map[string]string)
-	payload["project"] = project
+	payload["project"] = flowId
 	payload["namespace"] = environment
 	payload["command"] = b.Command
 	payload["start-time"] = b.StartTime

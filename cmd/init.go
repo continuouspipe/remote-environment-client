@@ -112,11 +112,11 @@ func (i initHandler) Validate() error {
 			var element string
 			switch key {
 			case 0:
-				element = "api-key"
+				element = "project"
 			case 1:
 				element = "remote-environment-id"
 			case 2:
-				element = "project"
+				element = "api-key"
 			case 3:
 				element = "cp-username"
 			case 4:
@@ -203,16 +203,16 @@ func (p parseSaveTokenInfo) handle() error {
 
 	//we expect the token to have: api-key, remote-environment-id, project, cp-username, git-branch
 	splitToken := strings.Split(p.token, ",")
-	apiKey := splitToken[0]
-	remoteEnvID := splitToken[1]
-	project := splitToken[2]
+	flowId := splitToken[0]
+	remoteEnvId := splitToken[1]
+	apiKey := splitToken[2]
 	cpUsername := splitToken[3]
 	gitBranch := splitToken[4]
 
 	//check the status of the build on CP to determine if we need to force push or not
 	p.api.SetApiKey(apiKey)
 	cplogs.V(5).Infof("fetching remote environment info for user: %s", cpUsername)
-	_, err := p.api.GetRemoteEnvironment(remoteEnvID)
+	_, err := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if err != nil {
 		cplogs.Flush()
 		return err
@@ -222,9 +222,9 @@ func (p parseSaveTokenInfo) handle() error {
 	//if there are no errors when fetching the remote environment information we can store the token info
 	p.config.Set(config.Username, cpUsername)
 	p.config.Set(config.ApiKey, apiKey)
-	p.config.Set(config.Project, project)
+	p.config.Set(config.FlowId, flowId)
 	p.config.Set(config.RemoteBranch, gitBranch)
-	p.config.Set(config.RemoteEnvironmentId, remoteEnvID)
+	p.config.Set(config.RemoteEnvironmentId, remoteEnvId)
 	p.config.Save()
 	cplogs.V(5).Infof("saved parsed token info for user: %s", cpUsername)
 	cplogs.Flush()
@@ -268,7 +268,11 @@ func (p triggerBuild) handle() error {
 	if err != nil {
 		return err
 	}
-	remoteEnvID, err := p.config.GetString(config.RemoteEnvironmentId)
+	remoteEnvId, err := p.config.GetString(config.RemoteEnvironmentId)
+	if err != nil {
+		return err
+	}
+	flowId, err := p.config.GetString(config.FlowId)
 	if err != nil {
 		return err
 	}
@@ -286,7 +290,7 @@ func (p triggerBuild) handle() error {
 	}
 
 	p.api.SetApiKey(apiKey)
-	remoteEnv, err := p.api.GetRemoteEnvironment(remoteEnvID)
+	remoteEnv, err := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if err != nil {
 		return err
 	}
@@ -298,7 +302,7 @@ func (p triggerBuild) handle() error {
 
 		fmt.Fprintln(p.writer, "Pushing to remote")
 		p.createRemoteBranch(remoteName, gitBranch)
-		p.api.RemoteEnvironmentBuild(remoteEnvID, gitBranch)
+		p.api.RemoteEnvironmentBuild(remoteEnvId, gitBranch)
 		fmt.Fprintln(p.writer, "Continuous Pipe will now build your developer environment")
 		fmt.Fprintln(p.writer, "You can see when it is complete and find its IP address at https://ui.continuouspipe.io/")
 		fmt.Fprintln(p.writer, "Please wait until the build is complete to use any of this tool's other commands.")
@@ -371,7 +375,11 @@ func (p waitEnvironmentReady) handle() error {
 	if err != nil {
 		return err
 	}
-	remoteEnvID, err := p.config.GetString(config.RemoteEnvironmentId)
+	remoteEnvId, err := p.config.GetString(config.RemoteEnvironmentId)
+	if err != nil {
+		return err
+	}
+	flowId, err := p.config.GetString(config.FlowId)
 	if err != nil {
 		return err
 	}
@@ -381,7 +389,7 @@ func (p waitEnvironmentReady) handle() error {
 	}
 
 	p.api.SetApiKey(apiKey)
-	var remoteEnv *cpapi.ApiRemoteEnvironment
+	var remoteEnv *cpapi.ApiRemoteEnvironmentStatus
 
 	fmt.Fprintln(p.writer, "Waiting for the envionment to be ready..")
 
@@ -391,7 +399,7 @@ func (p waitEnvironmentReady) handle() error {
 
 		fmt.Fprintln(p.writer, "Checking at ", t)
 
-		remoteEnv, err = p.api.GetRemoteEnvironment(remoteEnvID)
+		remoteEnv, err = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 		if err != nil {
 			return err
 		}
@@ -407,11 +415,11 @@ func (p waitEnvironmentReady) handle() error {
 			fmt.Fprintln(p.writer, "The remote environment build did't start, triggering a re-build.")
 
 			cplogs.V(5).Infof("re-trying triggering build for the remote environment")
-			p.api.RemoteEnvironmentBuild(remoteEnvID, gitBranch)
+			p.api.RemoteEnvironmentBuild(remoteEnvId, gitBranch)
 			cplogs.Flush()
 
 		case cpapi.RemoteEnvironmentStatusFailed:
-			return fmt.Errorf("remote environment id %s failed to create", remoteEnv.RemoteEnvironmentId)
+			return fmt.Errorf("remote environment id %s failed to create", remoteEnvId)
 
 		case cpapi.RemoteEnvironmentStatusOk:
 			return nil
@@ -456,27 +464,26 @@ func (p applyEnvironmentSettings) handle() error {
 	if err != nil {
 		return err
 	}
-	remoteEnvID, err := p.config.GetString(config.RemoteEnvironmentId)
+	flowId, err := p.config.GetString(config.FlowId)
+	if err != nil {
+		return err
+	}
+	remoteEnvId, err := p.config.GetString(config.RemoteEnvironmentId)
 	if err != nil {
 		return err
 	}
 
 	p.api.SetApiKey(apiKey)
 
-	remoteEnv, err := p.api.GetRemoteEnvironment(remoteEnvID)
+	remoteEnv, err := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if err != nil {
 		return err
 	}
 
-	cplogs.V(5).Infof("saving remote environment info for environment name: %s, environment id: %s", remoteEnv.KubeEnvironmentName, remoteEnv.RemoteEnvironmentId)
+	cplogs.V(5).Infof("saving remote environment info for environment name: %s, environment id: %s", remoteEnv.KubeEnvironmentName, remoteEnvId)
 	//the environment has been built, so save locally the settings received from the server
-	p.config.Set(config.RemoteEnvironmentConfigModifiedAt, remoteEnv.ModifiedAt)
 	p.config.Set(config.ClusterIdentifier, remoteEnv.ClusterIdentifier)
-	p.config.Set(config.AnybarPort, remoteEnv.AnyBarPort)
 	p.config.Set(config.KubeEnvironmentName, remoteEnv.KubeEnvironmentName)
-	p.config.Set(config.KeenEventCollection, remoteEnv.KeenEventCollection)
-	p.config.Set(config.KeenProjectId, remoteEnv.KeenId)
-	p.config.Set(config.KeenWriteKey, remoteEnv.KeenWriteKey)
 	p.config.Save()
 	cplogs.V(5).Infoln("saved remote environment info")
 	cplogs.Flush()

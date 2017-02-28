@@ -101,7 +101,7 @@ type kubeCtlProxy struct {
 }
 
 func (i *kubeCtlProxy) settings() (addr string, user string, password string, err error) {
-	project, err := i.config.GetString(config.Project)
+	flowId, err := i.config.GetString(config.FlowId)
 	if err != nil {
 		return
 	}
@@ -113,7 +113,7 @@ func (i *kubeCtlProxy) settings() (addr string, user string, password string, er
 	if err != nil {
 		return
 	}
-	addr = fmt.Sprintf("%s/%s/%s/", cpProxyAddr, project, clusterID)
+	addr = fmt.Sprintf("%s/%s/%s/", cpProxyAddr, flowId, clusterID)
 	user, err = i.config.GetString(config.Username)
 	if err != nil {
 		return

@@ -4,11 +4,11 @@ import "github.com/continuouspipe/remote-environment-client/cpapi"
 
 type SpyApiProvider struct {
 	Spy
-	getApiTeams            func() ([]cpapi.ApiTeam, error)
-	getApiBucketClusters   func(bucketUuid string) ([]cpapi.ApiCluster, error)
-	getApiUser             func(user string) (*cpapi.ApiUser, error)
-	getRemoteEnvironment   func(remoteEnvironmentID string) (*cpapi.ApiRemoteEnvironment, error)
-	remoteEnvironmentBuild func(remoteEnvironmentFlowID string, gitBranch string) error
+	getApiTeams                func() ([]cpapi.ApiTeam, error)
+	getApiBucketClusters       func(bucketUuid string) ([]cpapi.ApiCluster, error)
+	getApiUser                 func(user string) (*cpapi.ApiUser, error)
+	getRemoteEnvironmentStatus func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error)
+	remoteEnvironmentBuild     func(remoteEnvironmentFlowID string, gitBranch string) error
 }
 
 func NewSpyApiProvider() *SpyApiProvider {
@@ -49,13 +49,14 @@ func (s *SpyApiProvider) GetApiUser(user string) (*cpapi.ApiUser, error) {
 	return s.getApiUser(user)
 }
 
-func (s *SpyApiProvider) GetRemoteEnvironment(remoteEnvironmentID string) (*cpapi.ApiRemoteEnvironment, error) {
+func (s *SpyApiProvider) GetRemoteEnvironmentStatus(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
 	args := make(Arguments)
-	args["remoteEnvironmentID"] = remoteEnvironmentID
+	args["flowId"] = flowId
+	args["environmentId"] = environmentId
 
-	function := &Function{Name: "GetRemoteEnvironment", Arguments: args}
+	function := &Function{Name: "GetRemoteEnvironmentStatus", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
-	return s.getRemoteEnvironment(remoteEnvironmentID)
+	return s.getRemoteEnvironmentStatus(flowId, environmentId)
 }
 
 func (s *SpyApiProvider) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error {
@@ -80,8 +81,8 @@ func (s *SpyApiProvider) MockGetApiUser(mocked func(user string) (*cpapi.ApiUser
 	s.getApiUser = mocked
 }
 
-func (s *SpyApiProvider) MockGetRemoteEnvironment(mocked func(remoteEnvironmentID string) (*cpapi.ApiRemoteEnvironment, error)) {
-	s.getRemoteEnvironment = mocked
+func (s *SpyApiProvider) MockGetRemoteEnvironmentStatus(mocked func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error)) {
+	s.getRemoteEnvironmentStatus = mocked
 }
 
 func (s *SpyApiProvider) MockRemoteEnvironmentBuild(mocked func(remoteEnvironmentID string, gitBranch string) error) {

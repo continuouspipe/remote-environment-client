@@ -16,7 +16,7 @@ type CpApiProvider interface {
 	GetApiTeams() ([]ApiTeam, error)
 	GetApiBucketClusters(bucketUuid string) ([]ApiCluster, error)
 	GetApiUser(user string) (*ApiUser, error)
-	GetRemoteEnvironment(remoteEnvironmentID string) (*ApiRemoteEnvironment, error)
+	GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, error)
 	RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error
 }
 
@@ -68,16 +68,10 @@ type ApiCluster struct {
 	Type       string `json:"type"`
 }
 
-type ApiRemoteEnvironment struct {
+type ApiRemoteEnvironmentStatus struct {
 	Status              string `json:"status"`
-	ModifiedAt          string `json:"modified_at"`
-	RemoteEnvironmentId string `json:"remote_environment_id"`
-	KubeEnvironmentName string `json:"kubernetes_environment_name"`
+	KubeEnvironmentName string `json:"environment_name"`
 	ClusterIdentifier   string `json:"cluster_identifier"`
-	AnyBarPort          string `json:"any_bar_port"`
-	KeenId              string `json:"keen_id"`
-	KeenWriteKey        string `json:"keen_write_key"`
-	KeenEventCollection string `json:"keen_event_collection"`
 }
 
 func (c *CpApi) SetApiKey(apiKey string) {
@@ -181,16 +175,16 @@ func (c CpApi) GetApiUser(user string) (*ApiUser, error) {
 }
 
 //GetRemoteEnvironment call CP Api to retrieve information about the remote environment
-func (c CpApi) GetRemoteEnvironment(remoteEnvironmentID string) (*ApiRemoteEnvironment, error) {
+func (c CpApi) GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, error) {
 	if c.apiKey == "" {
 		return nil, fmt.Errorf("api key not provided")
 	}
 
-	url, err := c.getAuthenticatorURL()
+	url, err := c.getRiverURL()
 	if err != nil {
 		return nil, err
 	}
-	url.Path = "/api/remote-environment/" + remoteEnvironmentID
+	url.Path = fmt.Sprintf("/flows/%s/development-environments/%s/status", flowId, environmentId)
 
 	req, err := http.NewRequest("GET", url.String(), nil)
 	req.Header.Add("X-Api-Key", c.apiKey)
@@ -203,7 +197,7 @@ func (c CpApi) GetRemoteEnvironment(remoteEnvironmentID string) (*ApiRemoteEnvir
 		return nil, fmt.Errorf("error getting remote environment, %s", err.Error())
 	}
 
-	apiRemoteEnvironment := &ApiRemoteEnvironment{}
+	apiRemoteEnvironment := &ApiRemoteEnvironmentStatus{}
 	err = json.Unmarshal(respBody, apiRemoteEnvironment)
 	if err != nil {
 		return nil, err

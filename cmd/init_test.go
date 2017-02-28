@@ -118,15 +118,15 @@ func TestParseSaveTokenInfo_Handle(t *testing.T) {
 		return nil
 	})
 	spyApiProvider := spies.NewSpyApiProvider()
-	spyApiProvider.MockGetRemoteEnvironment(func(remoteEnvironmentID string) (*cpapi.ApiRemoteEnvironment, error) {
-		r := &cpapi.ApiRemoteEnvironment{}
+	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+		r := &cpapi.ApiRemoteEnvironmentStatus{}
 		return r, nil
 	})
 
 	//get test subject
 	handler := &parseSaveTokenInfo{
 		spyConfig,
-		"some-api-key,remote-env-id,my-project,cp-user,my-branch",
+		"my-project,remote-env-id,some-api-key,cp-user,my-branch",
 		spyApiProvider}
 
 	handler.handle()
@@ -143,7 +143,7 @@ func TestParseSaveTokenInfo_Handle(t *testing.T) {
 	spyConfig.ExpectsCallNArgument(t, "Set", 3, "key", config.ApiKey)
 	spyConfig.ExpectsCallNArgument(t, "Set", 3, "value", "some-api-key")
 
-	spyConfig.ExpectsCallNArgument(t, "Set", 4, "key", config.Project)
+	spyConfig.ExpectsCallNArgument(t, "Set", 4, "key", config.FlowId)
 	spyConfig.ExpectsCallNArgument(t, "Set", 4, "value", "my-project")
 
 	spyConfig.ExpectsCallNArgument(t, "Set", 5, "key", config.RemoteBranch)
@@ -165,6 +165,8 @@ func TestTriggerBuild_Handle(t *testing.T) {
 			return "some-api-key", nil
 		case config.RemoteEnvironmentId:
 			return "987654321", nil
+		case config.FlowId:
+			return "837d92hd-19su1d91", nil
 		case config.Username:
 			return "user-foo", nil
 		case config.RemoteName:
@@ -182,8 +184,8 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	})
 
 	spyApi := spies.NewSpyApiProvider()
-	spyApi.MockGetRemoteEnvironment(func(remoteEnvId string) (*cpapi.ApiRemoteEnvironment, error) {
-		return &cpapi.ApiRemoteEnvironment{
+	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+		return &cpapi.ApiRemoteEnvironmentStatus{
 			Status: cpapi.RemoteEnvironmentStatusNotStarted,
 		}, nil
 	})
@@ -230,8 +232,9 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	spyApi.ExpectsCallCount(t, "SetApiKey", 1)
 	spyApi.ExpectsFirstCallArgument(t, "SetApiKey", "apiKey", "some-api-key")
 
-	spyApi.ExpectsCallCount(t, "GetRemoteEnvironment", 1)
-	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironment", "remoteEnvironmentID", "987654321")
+	spyApi.ExpectsCallCount(t, "GetRemoteEnvironmentStatus", 1)
+	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironmentStatus", "flowId", "837d92hd-19su1d91")
+	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironmentStatus", "environmentId", "987654321")
 
 	spyPush.ExpectsCallCount(t, "Push", 1)
 	spyPush.ExpectsFirstCallArgument(t, "Push", "localBranch", "feature-new")
@@ -255,6 +258,8 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 			return "some-api-key", nil
 		case config.RemoteEnvironmentId:
 			return "987654321", nil
+		case config.FlowId:
+			return "837d92hd-19su1d91", nil
 		case config.RemoteBranch:
 			return "remote-dev-user-foo", nil
 		}
@@ -280,9 +285,9 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	//RemoteEnvironmentStatusNotStarted the first time
 	//RemoteEnvironmentStatusBuilding the second time
 	//RemoteEnvironmentStatusOk second time
-	spyApi.MockGetRemoteEnvironment(func(remoteEnvironmentID string) (*cpapi.ApiRemoteEnvironment, error) {
+	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
 		var s string
-		callCount := spyApi.CallsCountFor("GetRemoteEnvironment")
+		callCount := spyApi.CallsCountFor("GetRemoteEnvironmentStatus")
 
 		switch callCount {
 		case 1:
@@ -292,7 +297,7 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 		case 3:
 			s = cpapi.RemoteEnvironmentStatusOk
 		}
-		r := &cpapi.ApiRemoteEnvironment{}
+		r := &cpapi.ApiRemoteEnvironmentStatus{}
 		r.Status = s
 		return r, nil
 	})
@@ -311,10 +316,16 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.InitStatus)
 	spyConfig.ExpectsFirstCallArgument(t, "Set", "value", initStateWaitEnvironmentReady)
 
-	spyApi.ExpectsCallCount(t, "GetRemoteEnvironment", 3)
-	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironment", "remoteEnvironmentID", "987654321")
-	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironment", 2, "remoteEnvironmentID", "987654321")
-	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironment", 3, "remoteEnvironmentID", "987654321")
+	spyApi.ExpectsCallCount(t, "GetRemoteEnvironmentStatus", 3)
+
+	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironmentStatus", "flowId", "837d92hd-19su1d91")
+	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironmentStatus", "environmentId", "987654321")
+
+	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironmentStatus", 2, "flowId", "837d92hd-19su1d91")
+	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironmentStatus", 2, "environmentId", "987654321")
+
+	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironmentStatus", 3, "flowId", "837d92hd-19su1d91")
+	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironmentStatus", 3, "environmentId", "987654321")
 
 	spyApi.ExpectsCallCount(t, "RemoteEnvironmentBuild", 1)
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentFlowID", "987654321")
@@ -335,7 +346,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 			return "987654321", nil
 		case config.Username:
 			return "user-foo", nil
-		case config.Project:
+		case config.FlowId:
 			return "837d92hd-19su1d91", nil
 		case config.ClusterIdentifier:
 			return "the-cluster-one", nil
@@ -357,17 +368,11 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	})
 
 	spyApi := spies.NewSpyApiProvider()
-	spyApi.MockGetRemoteEnvironment(func(remoteEnvId string) (*cpapi.ApiRemoteEnvironment, error) {
-		return &cpapi.ApiRemoteEnvironment{
+	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+		return &cpapi.ApiRemoteEnvironmentStatus{
 			cpapi.RemoteEnvironmentStatusOk,
-			"2017-01-01 10:20",
-			"2233445566",
 			"837d92hd-19su1d91-dev-some-user",
 			"the-cluster-one",
-			"59846",
-			"keen-id-123",
-			"keen-write-key-456",
-			"proj-events",
 		}, nil
 	})
 	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
@@ -402,23 +407,14 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	spyApi.ExpectsCallCount(t, "SetApiKey", 1)
 	spyApi.ExpectsFirstCallArgument(t, "SetApiKey", "apiKey", "some-api-key")
 
-	spyApi.ExpectsCallCount(t, "GetRemoteEnvironment", 1)
-	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironment", "remoteEnvironmentID", "987654321")
+	spyApi.ExpectsCallCount(t, "GetRemoteEnvironmentStatus", 1)
+	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironmentStatus", "flowId", "837d92hd-19su1d91")
+	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironmentStatus", "environmentId", "987654321")
 
-	spyConfig.ExpectsCallNArgument(t, "Set", 2, "key", config.RemoteEnvironmentConfigModifiedAt)
-	spyConfig.ExpectsCallNArgument(t, "Set", 2, "value", "2017-01-01 10:20")
-	spyConfig.ExpectsCallNArgument(t, "Set", 3, "key", config.ClusterIdentifier)
-	spyConfig.ExpectsCallNArgument(t, "Set", 3, "value", "the-cluster-one")
-	spyConfig.ExpectsCallNArgument(t, "Set", 4, "key", config.AnybarPort)
-	spyConfig.ExpectsCallNArgument(t, "Set", 4, "value", "59846")
-	spyConfig.ExpectsCallNArgument(t, "Set", 5, "key", config.KubeEnvironmentName)
-	spyConfig.ExpectsCallNArgument(t, "Set", 5, "value", "837d92hd-19su1d91-dev-some-user")
-	spyConfig.ExpectsCallNArgument(t, "Set", 6, "key", config.KeenEventCollection)
-	spyConfig.ExpectsCallNArgument(t, "Set", 6, "value", "proj-events")
-	spyConfig.ExpectsCallNArgument(t, "Set", 7, "key", config.KeenProjectId)
-	spyConfig.ExpectsCallNArgument(t, "Set", 7, "value", "keen-id-123")
-	spyConfig.ExpectsCallNArgument(t, "Set", 8, "key", config.KeenWriteKey)
-	spyConfig.ExpectsCallNArgument(t, "Set", 8, "value", "keen-write-key-456")
+	spyConfig.ExpectsCallNArgument(t, "Set", 2, "key", config.ClusterIdentifier)
+	spyConfig.ExpectsCallNArgument(t, "Set", 2, "value", "the-cluster-one")
+	spyConfig.ExpectsCallNArgument(t, "Set", 3, "key", config.KubeEnvironmentName)
+	spyConfig.ExpectsCallNArgument(t, "Set", 3, "value", "837d92hd-19su1d91-dev-some-user")
 
 	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
 
