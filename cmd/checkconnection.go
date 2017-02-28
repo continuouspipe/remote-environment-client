@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -12,6 +13,7 @@ import (
 func NewCheckConnectionCmd() *cobra.Command {
 	settings := config.C
 	handler := &CheckConnectionHandle{}
+	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 	command := &cobra.Command{
 		Use:     "checkconnection",
 		Aliases: []string{"ck"},
@@ -40,6 +42,7 @@ type CheckConnectionHandle struct {
 	Command       *cobra.Command
 	Environment   string
 	kubeConfigKey string
+	kubeCtlInit   kubectlapi.KubeCtlInitializer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -63,6 +66,9 @@ func (h *CheckConnectionHandle) Validate() error {
 
 // Finds the pods and prints them
 func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) error {
+	//re-init kubectl in case the kube settings have been modified
+	h.kubeCtlInit.Init()
+
 	fmt.Println("checking connection for environment " + h.Environment)
 
 	countPods, err := fetchNumberOfPods(h.kubeConfigKey, h.Environment, podsFinder)

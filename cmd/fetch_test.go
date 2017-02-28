@@ -29,9 +29,14 @@ func TestFetch(t *testing.T) {
 	spyFetcher.MockFetch(func() error {
 		return nil
 	})
+	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
+	spyKubeCtlInitializer.MockInit(func() error {
+		return nil
+	})
 
 	//test subject called
 	handler := &FetchHandle{}
+	handler.kubeCtlInit = spyKubeCtlInitializer
 	handler.Environment = "proj-feature-testing"
 	handler.Service = "web"
 	handler.File = "some-file.txt"
@@ -48,4 +53,6 @@ func TestFetch(t *testing.T) {
 	spyFetcher.ExpectsFirstCallArgument(t, "SetEnvironment", "environment", "proj-feature-testing")
 	spyFetcher.ExpectsFirstCallArgument(t, "SetPod", "pod", "web-123456")
 	spyFetcher.ExpectsFirstCallArgument(t, "Fetch", "filePath", "some-file.txt")
+
+	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
 }

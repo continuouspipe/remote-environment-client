@@ -374,16 +374,11 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 		return nil
 	})
 
-	spyKubeCtlConfig := spies.NewSpyKubeCtlConfigProvider()
-	spyKubeCtlConfig.MockConfigSetAuthInfo(func(environment string, username string, password string) (string, error) {
-		return "", nil
+	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
+	spyKubeCtlInitializer.MockInit(func() error {
+		return nil
 	})
-	spyKubeCtlConfig.MockConfigSetCluster(func(environment string, clusterIp string, teamName string, clusterIdentifier string) (string, error) {
-		return "", nil
-	})
-	spyKubeCtlConfig.MockConfigSetContext(func(environment string, username string) (string, error) {
-		return "", nil
-	})
+
 	spyClusterInfoProvider := spies.NewSpyKubeCtlClusterInfoProvider()
 	spyClusterInfoProvider.MockClusterInfo(func(kubeConfigKey string) (string, error) {
 		return "", nil
@@ -393,7 +388,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	handler := &applyEnvironmentSettings{
 		spyConfig,
 		spyApi,
-		spyKubeCtlConfig,
+		spyKubeCtlInitializer,
 		spyClusterInfoProvider,
 		ioutil.Discard,
 	}
@@ -425,20 +420,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	spyConfig.ExpectsCallNArgument(t, "Set", 8, "key", config.KeenWriteKey)
 	spyConfig.ExpectsCallNArgument(t, "Set", 8, "value", "keen-write-key-456")
 
-	spyKubeCtlConfig.ExpectsCallCount(t, "ConfigSetAuthInfo", 1)
-	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetAuthInfo", "environment", "837d92hd-19su1d91-dev-some-user")
-	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetAuthInfo", "username", "user-foo")
-	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetAuthInfo", "password", "some-api-key")
-
-	spyKubeCtlConfig.ExpectsCallCount(t, "ConfigSetCluster", 1)
-	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetCluster", "environment", "837d92hd-19su1d91-dev-some-user")
-	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetCluster", "clusterIp", "https://kube-proxy-address")
-	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetCluster", "teamName", "837d92hd-19su1d91")
-	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetCluster", "clusterIdentifier", "the-cluster-one")
-
-	spyKubeCtlConfig.ExpectsCallCount(t, "ConfigSetContext", 1)
-	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetContext", "environment", "837d92hd-19su1d91-dev-some-user")
-	spyKubeCtlConfig.ExpectsFirstCallArgument(t, "ConfigSetContext", "username", "user-foo")
+	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
 
 	spyClusterInfoProvider.ExpectsCallCount(t, "ClusterInfo", 1)
 	spyClusterInfoProvider.ExpectsFirstCallArgument(t, "ClusterInfo", "kubeConfigKey", "837d92hd-19su1d91-dev-some-user")

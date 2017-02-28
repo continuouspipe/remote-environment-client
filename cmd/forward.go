@@ -32,6 +32,7 @@ var (
 func NewForwardCmd() *cobra.Command {
 	settings := config.C
 	handler := &ForwardHandle{}
+	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 	command := &cobra.Command{
 		Use:     "forward",
 		Aliases: []string{"fo"},
@@ -67,6 +68,7 @@ type ForwardHandle struct {
 	podsFilter  pods.Filter
 	Environment string
 	Service     string
+	kubeCtlInit kubectlapi.KubeCtlInitializer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -108,6 +110,9 @@ func (h *ForwardHandle) Validate() error {
 }
 
 func (h *ForwardHandle) Handle() error {
+	//re-init kubectl in case the kube settings have been modified
+	h.kubeCtlInit.Init()
+
 	allPods, err := h.podsFinder.FindAll(h.Environment, h.Environment)
 	if err != nil {
 		cplogs.V(5).Infof("pods not found for environment %s", h.Environment)

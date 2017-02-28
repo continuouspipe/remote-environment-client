@@ -5,6 +5,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/benchmark"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/spf13/cobra"
@@ -22,6 +23,7 @@ cp-remote fe -p techup -r dev-user -s web
 func NewFetchCmd() *cobra.Command {
 	settings := config.C
 	handler := &FetchHandle{}
+	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 
 	command := &cobra.Command{
 		Use:     "fetch",
@@ -77,6 +79,7 @@ type FetchHandle struct {
 	Service           string
 	File              string
 	RemoteProjectPath string
+	kubeCtlInit       kubectlapi.KubeCtlInitializer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -114,6 +117,9 @@ func (h *FetchHandle) Validate() error {
 
 // Copies all the files and folders from the remote development environment into the current directory
 func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, fetcher sync.Fetcher) error {
+	//re-init kubectl in case the kube settings have been modified
+	h.kubeCtlInit.Init()
+
 	allPods, err := podsFinder.FindAll(h.Environment, h.Environment)
 	if err != nil {
 		return err

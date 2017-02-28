@@ -32,9 +32,14 @@ func TestCommandsAreSpawned(t *testing.T) {
 	spyLocalExecutor.MockCommandExec(func() (string, error) {
 		return "some results back..", nil
 	})
+	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
+	spyKubeCtlInitializer.MockInit(func() error {
+		return nil
+	})
 
 	//test subject called
 	handler := &ExecHandle{}
+	handler.kubeCtlInit = spyKubeCtlInitializer
 	handler.Environment = "proj-feature-testing"
 	handler.Service = "web"
 	out, _ := handler.Handle([]string{"ls", "-a", "-l", "-l"}, mockPodsFinder, mockPodFilter, spyLocalExecutor)
@@ -53,4 +58,6 @@ func TestCommandsAreSpawned(t *testing.T) {
 	spyLocalExecutor.ExpectsCallCount(t, "CommandExec", 1)
 	spyLocalExecutor.ExpectsFirstCallArgument(t, "CommandExec", "kscmd", kscmd)
 	spyLocalExecutor.ExpectsFirstCallArgumentStringSlice(t, "CommandExec", "execCmdArgs", []string{"ls", "-a", "-l", "-l"})
+
+	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
 }

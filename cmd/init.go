@@ -425,7 +425,7 @@ func (p waitEnvironmentReady) handle() error {
 type applyEnvironmentSettings struct {
 	config              config.ConfigProvider
 	api                 cpapi.CpApiProvider
-	kubeCtlConfig       kubectlapi.KubeCtlConfigProvider
+	kubeCtlInitializer  kubectlapi.KubeCtlInitializer
 	clusterInfoProvider kubectlapi.KubeCtlClusterInfoProvider
 	writer              io.Writer
 }
@@ -434,7 +434,7 @@ func newApplyEnvironmentSettings() *applyEnvironmentSettings {
 	return &applyEnvironmentSettings{
 		config.C,
 		cpapi.NewCpApi(),
-		kubectlapi.NewKubeCtlConfig(),
+		kubectlapi.NewKubeCtlInit(),
 		kubectlapi.NewKubeCtlClusterInfo(),
 		os.Stdout,
 	}
@@ -491,40 +491,12 @@ func (p applyEnvironmentSettings) handle() error {
 }
 
 func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
-	environment, err := p.config.GetString(config.KubeEnvironmentName)
-	if err != nil {
-		return err
-	}
-	username, err := p.config.GetString(config.Username)
-	if err != nil {
-		return err
-	}
-	apiKey, err := p.config.GetString(config.ApiKey)
-	if err != nil {
-		return err
-	}
-	project, err := p.config.GetString(config.Project)
-	if err != nil {
-		return err
-	}
-	clusterID, err := p.config.GetString(config.ClusterIdentifier)
-	if err != nil {
-		return err
-	}
-	cpProxy, err := p.config.GetString(config.CpKubeProxyAddr)
+	err := p.kubeCtlInitializer.Init()
 	if err != nil {
 		return err
 	}
 
-	_, err = p.kubeCtlConfig.ConfigSetAuthInfo(environment, username, apiKey)
-	if err != nil {
-		return err
-	}
-	_, err = p.kubeCtlConfig.ConfigSetCluster(environment, cpProxy, project, clusterID)
-	if err != nil {
-		return err
-	}
-	_, err = p.kubeCtlConfig.ConfigSetContext(environment, username)
+	environment, err := p.config.GetString(config.KubeEnvironmentName)
 	if err != nil {
 		return err
 	}

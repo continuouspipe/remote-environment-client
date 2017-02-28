@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
@@ -16,6 +17,7 @@ import (
 func NewWatchCmd() *cobra.Command {
 	settings := config.C
 	handler := &WatchHandle{}
+	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 	command := &cobra.Command{
 		Use:     "watch",
 		Aliases: []string{"wa"},
@@ -75,6 +77,7 @@ type WatchHandle struct {
 	IndividualFileSyncThreshold int
 	RemoteProjectPath           string
 	syncer                      sync.Syncer
+	kubeCtlInit                 kubectlapi.KubeCtlInitializer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -114,6 +117,9 @@ func (h *WatchHandle) Validate() error {
 }
 
 func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
+	//re-init kubectl in case the kube settings have been modified
+	h.kubeCtlInit.Init()
+
 	allPods, err := podsFinder.FindAll(h.Environment, h.Environment)
 	if err != nil {
 		return err

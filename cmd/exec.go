@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
@@ -23,6 +24,7 @@ cp-remote ex -p techup -r dev-user -s web -- ls -all
 func NewExecCmd() *cobra.Command {
 	settings := config.C
 	handler := &ExecHandle{}
+	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 	command := &cobra.Command{
 		Use:     "exec",
 		Aliases: []string{"ex"},
@@ -58,6 +60,7 @@ type ExecHandle struct {
 	Command     *cobra.Command
 	Environment string
 	Service     string
+	kubeCtlInit kubectlapi.KubeCtlInitializer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -89,6 +92,9 @@ func (h *ExecHandle) Validate() error {
 
 // Handle executes a command inside a pod
 func (h *ExecHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, spawn exec.Spawner) (string, error) {
+	//re-init kubectl in case the kube settings have been modified
+	h.kubeCtlInit.Init()
+
 	allPods, err := podsFinder.FindAll(h.Environment, h.Environment)
 	checkErr(err)
 

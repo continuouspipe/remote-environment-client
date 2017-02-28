@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
@@ -14,6 +15,7 @@ import (
 func NewBashCmd() *cobra.Command {
 	settings := config.C
 	handler := &BashHandle{}
+	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 
 	bashcmd := &cobra.Command{
 		Use:     "bash",
@@ -50,6 +52,7 @@ type BashHandle struct {
 	Command     *cobra.Command
 	Environment string
 	Service     string
+	kubeCtlInit kubectlapi.KubeCtlInitializer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -82,6 +85,9 @@ func (h *BashHandle) Validate() error {
 
 // Handle opens a bash console against a pod.
 func (h *BashHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, executor exec.Executor) error {
+	//re-init kubectl in case the kube settings have been modified
+	h.kubeCtlInit.Init()
+
 	podsList, err := podsFinder.FindAll(h.Environment, h.Environment)
 	if err != nil {
 		return err

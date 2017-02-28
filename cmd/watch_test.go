@@ -42,8 +42,14 @@ func TestWatch(t *testing.T) {
 		return nil
 	})
 
+	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
+	spyKubeCtlInitializer.MockInit(func() error {
+		return nil
+	})
+
 	//test subject called
 	handler := &WatchHandle{}
+	handler.kubeCtlInit = spyKubeCtlInitializer
 	handler.Environment = "proj-feature-testing"
 	handler.RemoteProjectPath = "/my/sub/path/"
 	handler.Service = "web"
@@ -70,4 +76,6 @@ func TestWatch(t *testing.T) {
 	spyOsDirectoryMonitor.ExpectsCallCount(t, "AnyEventCall", 1)
 
 	spyOsDirectoryMonitor.ExpectsFirstCallArgument(t, "SetLatency", "latency", time.Duration(1000))
+
+	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
 }

@@ -30,9 +30,14 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	spyLocalExecutor.MockStartProcess(func() error {
 		return nil
 	})
+	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
+	spyKubeCtlInitializer.MockInit(func() error {
+		return nil
+	})
 
 	//test subject called
 	handler := &BashHandle{}
+	handler.kubeCtlInit = spyKubeCtlInitializer
 	handler.Environment = "proj-feature-testing"
 	handler.Service = "web"
 	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spyLocalExecutor)
@@ -49,4 +54,6 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	spyLocalExecutor.ExpectsCallCount(t, "StartProcess", 1)
 	spyLocalExecutor.ExpectsFirstCallArgument(t, "StartProcess", "kscmd", kscmd)
 	spyLocalExecutor.ExpectsFirstCallArgumentStringSlice(t, "StartProcess", "execCmdArgs", []string{"/bin/bash"})
+
+	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
 }
