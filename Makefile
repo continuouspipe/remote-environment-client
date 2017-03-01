@@ -17,7 +17,7 @@
 # after make package completes, copy all content of public/* into the github pages repository and commit/push
 
 BINARY=cp-remote
-VERSION=0.0.2-beta.1
+VERSION=0.1.0-beta.1
 
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config
 LDFLAGS=-ldflags="-X ${CONFIG_PKG}.CurrentVersion=${VERSION}"
