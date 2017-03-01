@@ -9,6 +9,7 @@ import (
 
 	"bytes"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 )
 
 type CpApiProvider interface {
@@ -89,6 +90,8 @@ func (c CpApi) GetApiTeams() ([]ApiTeam, error) {
 	}
 	url.Path = "/api/teams"
 
+	cplogs.V(5).Infof("getting api teams info on cp using url %s", url.Path)
+
 	req, err := http.NewRequest("GET", url.String(), nil)
 	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
@@ -122,6 +125,8 @@ func (c CpApi) GetApiBucketClusters(bucketUuid string) ([]ApiCluster, error) {
 	}
 	url.Path = "/api/bucket/" + bucketUuid + "/clusters"
 
+	cplogs.V(5).Infof("getting api bucke cluster info on cp using url %s", url.Path)
+
 	req, err := http.NewRequest("GET", url.String(), nil)
 
 	req.Header.Add("X-Api-Key", c.apiKey)
@@ -154,6 +159,8 @@ func (c CpApi) GetApiUser(user string) (*ApiUser, error) {
 	}
 	url.Path = "/api/user/" + user
 
+	cplogs.V(5).Infof("getting user info on cp using url %s", url.Path)
+
 	req, err := http.NewRequest("GET", url.String(), nil)
 	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
@@ -185,6 +192,8 @@ func (c CpApi) GetRemoteEnvironmentStatus(flowId string, environmentId string) (
 		return nil, err
 	}
 	url.Path = fmt.Sprintf("/flows/%s/development-environments/%s/status", flowId, environmentId)
+
+	cplogs.V(5).Infof("getting remote environment status using url %s", url.Path)
 
 	req, err := http.NewRequest("GET", url.String(), nil)
 	req.Header.Add("X-Api-Key", c.apiKey)
@@ -223,6 +232,8 @@ func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch 
 	}
 	reqBodyJson, err := json.Marshal(&requestBody{gitBranch})
 
+	cplogs.V(5).Infof("triggering remote environment build using url %s and payload %s", url.Path, reqBodyJson)
+
 	req, err := http.NewRequest("POST", url.String(), bytes.NewReader(reqBodyJson))
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
@@ -244,7 +255,7 @@ func (c CpApi) getResponseBody(client *http.Client, req *http.Request) ([]byte, 
 	if err != nil {
 		return nil, err
 	}
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode < 200 && res.StatusCode > 202 {
 		return nil, fmt.Errorf("error getting response body, status: %d, url: %s", res.StatusCode, req.URL.String())
 	}
 	resBody, err := ioutil.ReadAll(res.Body)

@@ -302,12 +302,15 @@ func (p triggerBuild) handle() error {
 
 	//if the remote environment is not already building, make sure the remote git branch exists
 	//and then trigger a build via api
-	if remoteEnv.Status == cpapi.RemoteEnvironmentStatusNotStarted {
+	if remoteEnv.Status != cpapi.RemoteEnvironmentStatusBuilding {
 		cplogs.V(5).Infof("triggering build for the remote environment, user: %s", cpUsername)
 
 		fmt.Fprintln(p.writer, "Pushing to remote")
-		p.createRemoteBranch(remoteName, gitBranch)
-		err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
+		err := p.createRemoteBranch(remoteName, gitBranch)
+		if err != nil {
+			return err
+		}
+		err = p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 		if err != nil {
 			return err
 		}
@@ -399,6 +402,19 @@ func (p waitEnvironmentReady) handle() error {
 	p.api.SetApiKey(apiKey)
 	var remoteEnv *cpapi.ApiRemoteEnvironmentStatus
 
+	remoteEnv, err = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if err != nil {
+		return err
+	}
+
+	if remoteEnv.Status == cpapi.RemoteEnvironmentStatusFailed {
+		fmt.Fprintln(p.writer, "The build had previously failed, retrying..")
+		err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
+		if err != nil {
+			return err
+		}
+	}
+
 	fmt.Fprintln(p.writer, "Waiting for the envionment to be ready..")
 
 	//wait until the remote environment has been built
@@ -429,7 +445,7 @@ func (p waitEnvironmentReady) handle() error {
 				return err
 			}
 		case cpapi.RemoteEnvironmentStatusFailed:
-			return fmt.Errorf("remote environment id %s failed to create", remoteEnvId)
+			return fmt.Errorf("remote environment id %s cretion has failed, go to the continuouspipe website to find out about the error", remoteEnvId)
 
 		case cpapi.RemoteEnvironmentStatusOk:
 			return nil
