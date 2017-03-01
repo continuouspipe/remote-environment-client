@@ -16,15 +16,15 @@ var selfUpdater = &selfupdate.Updater{
 	// Manually update the const, or set it using `go build -ldflags="-X main.VERSION=<newver>" -o cp-remote remote-environment-client/main.go`
 	CurrentVersion: envconfig.CurrentVersion,
 	// The server hosting `$CmdName/$GOOS-$ARCH.json` which contains the checksum for the binary
-	ApiURL: "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/",
+	ApiURL: "https://continuouspipe.github.io/",
 	// The server hosting the zip file containing the binary application which is a fallback for the patch method
-	BinURL: "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/",
+	BinURL: "https://continuouspipe.github.io/",
 	// The server hosting the binary patch diff for incremental updates
-	DiffURL: "https://raw.githubusercontent.com/continuouspipe/remote-environment-client/",
+	DiffURL: "https://continuouspipe.github.io/",
 	// Check for update regardless of cktime timestamp
 	ForceCheck: true,
 	// The app name which is appended to the ApiURL to look for an update
-	CmdName: "gh-pages",
+	CmdName: "remote-environment-client",
 }
 
 func CheckForLatestVersion() error {
