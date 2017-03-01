@@ -30,8 +30,9 @@ var (
 )
 
 func NewForwardCmd() *cobra.Command {
-	settings := config.NewApplicationSettings()
+	settings := config.C
 	handler := &ForwardHandle{}
+	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 	command := &cobra.Command{
 		Use:     "forward",
 		Aliases: []string{"fo"},
@@ -41,8 +42,7 @@ to a container on the remote environment that has a port exposed. This is useful
 such as connecting to a database using a local client. You need to specify the container and
 the port number to forward.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			validator := config.NewMandatoryChecker()
-			validateConfig(validator, settings)
+			validateConfig()
 
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
@@ -50,25 +50,29 @@ the port number to forward.`,
 		},
 		Example: portforwardExample,
 	}
-	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
-	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
-	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", settings.GetString(config.Service), "The service to use (e.g.: web, mysql)")
+
+	environment, err := settings.GetString(config.KubeEnvironmentName)
+	checkErr(err)
+	service, err := settings.GetString(config.Service)
+	checkErr(err)
+
+	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
+	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 	return command
 }
 
 type ForwardHandle struct {
-	Command       *cobra.Command
-	ports         string
-	podsFinder    pods.Finder
-	podsFilter    pods.Filter
-	ProjectKey    string
-	RemoteBranch  string
-	Service       string
-	kubeConfigKey string
+	Command     *cobra.Command
+	ports       string
+	podsFinder  pods.Finder
+	podsFilter  pods.Filter
+	Environment string
+	Service     string
+	kubeCtlInit kubectlapi.KubeCtlInitializer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settingsReader config.Reader) error {
+func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
 	h.Command = cmd
 
 	if len(argsIn) > 0 {
@@ -77,16 +81,15 @@ func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settingsRe
 
 	h.podsFinder = pods.NewKubePodsFind()
 	h.podsFilter = pods.NewKubePodsFilter()
-	h.kubeConfigKey = settingsReader.GetString(config.KubeConfigKey)
 
-	if h.ProjectKey == "" {
-		h.ProjectKey = settingsReader.GetString(config.ProjectKey)
-	}
-	if h.RemoteBranch == "" {
-		h.RemoteBranch = settingsReader.GetString(config.RemoteBranch)
+	var err error
+	if h.Environment == "" {
+		h.Environment, err = settings.GetString(config.KubeEnvironmentName)
+		checkErr(err)
 	}
 	if h.Service == "" {
-		h.Service = settingsReader.GetString(config.Service)
+		h.Service, err = settings.GetString(config.Service)
+		checkErr(err)
 	}
 
 	return nil
@@ -97,11 +100,8 @@ func (h *ForwardHandle) Validate() error {
 	if len(h.ports) == 0 {
 		return fmt.Errorf("at least 1 PORT is required for port-forward")
 	}
-	if len(strings.Trim(h.ProjectKey, " ")) == 0 {
-		return fmt.Errorf("the project key specified is invalid")
-	}
-	if len(strings.Trim(h.RemoteBranch, " ")) == 0 {
-		return fmt.Errorf("the remote branch specified is invalid")
+	if len(strings.Trim(h.Environment, " ")) == 0 {
+		return fmt.Errorf("the environment specified is invalid")
 	}
 	if len(strings.Trim(h.Service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
@@ -110,11 +110,15 @@ func (h *ForwardHandle) Validate() error {
 }
 
 func (h *ForwardHandle) Handle() error {
-	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
-
-	allPods, err := h.podsFinder.FindAll(h.kubeConfigKey, environment)
+	//re-init kubectl in case the kube settings have been modified
+	err := h.kubeCtlInit.Init(h.Environment)
 	if err != nil {
-		cplogs.V(5).Infof("pods not found for project key %s and remote branch %s", h.ProjectKey, h.RemoteBranch)
+		return err
+	}
+
+	allPods, err := h.podsFinder.FindAll(h.Environment, h.Environment)
+	if err != nil {
+		cplogs.V(5).Infof("pods not found for environment %s", h.Environment)
 		return err
 	}
 
@@ -126,5 +130,5 @@ func (h *ForwardHandle) Handle() error {
 
 	cplogs.V(5).Infof("setting up forwarding for target pod %s and ports %s", pod.GetName(), h.ports)
 	cplogs.Flush()
-	return kubectlapi.Forward(h.kubeConfigKey, environment, pod.GetName(), h.ports, nil)
+	return kubectlapi.Forward(h.Environment, h.Environment, pod.GetName(), h.ports, nil)
 }

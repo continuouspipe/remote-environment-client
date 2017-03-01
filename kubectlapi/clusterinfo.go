@@ -6,7 +6,17 @@ import (
 	"os"
 )
 
-func ClusterInfo(kubeConfigKey string) (string, error) {
+type KubeCtlClusterInfoProvider interface {
+	ClusterInfo(kubeConfigKey string) (string, error)
+}
+
+type KubeCtlClusterInfo struct{}
+
+func NewKubeCtlClusterInfo() *KubeCtlClusterInfo {
+	return &KubeCtlClusterInfo{}
+}
+
+func (k KubeCtlClusterInfo) ClusterInfo(kubeConfigKey string) (string, error) {
 	args := []string{
 		config.KubeCtlName,
 		"--context=" + kubeConfigKey,

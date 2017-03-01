@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"k8s.io/client-go/pkg/api/v1"
-	"testing"
-	"time"
 )
 
 func TestWatch(t *testing.T) {
@@ -31,7 +32,7 @@ func TestWatch(t *testing.T) {
 		return nil
 	})
 
-	mockStdout := mocks.NewMockWriter()
+	mockStdout := spies.NewSpyWriter()
 	mockStdout.MockWrite(func(p []byte) (n int, err error) {
 		return 100, nil
 	})
@@ -41,11 +42,15 @@ func TestWatch(t *testing.T) {
 		return nil
 	})
 
+	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
+	spyKubeCtlInitializer.MockInit(func(environment string) error {
+		return nil
+	})
+
 	//test subject called
 	handler := &WatchHandle{}
-	handler.kubeConfigKey = "my-config-key"
-	handler.ProjectKey = "proj"
-	handler.RemoteBranch = "feature-testing"
+	handler.kubeCtlInit = spyKubeCtlInitializer
+	handler.Environment = "proj-feature-testing"
 	handler.RemoteProjectPath = "/my/sub/path/"
 	handler.Service = "web"
 	handler.Latency = 1000
@@ -61,7 +66,7 @@ func TestWatch(t *testing.T) {
 	spySyncer.ExpectsCallCount(t, "SetIndividualFileSyncThreshold", 1)
 	spySyncer.ExpectsCallCount(t, "SetRemoteProjectPath", 1)
 
-	spySyncer.ExpectsFirstCallArgument(t, "SetKubeConfigKey", "key", "my-config-key")
+	spySyncer.ExpectsFirstCallArgument(t, "SetKubeConfigKey", "key", "proj-feature-testing")
 	spySyncer.ExpectsFirstCallArgument(t, "SetEnvironment", "env", "proj-feature-testing")
 	spySyncer.ExpectsFirstCallArgument(t, "SetPod", "pod", "web-123456")
 	spySyncer.ExpectsFirstCallArgument(t, "SetIndividualFileSyncThreshold", "threshold", 20)
@@ -71,4 +76,6 @@ func TestWatch(t *testing.T) {
 	spyOsDirectoryMonitor.ExpectsCallCount(t, "AnyEventCall", 1)
 
 	spyOsDirectoryMonitor.ExpectsFirstCallArgument(t, "SetLatency", "latency", time.Duration(1000))
+
+	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
 }

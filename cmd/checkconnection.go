@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -10,8 +11,9 @@ import (
 )
 
 func NewCheckConnectionCmd() *cobra.Command {
-	settings := config.NewApplicationSettings()
+	settings := config.C
 	handler := &CheckConnectionHandle{}
+	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 	command := &cobra.Command{
 		Use:     "checkconnection",
 		Aliases: []string{"ck"},
@@ -20,8 +22,7 @@ func NewCheckConnectionCmd() *cobra.Command {
 for the Kubernetes cluster are correct and that if they are pods can be found for the environment.
 It can be used with the environment option to check another environment`,
 		Run: func(cmd *cobra.Command, args []string) {
-			validator := config.NewMandatoryChecker()
-			validateConfig(validator, settings)
+			validateConfig()
 
 			podsFinder := pods.NewKubePodsFind()
 			checkErr(handler.Complete(cmd, args, settings))
@@ -30,53 +31,49 @@ It can be used with the environment option to check another environment`,
 		},
 	}
 
-	command.PersistentFlags().StringVarP(&handler.ProjectKey, config.ProjectKey, "p", settings.GetString(config.ProjectKey), "Continuous Pipe project key")
-	command.PersistentFlags().StringVarP(&handler.RemoteBranch, config.RemoteBranch, "r", settings.GetString(config.RemoteBranch), "Name of the Git branch you are using for your remote environment")
+	environment, err := settings.GetString(config.KubeEnvironmentName)
+	checkErr(err)
+	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
 
 	return command
 }
 
 type CheckConnectionHandle struct {
-	Command       *cobra.Command
-	ProjectKey    string
-	RemoteBranch  string
-	kubeConfigKey string
+	Command     *cobra.Command
+	Environment string
+	kubeCtlInit kubectlapi.KubeCtlInitializer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, settingsReader config.Reader) error {
+func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, setting *config.Config) error {
 	h.Command = cmd
-
-	h.kubeConfigKey = settingsReader.GetString(config.KubeConfigKey)
-
-	if h.ProjectKey == "" {
-		h.ProjectKey = settingsReader.GetString(config.ProjectKey)
+	var err error
+	if h.Environment == "" {
+		h.Environment, err = setting.GetString(config.KubeEnvironmentName)
+		checkErr(err)
 	}
-	if h.RemoteBranch == "" {
-		h.RemoteBranch = settingsReader.GetString(config.RemoteBranch)
-	}
-
 	return nil
 }
 
 // Validate checks that the provided checkconnection options are specified.
 func (h *CheckConnectionHandle) Validate() error {
-	if len(strings.Trim(h.ProjectKey, " ")) == 0 {
-		return fmt.Errorf("the project key specified is invalid")
-	}
-	if len(strings.Trim(h.RemoteBranch, " ")) == 0 {
-		return fmt.Errorf("the remote branch specified is invalid")
+	if len(strings.Trim(h.Environment, " ")) == 0 {
+		return fmt.Errorf("the environment specified is invalid")
 	}
 	return nil
 }
 
 // Finds the pods and prints them
 func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) error {
-	environment := config.GetEnvironment(h.ProjectKey, h.RemoteBranch)
+	//re-init kubectl in case the kube settings have been modified
+	err := h.kubeCtlInit.Init(h.Environment)
+	if err != nil {
+		return err
+	}
 
-	fmt.Println("checking connection for environment " + environment)
+	fmt.Println("checking connection for environment " + h.Environment)
 
-	countPods, err := fetchNumberOfPods(h.kubeConfigKey, environment, podsFinder)
+	countPods, err := fetchNumberOfPods(h.Environment, h.Environment, podsFinder)
 	if err != nil {
 		return err
 	}

@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"k8s.io/client-go/pkg/api/v1"
-	"os"
-	"testing"
 )
 
 func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
@@ -29,17 +30,20 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	spyLocalExecutor.MockStartProcess(func() error {
 		return nil
 	})
+	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
+	spyKubeCtlInitializer.MockInit(func(environment string) error {
+		return nil
+	})
 
 	//test subject called
 	handler := &BashHandle{}
-	handler.kubeConfigKey = "my-config-key"
-	handler.ProjectKey = "proj"
-	handler.RemoteBranch = "feature-testing"
+	handler.kubeCtlInit = spyKubeCtlInitializer
+	handler.Environment = "proj-feature-testing"
 	handler.Service = "web"
 	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spyLocalExecutor)
 
 	kscmd := kexec.KSCommand{}
-	kscmd.KubeConfigKey = "my-config-key"
+	kscmd.KubeConfigKey = "proj-feature-testing"
 	kscmd.Environment = "proj-feature-testing"
 	kscmd.Pod = "web-123456"
 	kscmd.Stdin = os.Stdin
@@ -50,4 +54,6 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	spyLocalExecutor.ExpectsCallCount(t, "StartProcess", 1)
 	spyLocalExecutor.ExpectsFirstCallArgument(t, "StartProcess", "kscmd", kscmd)
 	spyLocalExecutor.ExpectsFirstCallArgumentStringSlice(t, "StartProcess", "execCmdArgs", []string{"/bin/bash"})
+
+	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
 }

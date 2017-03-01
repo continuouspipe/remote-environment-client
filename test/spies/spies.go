@@ -2,8 +2,8 @@ package spies
 
 import (
 	"github.com/continuouspipe/remote-environment-client/test"
-	"testing"
 	"reflect"
+	"testing"
 )
 
 //A map that stores a list of function arguments [argumentName] => value (any type)
@@ -26,6 +26,20 @@ func (spy *Spy) FirstCallsFor(functionName string) *Function {
 	for _, call := range spy.calledFunctions {
 		if call.Name == functionName {
 			return &call
+		}
+	}
+	return nil
+}
+
+//Returns the Function call element for the given functionName and for the given sequential number of call, this is useful when a type has received multiple functions
+func (spy *Spy) NCallsFor(n int, functionName string) *Function {
+	count := 0
+	for _, call := range spy.calledFunctions {
+		if call.Name == functionName {
+			count = count + 1
+			if count == n {
+				return &call
+			}
 		}
 	}
 	return nil
@@ -57,6 +71,16 @@ func (spy *Spy) ExpectsFirstCallArgument(t *testing.T, function string, argument
 		test.AssertDeepEqual(t, expected, firstCall.Arguments[argument])
 	default:
 		test.AssertSame(t, expected, firstCall.Arguments[argument])
+	}
+}
+func (spy *Spy) ExpectsCallNArgument(t *testing.T, function string, n int, argument string, expected interface{}) {
+	nCall := spy.NCallsFor(n, function)
+
+	switch reflect.TypeOf(expected).Kind() {
+	case reflect.Struct, reflect.Ptr:
+		test.AssertDeepEqual(t, expected, nCall.Arguments[argument])
+	default:
+		test.AssertSame(t, expected, nCall.Arguments[argument])
 	}
 }
 

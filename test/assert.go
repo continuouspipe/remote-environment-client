@@ -2,17 +2,37 @@ package test
 
 import (
 	"reflect"
+	"runtime/debug"
 	"testing"
 )
 
 func AssertSame(t *testing.T, expected interface{}, actual interface{}) {
 	if actual != expected {
-		t.Errorf("Mismatch between expected setting %s and written setting %s", expected, actual)
+		stack := debug.Stack()
+		t.Errorf("Mismatch between expected setting: \n'%s'\n and written setting:\n'%s'\n%s", expected, actual, stack[:])
 	}
 }
 
 func AssertDeepEqual(t *testing.T, expected interface{}, actual interface{}) {
 	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("Expected: %#v, \nActual: %#v", expected, actual)
+		stack := debug.Stack()
+		t.Errorf("Expected: '%#v', \nActual: '%#v'\n%s", expected, actual, stack[:])
+	}
+}
+
+func AssertError(t *testing.T, expected string, actual error) {
+	stack := debug.Stack()
+	if actual == nil {
+		t.Errorf("Expected error '%s'\n%s", expected, stack[:])
+	}
+	if expected != actual.Error() {
+		t.Errorf("Mismatch between expected error: \n'%s'\nand actual error: \n'%s'\n%s", expected, actual, stack[:])
+	}
+}
+
+func AssertNotError(t *testing.T, actual error) {
+	if actual != nil {
+		stack := debug.Stack()
+		t.Errorf("Unexpected error:\n'%s'\n%s", actual.Error(), stack[:])
 	}
 }

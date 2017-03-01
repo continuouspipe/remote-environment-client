@@ -8,14 +8,14 @@ import (
 )
 
 type BenchmarkPayload struct {
-	settings  config.Reader
+	settings  *config.Config
 	Command   string
 	StartTime string
 }
 
 func NewBenchmarkPayload() *BenchmarkPayload {
 	b := &BenchmarkPayload{}
-	b.settings = config.NewApplicationSettings()
+	b.settings = config.C
 	return b
 }
 
@@ -23,9 +23,18 @@ func (b *BenchmarkPayload) GetJsonPayload() ([]byte, error) {
 	t := time.Now()
 	endTime := t.Format(time.RFC3339)
 
+	flowId, err := b.settings.GetString(config.FlowId)
+	if err != nil {
+		return nil, err
+	}
+	environment, err := b.settings.GetString(config.KubeEnvironmentName)
+	if err != nil {
+		return nil, err
+	}
+
 	payload := make(map[string]string)
-	payload["project"] = b.settings.GetString(config.ProjectKey)
-	payload["namespace"] = b.settings.GetString(config.Environment)
+	payload["project"] = flowId
+	payload["namespace"] = environment
 	payload["command"] = b.Command
 	payload["start-time"] = b.StartTime
 	payload["end-time"] = endTime
