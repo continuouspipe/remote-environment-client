@@ -57,7 +57,8 @@ func NewInitCmd() *cobra.Command {
 
 	remoteName, err := settings.GetString(config.RemoteName)
 	checkErr(err)
-	command.PersistentFlags().StringVarP(&handler.remoteName, config.KubeEnvironmentName, "r", remoteName, "Override the default remote name (origin)")
+	command.PersistentFlags().StringVarP(&handler.remoteName, config.KubeEnvironmentName, "o", remoteName, "Override the default remote name (origin)")
+	command.PersistentFlags().BoolVarP(&handler.reset, "reset", "r", false, "With reset flag set to true, init will not attempt to restore interrupted initializations")
 	return command
 }
 
@@ -75,6 +76,7 @@ type initHandler struct {
 	config     config.ConfigProvider
 	token      string
 	remoteName string
+	reset      bool
 	qp         util.QuestionPrompter
 }
 
@@ -143,6 +145,11 @@ func (i initHandler) Handle() error {
 			return nil
 		}
 		cplogs.V(5).Infoln("The user requested to re-initialize the remote environment")
+		//the user want to re-initialize, set the status to empty.
+		currentStatus = ""
+	}
+
+	if i.reset == true {
 		//the user want to re-initialize, set the status to empty.
 		currentStatus = ""
 	}
