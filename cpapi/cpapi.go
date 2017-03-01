@@ -32,7 +32,7 @@ func NewCpApi() *CpApi {
 	return clusterInfo
 }
 
-const RemoteEnvironmentStatusOk = "Ok"
+const RemoteEnvironmentStatusOk = "Running"
 const RemoteEnvironmentStatusFailed = "TideFailed"
 const RemoteEnvironmentStatusBuilding = "TideRunning"
 const RemoteEnvironmentStatusNotStarted = "NotStarted"

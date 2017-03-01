@@ -135,7 +135,7 @@ func (c Config) Validate() (bool, []string) {
 	local := c.local.GetMissingMandatorySettings()
 	global := c.global.GetMissingMandatorySettings()
 	all := append(local, global...)
-	return len(all) > 0 && all[0] != "", all
+	return len(all) == 0, all
 }
 
 func init() {

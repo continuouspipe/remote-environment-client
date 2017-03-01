@@ -32,7 +32,7 @@ func NewKubeCtlInit() *KubeCtlInit {
 }
 
 func (i *KubeCtlInit) Init() error {
-	cpKubeProxyEnabled, err := i.config.GetString(config.CpKubeProxyAddr)
+	cpKubeProxyEnabled, err := i.config.GetString(config.CpKubeProxyEnabled)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,9 @@ func (i *kubeCtlDirect) settings() (addr string, user string, password string, e
 }
 
 func newKubeCtlDirect() *kubeCtlDirect {
-	return &kubeCtlDirect{}
+	i := &kubeCtlDirect{}
+	i.config = config.C
+	return i
 }
 
 type kubeCtlProxy struct {
@@ -126,7 +128,10 @@ func (i *kubeCtlProxy) settings() (addr string, user string, password string, er
 }
 
 func newKubeCtlProxy() *kubeCtlProxy {
-	return &kubeCtlProxy{}
+	i := &kubeCtlProxy{}
+	i.config = config.C
+	i.kubeCtlConfig = newKubeCtlConfig()
+	return i
 }
 
 type kubeCtlConfigProvider interface {

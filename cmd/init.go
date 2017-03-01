@@ -436,7 +436,7 @@ func (p waitEnvironmentReady) handle() error {
 			fmt.Fprintln(p.writer, "The remote environment is still building")
 
 		case cpapi.RemoteEnvironmentStatusNotStarted:
-			fmt.Fprintln(p.writer, "The remote environment build did't start, triggering a re-build.")
+			fmt.Fprintln(p.writer, "The remote environment build did't start, triggering a re-build")
 
 			cplogs.V(5).Infof("re-trying triggering build for the remote environment")
 			cplogs.Flush()
@@ -448,6 +448,7 @@ func (p waitEnvironmentReady) handle() error {
 			return fmt.Errorf("remote environment id %s cretion has failed, go to the continuouspipe website to find out about the error", remoteEnvId)
 
 		case cpapi.RemoteEnvironmentStatusOk:
+			fmt.Fprintln(p.writer, "The remote environment is running")
 			return nil
 		}
 
