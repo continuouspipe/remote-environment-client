@@ -118,7 +118,10 @@ func (h *WatchHandle) Validate() error {
 
 func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
 	//re-init kubectl in case the kube settings have been modified
-	h.kubeCtlInit.Init()
+	err := h.kubeCtlInit.Init()
+	if err != nil {
+		return err
+	}
 
 	allPods, err := podsFinder.FindAll(h.Environment, h.Environment)
 	if err != nil {

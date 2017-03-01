@@ -111,7 +111,10 @@ func (h *ForwardHandle) Validate() error {
 
 func (h *ForwardHandle) Handle() error {
 	//re-init kubectl in case the kube settings have been modified
-	h.kubeCtlInit.Init()
+	err := h.kubeCtlInit.Init()
+	if err != nil {
+		return err
+	}
 
 	allPods, err := h.podsFinder.FindAll(h.Environment, h.Environment)
 	if err != nil {

@@ -39,10 +39,9 @@ It can be used with the environment option to check another environment`,
 }
 
 type CheckConnectionHandle struct {
-	Command       *cobra.Command
-	Environment   string
-	kubeConfigKey string
-	kubeCtlInit   kubectlapi.KubeCtlInitializer
+	Command     *cobra.Command
+	Environment string
+	kubeCtlInit kubectlapi.KubeCtlInitializer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -67,11 +66,14 @@ func (h *CheckConnectionHandle) Validate() error {
 // Finds the pods and prints them
 func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) error {
 	//re-init kubectl in case the kube settings have been modified
-	h.kubeCtlInit.Init()
+	err := h.kubeCtlInit.Init()
+	if err != nil {
+		return err
+	}
 
 	fmt.Println("checking connection for environment " + h.Environment)
 
-	countPods, err := fetchNumberOfPods(h.kubeConfigKey, h.Environment, podsFinder)
+	countPods, err := fetchNumberOfPods(h.Environment, h.Environment, podsFinder)
 	if err != nil {
 		return err
 	}

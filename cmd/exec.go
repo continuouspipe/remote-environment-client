@@ -93,7 +93,10 @@ func (h *ExecHandle) Validate() error {
 // Handle executes a command inside a pod
 func (h *ExecHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, spawn exec.Spawner) (string, error) {
 	//re-init kubectl in case the kube settings have been modified
-	h.kubeCtlInit.Init()
+	err := h.kubeCtlInit.Init()
+	if err != nil {
+		return "", err
+	}
 
 	allPods, err := podsFinder.FindAll(h.Environment, h.Environment)
 	checkErr(err)

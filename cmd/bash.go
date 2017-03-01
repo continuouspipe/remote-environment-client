@@ -86,7 +86,10 @@ func (h *BashHandle) Validate() error {
 // Handle opens a bash console against a pod.
 func (h *BashHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, executor exec.Executor) error {
 	//re-init kubectl in case the kube settings have been modified
-	h.kubeCtlInit.Init()
+	err := h.kubeCtlInit.Init()
+	if err != nil {
+		return err
+	}
 
 	podsList, err := podsFinder.FindAll(h.Environment, h.Environment)
 	if err != nil {
