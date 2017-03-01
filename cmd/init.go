@@ -52,7 +52,6 @@ func NewInitCmd() *cobra.Command {
 			checkErr(handler.Validate())
 			checkErr(handler.Handle())
 		},
-		Example: portforwardExample,
 	}
 
 	remoteName, err := settings.GetString(config.RemoteName)
