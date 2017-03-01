@@ -33,7 +33,7 @@ func TestCommandsAreSpawned(t *testing.T) {
 		return "some results back..", nil
 	})
 	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
-	spyKubeCtlInitializer.MockInit(func() error {
+	spyKubeCtlInitializer.MockInit(func(environment string) error {
 		return nil
 	})
 

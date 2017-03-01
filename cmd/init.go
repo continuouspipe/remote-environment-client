@@ -533,12 +533,13 @@ func (p applyEnvironmentSettings) handle() error {
 }
 
 func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
-	err := p.kubeCtlInitializer.Init()
+
+	environment, err := p.config.GetString(config.KubeEnvironmentName)
 	if err != nil {
 		return err
 	}
 
-	environment, err := p.config.GetString(config.KubeEnvironmentName)
+	err = p.kubeCtlInitializer.Init(environment)
 	if err != nil {
 		return err
 	}

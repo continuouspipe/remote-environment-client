@@ -111,7 +111,7 @@ func (h *ForwardHandle) Validate() error {
 
 func (h *ForwardHandle) Handle() error {
 	//re-init kubectl in case the kube settings have been modified
-	err := h.kubeCtlInit.Init()
+	err := h.kubeCtlInit.Init(h.Environment)
 	if err != nil {
 		return err
 	}

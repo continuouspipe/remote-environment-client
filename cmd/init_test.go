@@ -126,7 +126,7 @@ func TestParseSaveTokenInfo_Handle(t *testing.T) {
 	//get test subject
 	handler := &parseSaveTokenInfo{
 		spyConfig,
-		"my-project,remote-env-id,some-api-key,cp-user,my-branch",
+		"some-api-key,remote-env-id,my-project,cp-user,my-branch",
 		spyApiProvider}
 
 	handler.handle()
@@ -242,7 +242,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	spyPush.ExpectsFirstCallArgument(t, "Push", "remoteBranch", "remote-dev-user-foo")
 
 	spyApi.ExpectsCallCount(t, "RemoteEnvironmentBuild", 1)
-	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentFlowID", "987654321")
+	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentFlowID", "837d92hd-19su1d91")
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "gitBranch", "remote-dev-user-foo")
 }
 
@@ -282,7 +282,7 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	})
 
 	//mock a response with a status of:
-	//RemoteEnvironmentStatusNotStarted the first time
+	//RemoteEnvironmentStatusFailed the first time
 	//RemoteEnvironmentStatusBuilding the second time
 	//RemoteEnvironmentStatusOk second time
 	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
@@ -291,10 +291,12 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 
 		switch callCount {
 		case 1:
-			s = cpapi.RemoteEnvironmentStatusNotStarted
+			s = cpapi.RemoteEnvironmentStatusFailed
 		case 2:
-			s = cpapi.RemoteEnvironmentStatusBuilding
+			s = cpapi.RemoteEnvironmentStatusNotStarted
 		case 3:
+			s = cpapi.RemoteEnvironmentStatusBuilding
+		case 4:
 			s = cpapi.RemoteEnvironmentStatusOk
 		}
 		r := &cpapi.ApiRemoteEnvironmentStatus{}
@@ -316,7 +318,7 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.InitStatus)
 	spyConfig.ExpectsFirstCallArgument(t, "Set", "value", initStateWaitEnvironmentReady)
 
-	spyApi.ExpectsCallCount(t, "GetRemoteEnvironmentStatus", 3)
+	spyApi.ExpectsCallCount(t, "GetRemoteEnvironmentStatus", 4)
 
 	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironmentStatus", "flowId", "837d92hd-19su1d91")
 	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironmentStatus", "environmentId", "987654321")
@@ -327,8 +329,11 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironmentStatus", 3, "flowId", "837d92hd-19su1d91")
 	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironmentStatus", 3, "environmentId", "987654321")
 
-	spyApi.ExpectsCallCount(t, "RemoteEnvironmentBuild", 1)
-	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentFlowID", "987654321")
+	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironmentStatus", 4, "flowId", "837d92hd-19su1d91")
+	spyApi.ExpectsCallNArgument(t, "GetRemoteEnvironmentStatus", 4, "environmentId", "987654321")
+
+	spyApi.ExpectsCallCount(t, "RemoteEnvironmentBuild", 2)
+	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentFlowID", "837d92hd-19su1d91")
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "gitBranch", "remote-dev-user-foo")
 }
 
@@ -380,7 +385,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	})
 
 	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
-	spyKubeCtlInitializer.MockInit(func() error {
+	spyKubeCtlInitializer.MockInit(func(environment string) error {
 		return nil
 	})
 

@@ -105,21 +105,22 @@ func (s *SpyServiceFinder) MockFindAll(mocked func(kubeConfigKey string, environ
 
 type SpyKubeCtlInitializer struct {
 	Spy
-	init func() error
+	init func(environment string) error
 }
 
 func NewSpyKubeCtlInitializer() *SpyKubeCtlInitializer {
 	return &SpyKubeCtlInitializer{}
 }
 
-func (s *SpyKubeCtlInitializer) Init() error {
+func (s *SpyKubeCtlInitializer) Init(environment string) error {
 	args := make(Arguments)
+	args["environment"] = environment
 
 	function := &Function{Name: "Init", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
-	return s.init()
+	return s.init(environment)
 }
 
-func (s *SpyKubeCtlInitializer) MockInit(mocked func() error) {
+func (s *SpyKubeCtlInitializer) MockInit(mocked func(environment string) error) {
 	s.init = mocked
 }

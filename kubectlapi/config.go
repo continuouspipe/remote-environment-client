@@ -8,7 +8,7 @@ import (
 )
 
 type KubeCtlInitializer interface {
-	Init() error
+	Init(environment string) error
 }
 
 type kubeCtlClusterSettingsProvider interface {
@@ -31,7 +31,7 @@ func NewKubeCtlInit() *KubeCtlInit {
 	return i
 }
 
-func (i *KubeCtlInit) Init() error {
+func (i *KubeCtlInit) Init(environment string) error {
 	cpKubeProxyEnabled, err := i.config.GetString(config.CpKubeProxyEnabled)
 	if err != nil {
 		return err
@@ -51,20 +51,15 @@ func (i *KubeCtlInit) Init() error {
 		return err
 	}
 
-	env, err := i.config.GetString(config.KubeEnvironmentName)
+	_, err = i.kubeConfig.ConfigSetAuthInfo(environment, user, password)
 	if err != nil {
 		return err
 	}
-
-	_, err = i.kubeConfig.ConfigSetAuthInfo(env, user, password)
+	_, err = i.kubeConfig.ConfigSetCluster(environment, addr)
 	if err != nil {
 		return err
 	}
-	_, err = i.kubeConfig.ConfigSetCluster(env, addr)
-	if err != nil {
-		return err
-	}
-	_, err = i.kubeConfig.ConfigSetContext(env, user)
+	_, err = i.kubeConfig.ConfigSetContext(environment, user)
 	if err != nil {
 		return err
 	}

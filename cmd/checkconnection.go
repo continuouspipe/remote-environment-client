@@ -66,7 +66,7 @@ func (h *CheckConnectionHandle) Validate() error {
 // Finds the pods and prints them
 func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) error {
 	//re-init kubectl in case the kube settings have been modified
-	err := h.kubeCtlInit.Init()
+	err := h.kubeCtlInit.Init(h.Environment)
 	if err != nil {
 		return err
 	}

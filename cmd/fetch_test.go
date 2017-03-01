@@ -30,7 +30,7 @@ func TestFetch(t *testing.T) {
 		return nil
 	})
 	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
-	spyKubeCtlInitializer.MockInit(func() error {
+	spyKubeCtlInitializer.MockInit(func(environment string) error {
 		return nil
 	})
 

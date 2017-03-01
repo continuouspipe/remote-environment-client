@@ -43,7 +43,7 @@ func TestWatch(t *testing.T) {
 	})
 
 	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
-	spyKubeCtlInitializer.MockInit(func() error {
+	spyKubeCtlInitializer.MockInit(func(environment string) error {
 		return nil
 	})
 

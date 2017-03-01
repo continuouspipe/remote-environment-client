@@ -118,7 +118,7 @@ func (h *FetchHandle) Validate() error {
 // Copies all the files and folders from the remote development environment into the current directory
 func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, fetcher sync.Fetcher) error {
 	//re-init kubectl in case the kube settings have been modified
-	err := h.kubeCtlInit.Init()
+	err := h.kubeCtlInit.Init(h.Environment)
 	if err != nil {
 		return err
 	}
