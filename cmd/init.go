@@ -173,6 +173,7 @@ func (i initHandler) Handle() error {
 		initState = initState.next()
 	}
 	i.config.Set(config.InitStatus, initStateCompleted)
+	i.config.Save()
 
 	return nil
 }
