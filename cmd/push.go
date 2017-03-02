@@ -9,6 +9,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/spf13/cobra"
+	"path/filepath"
 	"strings"
 )
 
@@ -42,11 +43,11 @@ func NewPushCmd() *cobra.Command {
 
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
-			pusher := sync.GetPusher()
+			syncer := sync.GetSyncer()
 
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
-			checkErr(handler.Handle(args, podsFinder, podsFilter, pusher))
+			checkErr(handler.Handle(args, podsFinder, podsFilter, syncer))
 
 			_, err := benchmark.StopAndLog()
 			checkErr(err)
@@ -110,7 +111,7 @@ func (h *PushHandle) Validate() error {
 }
 
 // Copies all the files and folders from the current directory into the remote container
-func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, pusher sync.Pusher) error {
+func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, syncer sync.Syncer) error {
 	//re-init kubectl in case the kube settings have been modified
 	err := h.kubeCtlInit.Init(h.Environment)
 	if err != nil {
@@ -127,9 +128,22 @@ func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 		return err
 	}
 
-	pusher.SetEnvironment(h.Environment)
-	pusher.SetKubeConfigKey(h.Environment)
-	pusher.SetPod(pod.GetName())
-	pusher.SetRemoteProjectPath(h.RemoteProjectPath)
-	return pusher.Push(h.File)
+	//set individual file threshold to 1 as for now we only allow the user to specify 1 file to be pushed
+	syncer.SetIndividualFileSyncThreshold(1)
+
+	syncer.SetEnvironment(h.Environment)
+	syncer.SetKubeConfigKey(h.Environment)
+	syncer.SetPod(pod.GetName())
+	syncer.SetRemoteProjectPath(h.RemoteProjectPath)
+
+	var paths []string
+	if h.File != "" {
+		absFilePath, err := filepath.Abs(h.File)
+		if err != nil {
+			return err
+		}
+		paths = append(paths, absFilePath)
+	}
+
+	return syncer.Sync(paths)
 }

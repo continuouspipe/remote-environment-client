@@ -48,48 +48,58 @@ func (r *SpyRsyncFetch) MockFetch(mocked func() error) {
 }
 
 //Spy for RsyncPush
-type SpyRsyncPush struct {
+type SpyRsyncSyncer struct {
 	Spy
-	push func() error
+	sync func() error
 }
 
-func NewSpyRsyncPush() *SpyRsyncPush {
-	return &SpyRsyncPush{}
+func NewSpyRsyncSyncer() *SpyRsyncSyncer {
+	return &SpyRsyncSyncer{}
 }
 
-func (r *SpyRsyncPush) SetKubeConfigKey(kubeConfigKey string) {
+func (r *SpyRsyncSyncer) SetKubeConfigKey(kubeConfigKey string) {
 	args := make(Arguments)
 	args["kubeConfigKey"] = kubeConfigKey
 	function := &Function{Name: "SetKubeConfigKey", Arguments: args}
 	r.calledFunctions = append(r.calledFunctions, *function)
 }
-func (r *SpyRsyncPush) SetEnvironment(environment string) {
+
+func (r *SpyRsyncSyncer) SetEnvironment(environment string) {
 	args := make(Arguments)
 	args["environment"] = environment
 	function := &Function{Name: "SetEnvironment", Arguments: args}
 	r.calledFunctions = append(r.calledFunctions, *function)
 }
-func (r *SpyRsyncPush) SetPod(pod string) {
+
+func (r *SpyRsyncSyncer) SetPod(pod string) {
 	args := make(Arguments)
 	args["pod"] = pod
 	function := &Function{Name: "SetPod", Arguments: args}
 	r.calledFunctions = append(r.calledFunctions, *function)
 }
-func (r *SpyRsyncPush) SetRemoteProjectPath(remoteProjectPath string) {
+
+func (r *SpyRsyncSyncer) SetRemoteProjectPath(remoteProjectPath string) {
 	args := make(Arguments)
 	args["remoteProjectPath"] = remoteProjectPath
 	function := &Function{Name: "SetRemoteProjectPath", Arguments: args}
 	r.calledFunctions = append(r.calledFunctions, *function)
 }
 
-func (r *SpyRsyncPush) Push(filePath string) error {
+func (r *SpyRsyncSyncer) SetIndividualFileSyncThreshold(individualFileSyncThreshold int) {
 	args := make(Arguments)
-	args["filePath"] = filePath
-	function := &Function{Name: "Push", Arguments: args}
+	args["individualFileSyncThreshold"] = individualFileSyncThreshold
+	function := &Function{Name: "SetIndividualFileSyncThreshold", Arguments: args}
 	r.calledFunctions = append(r.calledFunctions, *function)
-	return r.push()
 }
 
-func (r *SpyRsyncPush) MockPush(mocked func() error) {
-	r.push = mocked
+func (r *SpyRsyncSyncer) Sync(filePaths []string) error {
+	args := make(Arguments)
+	args["filePaths"] = filePaths
+	function := &Function{Name: "Sync", Arguments: args}
+	r.calledFunctions = append(r.calledFunctions, *function)
+	return r.sync()
+}
+
+func (r *SpyRsyncSyncer) MockSync(mocked func() error) {
+	r.sync = mocked
 }

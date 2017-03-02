@@ -82,7 +82,7 @@ func (r *RSyncDaemon) Sync(filePaths []string) error {
 
 	filePaths = slice.RemoveDuplicateString(filePaths)
 
-	if len(filePaths) <= r.individualFileSyncThreshold {
+	if len(filePaths) > 0 && len(filePaths) <= r.individualFileSyncThreshold {
 		cplogs.V(5).Infof("individual file sync, files to sync %d, threshold: %d", len(filePaths), r.individualFileSyncThreshold)
 		err = r.syncIndividualFiles(filePaths, args)
 	} else {
