@@ -25,7 +25,7 @@ var (
 		%s forward 0:5000
 
 		# Overriding the project-key and remote-branch
-		%s forward -p techup -r dev-user -s mysql 5000
+		%s forward -e techup-dev-user -s mysql 5000
 		`, config.AppName, config.AppName, config.AppName, config.AppName, config.AppName)
 )
 
