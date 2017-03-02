@@ -15,7 +15,6 @@ import (
 var fetchExample = fmt.Sprintf(`
 # fetch files and folders from the remote pod
 %[1]s fe
-
 # fetch files and folders to the remote pod specifying the environment
 %[1]s fe -e techup-dev-user -s web
 `, config.AppName)
