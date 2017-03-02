@@ -2,10 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"runtime"
-
-	envconfig "github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/spf13/cobra"
+	"runtime"
 )
 
 func NewVersionCmd() *cobra.Command {
@@ -26,5 +25,5 @@ type VersionHandle struct {
 }
 
 func (h *VersionHandle) Handle(args []string) {
-	fmt.Printf("Current version: %s (%s-%s)\n", envconfig.CurrentVersion, runtime.GOOS, runtime.GOARCH)
+	fmt.Printf("Current version: %s (%s-%s)\n", config.CurrentVersion, runtime.GOOS, runtime.GOARCH)
 }

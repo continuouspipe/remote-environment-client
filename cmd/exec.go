@@ -13,13 +13,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var execExample = `
+var execExample = fmt.Sprintf(`
 # execute -l -all on the web pod
-cp-remote ex -- ls -all
+%[1]s ex -- ls -all
 
 # execute -l -all on the web pod overriding the project-key and remote-branch
-cp-remote ex -e techup-dev-user -s web -- ls -all
-`
+%[1]s ex -e techup-dev-user -s web -- ls -all
+`, config.AppName)
 
 func NewExecCmd() *cobra.Command {
 	settings := config.C
