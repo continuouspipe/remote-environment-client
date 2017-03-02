@@ -82,6 +82,7 @@ func init() {
 	RootCmd.AddCommand(NewDestroyCmd())
 	RootCmd.AddCommand(NewExecCmd())
 	RootCmd.AddCommand(NewFetchCmd())
+	RootCmd.AddCommand(NewPushCmd())
 	RootCmd.AddCommand(NewForwardCmd())
 	RootCmd.AddCommand(NewInitCmd())
 	RootCmd.AddCommand(NewVersionCmd())

@@ -13,20 +13,20 @@ import (
 var (
 	portforwardExample = fmt.Sprintf(`
 		# Listen on ports 5000 and 6000 locally, forwarding data to/from ports 5000 and 6000 in the pod
-		%s forward 5000 6000
+		%[1]s forward 5000 6000
 
 		# Listen on port 8888 locally, forwarding to 5000 in the pod
-		%s forward 8888:5000
+		%[1]s forward 8888:5000
 
 		# Listen on a random port locally, forwarding to 5000 in the pod
-		%s forward :5000
+		%[1]s forward :5000
 
 		# Listen on a random port locally, forwarding to 5000 in the pod
-		%s forward 0:5000
+		%[1]s forward 0:5000
 
 		# Overriding the project-key and remote-branch
-		%s forward -p techup -r dev-user -s mysql 5000
-		`, config.AppName, config.AppName, config.AppName, config.AppName, config.AppName)
+		%[1]s forward -e techup-dev-user -s mysql 5000
+		`, config.AppName)
 )
 
 func NewForwardCmd() *cobra.Command {

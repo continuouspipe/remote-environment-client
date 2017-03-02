@@ -12,51 +12,45 @@ import (
 	"strings"
 )
 
-var fetchExample = fmt.Sprintf(`
-# fetch files and folders from the remote pod
-%[1]s fe
+var pushExample = `
+# push files and folders to the remote pod
+cp-push pu
 
-# fetch files and folders to the remote pod specifying the environment
-%[1]s fe -e techup-dev-user -s web
-`, config.AppName)
+# push files and folders to the remote pod specifying the environment
+cp-push pu -e techup-dev-user -s web
+`
 
-func NewFetchCmd() *cobra.Command {
+func NewPushCmd() *cobra.Command {
 	settings := config.C
-	handler := &FetchHandle{}
+	handler := &PushHandle{}
 	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 
 	command := &cobra.Command{
-		Use:     "fetch",
-		Aliases: []string{"fe"},
-		Short:   "Fetches remote changes to the local filesystem",
-		Example: fetchExample,
-		Long: `When the remote environment is rebuilt it may contain changes that you do not
-have on the local filesystem. For example, for a PHP project part of building the remote
-environment could be installing the vendors using composer. Any new or updated vendors would
-be on the remote environment but not on the local filesystem which would cause issues, such as
-autocomplete in your IDE not working correctly.
-
-The fetch command will copy changes from the remote to the local filesystem. This will resync
-with the default container specified during setup but you can specify another container.`,
+		Use:     "push",
+		Aliases: []string{"pu"},
+		Short:   "Push local changes to the remote filesystem",
+		Example: pushExample,
+		Long: `The push command will copy changes from the local to the remote filesystem.
+		Note that this will delete any files/folders in the remote container that are not present locally.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			validateConfig()
 
-			fmt.Println("Fetch in progress")
+			fmt.Println("Push in progress")
 
 			benchmark := benchmark.NewCmdBenchmark()
-			benchmark.Start("fetch")
+			benchmark.Start("push")
 
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
-			fetcher := sync.GetFetcher()
+			pusher := sync.GetPusher()
 
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
-			checkErr(handler.Handle(args, podsFinder, podsFilter, fetcher))
+			checkErr(handler.Handle(args, podsFinder, podsFilter, pusher))
 
 			_, err := benchmark.StopAndLog()
 			checkErr(err)
-			fmt.Printf("Fetch complete, files and folders retrieved has been logged in %s\n", cplogs.GetLogInfoFile())
+			fmt.Printf("Push complete, the files and folders that has been sent can be found in the logs %s\n", cplogs.GetLogInfoFile())
 			cplogs.Flush()
 		},
 	}
@@ -68,12 +62,12 @@ with the default container specified during setup but you can specify another co
 
 	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
-	command.PersistentFlags().StringVarP(&handler.File, "file", "f", "", "Allows to specify a file that needs to be fetch from the pod")
+	command.PersistentFlags().StringVarP(&handler.File, "file", "f", "", "Allows to specify a file that needs to be pushed from the pod")
 	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
 	return command
 }
 
-type FetchHandle struct {
+type PushHandle struct {
 	Command           *cobra.Command
 	Environment       string
 	Service           string
@@ -83,7 +77,7 @@ type FetchHandle struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *FetchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
+func (h *PushHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
 	h.Command = cmd
 
 	var err error
@@ -101,8 +95,8 @@ func (h *FetchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *co
 	return nil
 }
 
-// Validate checks that the provided fetch options are specified.
-func (h *FetchHandle) Validate() error {
+// Validate checks that the provided push options are specified.
+func (h *PushHandle) Validate() error {
 	if len(strings.Trim(h.Environment, " ")) == 0 {
 		return fmt.Errorf("the environment specified is invalid")
 	}
@@ -115,8 +109,8 @@ func (h *FetchHandle) Validate() error {
 	return nil
 }
 
-// Copies all the files and folders from the remote development environment into the current directory
-func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, fetcher sync.Fetcher) error {
+// Copies all the files and folders from the current directory into the remote container
+func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, pusher sync.Pusher) error {
 	//re-init kubectl in case the kube settings have been modified
 	err := h.kubeCtlInit.Init(h.Environment)
 	if err != nil {
@@ -133,9 +127,9 @@ func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter p
 		return err
 	}
 
-	fetcher.SetEnvironment(h.Environment)
-	fetcher.SetKubeConfigKey(h.Environment)
-	fetcher.SetPod(pod.GetName())
-	fetcher.SetRemoteProjectPath(h.RemoteProjectPath)
-	return fetcher.Fetch(h.File)
+	pusher.SetEnvironment(h.Environment)
+	pusher.SetKubeConfigKey(h.Environment)
+	pusher.SetPod(pod.GetName())
+	pusher.SetRemoteProjectPath(h.RemoteProjectPath)
+	return pusher.Push(h.File)
 }

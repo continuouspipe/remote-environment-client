@@ -36,7 +36,7 @@ func NewInitCmd() *cobra.Command {
 	handler.qp = util.NewQuestionPrompt()
 
 	command := &cobra.Command{
-		Use:     "init [cp-remote-token]",
+		Use:     "init",
 		Aliases: []string{"in"},
 		Short:   "Initialises the remote environment",
 		Long:    ``,
