@@ -12,11 +12,12 @@ import (
 )
 
 func NewDestroyCmd() *cobra.Command {
-	handler := &DestroyHandle{}
+	handler := NewDestroyHandle()
 	handler.api = cpapi.NewCpApi()
 	handler.config = config.C
 	handler.stdout = os.Stdout
 	handler.lsRemote = git.NewLsRemote()
+	handler.push = git.NewPush()
 	handler.qp = util.NewQuestionPrompt()
 	command := &cobra.Command{
 		Use:   "destroy",
@@ -37,8 +38,13 @@ type DestroyHandle struct {
 	api      cpapi.CpApiProvider
 	config   config.ConfigProvider
 	lsRemote git.LsRemoteExecutor
+	push     git.PushExecutor
 	qp       util.QuestionPrompter
 	stdout   io.Writer
+}
+
+func NewDestroyHandle() *DestroyHandle {
+	return &DestroyHandle{}
 }
 
 func (h *DestroyHandle) Handle() error {
@@ -103,8 +109,7 @@ func (h *DestroyHandle) Handle() error {
 	}
 
 	if remoteExists == true {
-		push := git.NewPush()
-		_, err = push.DeleteRemote(remoteName, gitBranch)
+		_, err = h.push.DeleteRemote(remoteName, gitBranch)
 	}
 	return err
 }

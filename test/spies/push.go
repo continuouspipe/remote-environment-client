@@ -4,7 +4,7 @@ package spies
 type SpyPush struct {
 	Spy
 	push         func() (string, error)
-	deleteRemote func() (string, error)
+	deleteRemote func(remoteName string, remoteBranch string) (string, error)
 }
 
 func NewSpyPush() *SpyPush {
@@ -33,9 +33,9 @@ func (s *SpyPush) DeleteRemote(remoteName string, remoteBranch string) (string, 
 
 	function := &Function{Name: "DeleteRemote", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
-	return s.deleteRemote()
+	return s.deleteRemote(remoteName, remoteBranch)
 }
 
-func (s *SpyPush) MockDeleteRemote(mocked func() (string, error)) {
+func (s *SpyPush) MockDeleteRemote(mocked func(remoteName string, remoteBranch string) (string, error)) {
 	s.deleteRemote = mocked
 }
