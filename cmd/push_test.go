@@ -8,6 +8,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"k8s.io/client-go/pkg/api/v1"
+	"path/filepath"
 )
 
 func TestPush(t *testing.T) {
@@ -43,6 +44,8 @@ func TestPush(t *testing.T) {
 	handler.RemoteProjectPath = "/my/sub/path/"
 	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spySyncer)
 
+	absFilePath, _ := filepath.Abs("some-file.txt")
+
 	spySyncer.ExpectsCallCount(t, "SetKubeConfigKey", 1)
 	spySyncer.ExpectsCallCount(t, "SetRemoteProjectPath", 1)
 	spySyncer.ExpectsCallCount(t, "SetEnvironment", 1)
@@ -52,7 +55,7 @@ func TestPush(t *testing.T) {
 	spySyncer.ExpectsFirstCallArgument(t, "SetRemoteProjectPath", "remoteProjectPath", "/my/sub/path/")
 	spySyncer.ExpectsFirstCallArgument(t, "SetEnvironment", "environment", "proj-feature-testing")
 	spySyncer.ExpectsFirstCallArgument(t, "SetPod", "pod", "web-123456")
-	spySyncer.ExpectsFirstCallArgumentStringSlice(t, "Sync", "filePaths", []string{"some-file.txt"})
+	spySyncer.ExpectsFirstCallArgumentStringSlice(t, "Sync", "filePaths", []string{absFilePath})
 
 	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
 }

@@ -38,8 +38,8 @@ func NewPushCmd() *cobra.Command {
 
 			fmt.Println("Push in progress")
 
-			benchmark := benchmark.NewCmdBenchmark()
-			benchmark.Start("push")
+			benchmrk := benchmark.NewCmdBenchmark()
+			benchmrk.Start("push")
 
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
@@ -49,7 +49,7 @@ func NewPushCmd() *cobra.Command {
 			checkErr(handler.Validate())
 			checkErr(handler.Handle(args, podsFinder, podsFilter, syncer))
 
-			_, err := benchmark.StopAndLog()
+			_, err := benchmrk.StopAndLog()
 			checkErr(err)
 			fmt.Printf("Push complete, the files and folders that has been sent can be found in the logs %s\n", cplogs.GetLogInfoFile())
 			cplogs.Flush()

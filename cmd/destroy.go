@@ -3,14 +3,22 @@ package cmd
 import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/git"
+	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/spf13/cobra"
-	"strings"
+	"io"
+	"os"
 )
 
 func NewDestroyCmd() *cobra.Command {
-	settings := config.C
-	handler := &DestroyHandle{}
+	handler := NewDestroyHandle()
+	handler.api = cpapi.NewCpApi()
+	handler.config = config.C
+	handler.stdout = os.Stdout
+	handler.lsRemote = git.NewLsRemote()
+	handler.push = git.NewPush()
+	handler.qp = util.NewQuestionPrompt()
 	command := &cobra.Command{
 		Use:   "destroy",
 		Short: "Destroy the remote environment",
@@ -19,49 +27,100 @@ environment, ContinuousPipe will then remove the environment.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			validateConfig()
 
-			fmt.Println("Destroying remote environment")
-			fmt.Println("Deleting remote branch")
-
-			checkErr(handler.Complete(cmd, args, settings))
-			checkErr(handler.Validate())
 			checkErr(handler.Handle())
 
-			fmt.Println("Continuous Pipe will now destroy the remote environment")
 		},
 	}
 	return command
 }
 
 type DestroyHandle struct {
-	Command      *cobra.Command
-	remoteName   string
-	remoteBranch string
+	api      cpapi.CpApiProvider
+	config   config.ConfigProvider
+	lsRemote git.LsRemoteExecutor
+	push     git.PushExecutor
+	qp       util.QuestionPrompter
+	stdout   io.Writer
 }
 
-// Complete verifies command line arguments and loads data from the command environment
-func (h *DestroyHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
-	h.Command = cmd
-	var err error
-	h.remoteName, err = settings.GetString(config.RemoteName)
-	checkErr(err)
-	h.remoteBranch, err = settings.GetString(config.RemoteBranch)
-	checkErr(err)
-	return nil
-}
-
-// Validate checks that the provided destroy options are specified.
-func (h *DestroyHandle) Validate() error {
-	if len(strings.Trim(h.remoteName, " ")) == 0 {
-		return fmt.Errorf("the remote name specified is invalid")
-	}
-	if len(strings.Trim(h.remoteBranch, " ")) == 0 {
-		return fmt.Errorf("the remote branch specified is invalid")
-	}
-	return nil
+func NewDestroyHandle() *DestroyHandle {
+	return &DestroyHandle{}
 }
 
 func (h *DestroyHandle) Handle() error {
-	push := git.NewPush()
-	_, err := push.DeleteRemote(h.remoteName, h.remoteBranch)
+
+	answer := h.qp.RepeatUntilValid("This will delete the remote git branch and remote environment, do you want to proceed (yes/no)",
+		func(answer string) (bool, error) {
+			switch answer {
+			case "yes", "no":
+				return true, nil
+			default:
+				return false, fmt.Errorf("Your answer needs to be either yes or no. Your answer was %s", answer)
+			}
+		})
+
+	if answer == "no" {
+		return nil
+	}
+
+	apiKey, err := h.config.GetString(config.ApiKey)
+	if err != nil {
+		return err
+	}
+	flowId, err := h.config.GetString(config.FlowId)
+	if err != nil {
+		return err
+	}
+	environment, err := h.config.GetString(config.KubeEnvironmentName)
+	if err != nil {
+		return err
+	}
+	cluster, err := h.config.GetString(config.ClusterIdentifier)
+	if err != nil {
+		return err
+	}
+	remoteName, err := h.config.GetString(config.RemoteName)
+	if err != nil {
+		return err
+	}
+	gitBranch, err := h.config.GetString(config.RemoteBranch)
+	if err != nil {
+		return err
+	}
+
+	h.api.SetApiKey(apiKey)
+
+	//stop building any flows associated with the git branch
+	err = h.api.CancelRunningTide(flowId, gitBranch)
+	if err != nil {
+		return err
+	}
+
+	//delete the remote environment via cp api
+	err = h.api.RemoteEnvironmentDestroy(flowId, environment, cluster)
+	if err != nil {
+		return err
+	}
+
+	//if remote exists delete remote branch
+	remoteExists, err := h.hasRemote(remoteName, gitBranch)
+	if err != nil {
+		return err
+	}
+
+	if remoteExists == true {
+		_, err = h.push.DeleteRemote(remoteName, gitBranch)
+	}
 	return err
+}
+
+func (h *DestroyHandle) hasRemote(remoteName string, gitBranch string) (bool, error) {
+	list, err := h.lsRemote.GetList(remoteName, gitBranch)
+	if err != nil {
+		return false, err
+	}
+	if len(list) == 0 {
+		return false, err
+	}
+	return true, err
 }

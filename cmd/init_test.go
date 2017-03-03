@@ -129,7 +129,7 @@ func TestParseSaveTokenInfo_Handle(t *testing.T) {
 		"some-api-key,remote-env-id,my-project,cp-user,my-branch",
 		spyApiProvider}
 
-	handler.handle()
+	handler.Handle()
 
 	//expectations
 	spyConfig.ExpectsCallCount(t, "Save", 2)
@@ -186,7 +186,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	spyApi := spies.NewSpyApiProvider()
 	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
 		return &cpapi.ApiRemoteEnvironmentStatus{
-			Status: cpapi.RemoteEnvironmentStatusNotStarted,
+			Status: cpapi.RemoteEnvironmentTideNotStarted,
 		}, nil
 	})
 	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
@@ -222,7 +222,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 		mockRevParse,
 		mockWriter}
 
-	handler.handle()
+	handler.Handle()
 
 	//expectations
 	spyConfig.ExpectsCallCount(t, "Save", 1)
@@ -282,22 +282,22 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	})
 
 	//mock a response with a status of:
-	//RemoteEnvironmentStatusFailed the first time
-	//RemoteEnvironmentStatusBuilding the second time
-	//RemoteEnvironmentStatusOk second time
+	//RemoteEnvironmentTideFailed the first time
+	//RemoteEnvironmentTideRunning the second time
+	//RemoteEnvironmentRunning second time
 	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
 		var s string
 		callCount := spyApi.CallsCountFor("GetRemoteEnvironmentStatus")
 
 		switch callCount {
 		case 1:
-			s = cpapi.RemoteEnvironmentStatusFailed
+			s = cpapi.RemoteEnvironmentTideFailed
 		case 2:
-			s = cpapi.RemoteEnvironmentStatusNotStarted
+			s = cpapi.RemoteEnvironmentTideNotStarted
 		case 3:
-			s = cpapi.RemoteEnvironmentStatusBuilding
+			s = cpapi.RemoteEnvironmentTideRunning
 		case 4:
-			s = cpapi.RemoteEnvironmentStatusOk
+			s = cpapi.RemoteEnvironmentRunning
 		}
 		r := &cpapi.ApiRemoteEnvironmentStatus{}
 		r.Status = s
@@ -311,7 +311,7 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 		mockTicker,
 		ioutil.Discard,
 	}
-	handler.handle()
+	handler.Handle()
 
 	//expectations
 	spyConfig.ExpectsCallCount(t, "Save", 1)
@@ -375,7 +375,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	spyApi := spies.NewSpyApiProvider()
 	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
 		return &cpapi.ApiRemoteEnvironmentStatus{
-			cpapi.RemoteEnvironmentStatusOk,
+			cpapi.RemoteEnvironmentRunning,
 			"837d92hd-19su1d91-dev-some-user",
 			"the-cluster-one",
 		}, nil
@@ -402,7 +402,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 		spyClusterInfoProvider,
 		ioutil.Discard,
 	}
-	handler.handle()
+	handler.Handle()
 
 	//expectations
 	spyConfig.ExpectsCallCount(t, "Save", 3)
@@ -469,7 +469,7 @@ func TestApplyDefaultService_Handle(t *testing.T) {
 		spyQuestionPrompt,
 		spyServiceFinder}
 
-	handler.handle()
+	handler.Handle()
 
 	//expectations
 	spyServiceFinder.ExpectsCallCount(t, "FindAll", 1)

@@ -9,6 +9,10 @@ type SpyApiProvider struct {
 	getApiUser                 func(user string) (*cpapi.ApiUser, error)
 	getRemoteEnvironmentStatus func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error)
 	remoteEnvironmentBuild     func(remoteEnvironmentFlowID string, gitBranch string) error
+	cancelRunningTide          func(flowId string, gitBranch string) error
+	remoteEnvironmentDestroy   func(flowId string, environment string, cluster string) error
+	getTides                   func(flowId string, limit int, page int) ([]cpapi.ApiTide, error)
+	cancelTide                 func(tideId string) error
 }
 
 func NewSpyApiProvider() *SpyApiProvider {
@@ -69,6 +73,47 @@ func (s *SpyApiProvider) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, 
 	return s.remoteEnvironmentBuild(remoteEnvironmentFlowID, gitBranch)
 }
 
+func (s *SpyApiProvider) CancelRunningTide(flowId string, gitBranch string) error {
+	args := make(Arguments)
+	args["flowId"] = flowId
+	args["gitBranch"] = gitBranch
+
+	function := &Function{Name: "CancelRunningTide", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
+	return s.cancelRunningTide(flowId, gitBranch)
+}
+
+func (s *SpyApiProvider) RemoteEnvironmentDestroy(flowId string, environment string, cluster string) error {
+	args := make(Arguments)
+	args["flowId"] = flowId
+	args["environment"] = environment
+	args["cluster"] = cluster
+
+	function := &Function{Name: "RemoteEnvironmentDestroy", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
+	return s.remoteEnvironmentDestroy(flowId, environment, cluster)
+}
+
+func (s *SpyApiProvider) GetTides(flowId string, limit int, page int) ([]cpapi.ApiTide, error) {
+	args := make(Arguments)
+	args["flowId"] = flowId
+	args["limit"] = limit
+	args["page"] = page
+
+	function := &Function{Name: "GetTides", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
+	return s.getTides(flowId, limit, page)
+}
+
+func (s *SpyApiProvider) CancelTide(tideId string) error {
+	args := make(Arguments)
+	args["tideId"] = tideId
+
+	function := &Function{Name: "CancelTide", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
+	return s.cancelTide(tideId)
+}
+
 func (s *SpyApiProvider) MockGetApiTeams(mocked func() ([]cpapi.ApiTeam, error)) {
 	s.getApiTeams = mocked
 }
@@ -87,4 +132,20 @@ func (s *SpyApiProvider) MockGetRemoteEnvironmentStatus(mocked func(flowId strin
 
 func (s *SpyApiProvider) MockRemoteEnvironmentBuild(mocked func(remoteEnvironmentID string, gitBranch string) error) {
 	s.remoteEnvironmentBuild = mocked
+}
+
+func (s *SpyApiProvider) MockCancelRunningTide(mocked func(flowId string, gitBranch string) error) {
+	s.cancelRunningTide = mocked
+}
+
+func (s *SpyApiProvider) MockRemoteEnvironmentDestroy(mocked func(flowId string, environment string, cluster string) error) {
+	s.remoteEnvironmentDestroy = mocked
+}
+
+func (s *SpyApiProvider) MockGetTides(mocked func(flowId string, limit int, page int) ([]cpapi.ApiTide, error)) {
+	s.getTides = mocked
+}
+
+func (s *SpyApiProvider) MockCancelTide(mocked func(tideId string) error) {
+	s.cancelTide = mocked
 }
