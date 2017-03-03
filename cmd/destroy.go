@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/git"
+	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -14,6 +16,8 @@ func NewDestroyCmd() *cobra.Command {
 	handler.api = cpapi.NewCpApi()
 	handler.config = config.C
 	handler.stdout = os.Stdout
+	handler.lsRemote = git.NewLsRemote()
+	handler.qp = util.NewQuestionPrompt()
 	command := &cobra.Command{
 		Use:   "destroy",
 		Short: "Destroy the remote environment",
@@ -30,17 +34,30 @@ environment, ContinuousPipe will then remove the environment.`,
 }
 
 type DestroyHandle struct {
-	api    cpapi.CpApiProvider
-	config config.ConfigProvider
-	stdout io.Writer
+	api      cpapi.CpApiProvider
+	config   config.ConfigProvider
+	lsRemote git.LsRemoteExecutor
+	qp       util.QuestionPrompter
+	stdout   io.Writer
 }
 
 func (h *DestroyHandle) Handle() error {
-	apiKey, err := h.config.GetString(config.ApiKey)
-	if err != nil {
-		return err
+
+	answer := h.qp.RepeatUntilValid("This will delete the remote git branch and remote environment, do you want to proceed (yes/no)",
+		func(answer string) (bool, error) {
+			switch answer {
+			case "yes", "no":
+				return true, nil
+			default:
+				return false, fmt.Errorf("Your answer needs to be either yes or no. Your answer was %s", answer)
+			}
+		})
+
+	if answer == "no" {
+		return nil
 	}
-	remoteEnvId, err := h.config.GetString(config.RemoteEnvironmentId)
+
+	apiKey, err := h.config.GetString(config.ApiKey)
 	if err != nil {
 		return err
 	}
@@ -67,20 +84,38 @@ func (h *DestroyHandle) Handle() error {
 
 	h.api.SetApiKey(apiKey)
 
-	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	//stop building any flows associated with the git branch
+	err = h.api.CancelRunningTide(flowId, gitBranch)
 	if err != nil {
 		return err
 	}
 
-	//stop the tide if the remote environment build is running
-	if remoteEnv.Status == cpapi.RemoteEnvironmentStatusBuilding {
-
-	}
 	//delete the remote environment via cp api
-	h.api.RemoteEnvironmentDestroy(flowId, environment, cluster)
+	err = h.api.RemoteEnvironmentDestroy(flowId, environment, cluster)
+	if err != nil {
+		return err
+	}
 
-	//delete the branch
-	push := git.NewPush()
-	_, err = push.DeleteRemote(remoteName, gitBranch)
+	//if remote exists delete remote branch
+	remoteExists, err := h.hasRemote(remoteName, gitBranch)
+	if err != nil {
+		return err
+	}
+
+	if remoteExists == true {
+		push := git.NewPush()
+		_, err = push.DeleteRemote(remoteName, gitBranch)
+	}
 	return err
+}
+
+func (h *DestroyHandle) hasRemote(remoteName string, gitBranch string) (bool, error) {
+	list, err := h.lsRemote.GetList(remoteName, gitBranch)
+	if err != nil {
+		return false, err
+	}
+	if len(list) == 0 {
+		return false, err
+	}
+	return true, err
 }

@@ -304,7 +304,7 @@ func (p triggerBuild) Handle() error {
 
 	//if the remote environment is not already building, make sure the remote git branch exists
 	//and then trigger a build via api
-	if remoteEnv.Status != cpapi.RemoteEnvironmentStatusBuilding {
+	if remoteEnv.Status != cpapi.RemoteEnvironmentTideRunning {
 		fmt.Fprintln(p.writer, "Building the remote environment")
 		cplogs.V(5).Infof("triggering build for the remote environment, user: %s", cpUsername)
 
@@ -410,7 +410,7 @@ func (p waitEnvironmentReady) Handle() error {
 		return err
 	}
 
-	if remoteEnv.Status == cpapi.RemoteEnvironmentStatusFailed {
+	if remoteEnv.Status == cpapi.RemoteEnvironmentTideFailed {
 		fmt.Fprintln(p.writer, "The build had previously failed, retrying..")
 		err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 		if err != nil {
@@ -435,10 +435,10 @@ func (p waitEnvironmentReady) Handle() error {
 		cplogs.Flush()
 
 		switch remoteEnv.Status {
-		case cpapi.RemoteEnvironmentStatusBuilding:
+		case cpapi.RemoteEnvironmentTideRunning:
 			fmt.Fprintln(p.writer, "The remote environment is still building")
 
-		case cpapi.RemoteEnvironmentStatusNotStarted:
+		case cpapi.RemoteEnvironmentTideNotStarted:
 			fmt.Fprintln(p.writer, "The remote environment build did't start, triggering a re-build")
 
 			cplogs.V(5).Infof("re-trying triggering build for the remote environment")
@@ -447,10 +447,10 @@ func (p waitEnvironmentReady) Handle() error {
 			if err != nil {
 				return err
 			}
-		case cpapi.RemoteEnvironmentStatusFailed:
+		case cpapi.RemoteEnvironmentTideFailed:
 			return fmt.Errorf("remote environment id %s cretion has failed, go to the continuouspipe website to find out about the error", remoteEnvId)
 
-		case cpapi.RemoteEnvironmentStatusOk:
+		case cpapi.RemoteEnvironmentRunning:
 			fmt.Fprintln(p.writer, "The remote environment is running")
 			return nil
 		}

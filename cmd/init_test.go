@@ -186,7 +186,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	spyApi := spies.NewSpyApiProvider()
 	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
 		return &cpapi.ApiRemoteEnvironmentStatus{
-			Status: cpapi.RemoteEnvironmentStatusNotStarted,
+			Status: cpapi.RemoteEnvironmentTideNotStarted,
 		}, nil
 	})
 	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
@@ -282,22 +282,22 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	})
 
 	//mock a response with a status of:
-	//RemoteEnvironmentStatusFailed the first time
-	//RemoteEnvironmentStatusBuilding the second time
-	//RemoteEnvironmentStatusOk second time
+	//RemoteEnvironmentTideFailed the first time
+	//RemoteEnvironmentTideRunning the second time
+	//RemoteEnvironmentRunning second time
 	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
 		var s string
 		callCount := spyApi.CallsCountFor("GetRemoteEnvironmentStatus")
 
 		switch callCount {
 		case 1:
-			s = cpapi.RemoteEnvironmentStatusFailed
+			s = cpapi.RemoteEnvironmentTideFailed
 		case 2:
-			s = cpapi.RemoteEnvironmentStatusNotStarted
+			s = cpapi.RemoteEnvironmentTideNotStarted
 		case 3:
-			s = cpapi.RemoteEnvironmentStatusBuilding
+			s = cpapi.RemoteEnvironmentTideRunning
 		case 4:
-			s = cpapi.RemoteEnvironmentStatusOk
+			s = cpapi.RemoteEnvironmentRunning
 		}
 		r := &cpapi.ApiRemoteEnvironmentStatus{}
 		r.Status = s
@@ -375,7 +375,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	spyApi := spies.NewSpyApiProvider()
 	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
 		return &cpapi.ApiRemoteEnvironmentStatus{
-			cpapi.RemoteEnvironmentStatusOk,
+			cpapi.RemoteEnvironmentRunning,
 			"837d92hd-19su1d91-dev-some-user",
 			"the-cluster-one",
 		}, nil
