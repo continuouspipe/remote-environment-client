@@ -17,8 +17,9 @@
 # after make package completes, copy all content of public/* into the github pages repository and commit/push
 
 BINARY=cp-remote
-VERSION=0.1.0-beta.1
+VERSION=0.1.0-beta.2
 
+GOROOT_FINAL=/usr/local/Cellar/go/1.7.4_2/libexec
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config
 LDFLAGS=-ldflags="-X ${CONFIG_PKG}.CurrentVersion=${VERSION}"
 
@@ -28,6 +29,7 @@ BUILDARCH=amd64
 
 build:
 	mkdir bin 2>/dev/null; true
+	export ${GOROOT_FINAL}
 	env GOOS=${BUILDOS} GOARCH=${BUILDARCH} go build ${LDFLAGS} -o bin/${BUILDOS}-${BUILDARCH}
 
 clean:
