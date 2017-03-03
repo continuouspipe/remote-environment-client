@@ -1,16 +1,19 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/git"
 	"github.com/spf13/cobra"
-	"strings"
+	"io"
+	"os"
 )
 
 func NewDestroyCmd() *cobra.Command {
-	settings := config.C
 	handler := &DestroyHandle{}
+	handler.api = cpapi.NewCpApi()
+	handler.config = config.C
+	handler.stdout = os.Stdout
 	command := &cobra.Command{
 		Use:   "destroy",
 		Short: "Destroy the remote environment",
@@ -19,49 +22,65 @@ environment, ContinuousPipe will then remove the environment.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			validateConfig()
 
-			fmt.Println("Destroying remote environment")
-			fmt.Println("Deleting remote branch")
-
-			checkErr(handler.Complete(cmd, args, settings))
-			checkErr(handler.Validate())
 			checkErr(handler.Handle())
 
-			fmt.Println("Continuous Pipe will now destroy the remote environment")
 		},
 	}
 	return command
 }
 
 type DestroyHandle struct {
-	Command      *cobra.Command
-	remoteName   string
-	remoteBranch string
-}
-
-// Complete verifies command line arguments and loads data from the command environment
-func (h *DestroyHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
-	h.Command = cmd
-	var err error
-	h.remoteName, err = settings.GetString(config.RemoteName)
-	checkErr(err)
-	h.remoteBranch, err = settings.GetString(config.RemoteBranch)
-	checkErr(err)
-	return nil
-}
-
-// Validate checks that the provided destroy options are specified.
-func (h *DestroyHandle) Validate() error {
-	if len(strings.Trim(h.remoteName, " ")) == 0 {
-		return fmt.Errorf("the remote name specified is invalid")
-	}
-	if len(strings.Trim(h.remoteBranch, " ")) == 0 {
-		return fmt.Errorf("the remote branch specified is invalid")
-	}
-	return nil
+	api    cpapi.CpApiProvider
+	config config.ConfigProvider
+	stdout io.Writer
 }
 
 func (h *DestroyHandle) Handle() error {
+	apiKey, err := h.config.GetString(config.ApiKey)
+	if err != nil {
+		return err
+	}
+	remoteEnvId, err := h.config.GetString(config.RemoteEnvironmentId)
+	if err != nil {
+		return err
+	}
+	flowId, err := h.config.GetString(config.FlowId)
+	if err != nil {
+		return err
+	}
+	environment, err := h.config.GetString(config.KubeEnvironmentName)
+	if err != nil {
+		return err
+	}
+	cluster, err := h.config.GetString(config.ClusterIdentifier)
+	if err != nil {
+		return err
+	}
+	remoteName, err := h.config.GetString(config.RemoteName)
+	if err != nil {
+		return err
+	}
+	gitBranch, err := h.config.GetString(config.RemoteBranch)
+	if err != nil {
+		return err
+	}
+
+	h.api.SetApiKey(apiKey)
+
+	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if err != nil {
+		return err
+	}
+
+	//stop the tide if the remote environment build is running
+	if remoteEnv.Status == cpapi.RemoteEnvironmentStatusBuilding {
+
+	}
+	//delete the remote environment via cp api
+	h.api.RemoteEnvironmentDestroy(flowId, environment, cluster)
+
+	//delete the branch
 	push := git.NewPush()
-	_, err := push.DeleteRemote(h.remoteName, h.remoteBranch)
+	_, err = push.DeleteRemote(remoteName, gitBranch)
 	return err
 }

@@ -19,6 +19,7 @@ type CpApiProvider interface {
 	GetApiUser(user string) (*ApiUser, error)
 	GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, error)
 	RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error
+	RemoteEnvironmentDestroy(flowId string, environment string, cluster string) error
 }
 
 type CpApi struct {
@@ -92,7 +93,7 @@ func (c CpApi) GetApiTeams() ([]ApiTeam, error) {
 
 	cplogs.V(5).Infof("getting api teams info on cp using url %s", url.Path)
 
-	req, err := http.NewRequest("GET", url.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
 		return nil, err
@@ -127,7 +128,7 @@ func (c CpApi) GetApiBucketClusters(bucketUuid string) ([]ApiCluster, error) {
 
 	cplogs.V(5).Infof("getting api bucke cluster info on cp using url %s", url.Path)
 
-	req, err := http.NewRequest("GET", url.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 
 	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
@@ -161,7 +162,7 @@ func (c CpApi) GetApiUser(user string) (*ApiUser, error) {
 
 	cplogs.V(5).Infof("getting user info on cp using url %s", url.Path)
 
-	req, err := http.NewRequest("GET", url.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
 		return nil, err
@@ -181,7 +182,7 @@ func (c CpApi) GetApiUser(user string) (*ApiUser, error) {
 	return apiUserResponse, nil
 }
 
-//GetRemoteEnvironment call CP Api to retrieve information about the remote environment
+//calls CP Api to retrieve information about the remote environment
 func (c CpApi) GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, error) {
 	if c.apiKey == "" {
 		return nil, fmt.Errorf("api key not provided")
@@ -195,7 +196,7 @@ func (c CpApi) GetRemoteEnvironmentStatus(flowId string, environmentId string) (
 
 	cplogs.V(5).Infof("getting remote environment status using url %s", url.Path)
 
-	req, err := http.NewRequest("GET", url.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
 		return nil, err
@@ -215,7 +216,7 @@ func (c CpApi) GetRemoteEnvironmentStatus(flowId string, environmentId string) (
 	return apiRemoteEnvironment, nil
 }
 
-//RemoteEnvironmentBuild call CP API to request to build a new remote environment
+//calls CP API to request to build a new remote environment
 func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error {
 	if c.apiKey == "" {
 		return fmt.Errorf("api key not provided")
@@ -234,7 +235,36 @@ func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch 
 
 	cplogs.V(5).Infof("triggering remote environment build using url %s and payload %s", url.Path, reqBodyJson)
 
-	req, err := http.NewRequest("POST", url.String(), bytes.NewReader(reqBodyJson))
+	req, err := http.NewRequest(http.MethodPost, url.String(), bytes.NewReader(reqBodyJson))
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("X-Api-Key", c.apiKey)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.getResponseBody(c.client, req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//calls CP API to request to destroy the remote environment
+func (c CpApi) RemoteEnvironmentDestroy(flowId string, environment string, cluster string) error {
+	if c.apiKey == "" {
+		return fmt.Errorf("api key not provided")
+	}
+
+	url, err := c.getRiverURL()
+	if err != nil {
+		return err
+	}
+	url.Path = fmt.Sprintf("/flows/%s/environments/%s?cluster=%s", flowId, environment, cluster)
+
+	cplogs.V(5).Infof("destroying remote environment using url %s", url.Path)
+
+	req, err := http.NewRequest(http.MethodDelete, url.String(), nil)
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
