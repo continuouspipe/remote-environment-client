@@ -11,6 +11,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/git"
+	"github.com/continuouspipe/remote-environment-client/initialization"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/services"
 	"github.com/continuouspipe/remote-environment-client/util"
@@ -153,7 +154,7 @@ func (i initHandler) Handle() error {
 		currentStatus = ""
 	}
 
-	var initState initState
+	var initState initialization.InitState
 
 	switch currentStatus {
 	case "", initStateParseSaveToken:
@@ -169,25 +170,19 @@ func (i initHandler) Handle() error {
 	}
 
 	for initState != nil {
-		cplogs.V(5).Infof("Handling state %s", initState.name())
+		cplogs.V(5).Infof("Handling state %s", initState.Name())
 		cplogs.Flush()
 
-		err := initState.handle()
+		err := initState.Handle()
 		if err != nil {
 			return err
 		}
-		initState = initState.next()
+		initState = initState.Next()
 	}
 	i.config.Set(config.InitStatus, initStateCompleted)
 	i.config.Save()
 
 	return nil
-}
-
-type initState interface {
-	handle() error
-	next() initState
-	name() string
 }
 
 type parseSaveTokenInfo struct {
@@ -196,16 +191,16 @@ type parseSaveTokenInfo struct {
 	api    cpapi.CpApiProvider
 }
 
-func (p parseSaveTokenInfo) next() initState {
+func (p parseSaveTokenInfo) Next() initialization.InitState {
 	return newTriggerBuild()
 }
 
-func (p parseSaveTokenInfo) name() string {
+func (p parseSaveTokenInfo) Name() string {
 	return initStateParseSaveToken
 }
 
-func (p parseSaveTokenInfo) handle() error {
-	p.config.Set(config.InitStatus, p.name())
+func (p parseSaveTokenInfo) Handle() error {
+	p.config.Set(config.InitStatus, p.Name())
 	p.config.Save()
 
 	//we expect the token to have: api-key, remote-environment-id, project, cp-username, git-branch
@@ -264,16 +259,16 @@ func newTriggerBuild() *triggerBuild {
 		os.Stdout}
 }
 
-func (p triggerBuild) next() initState {
+func (p triggerBuild) Next() initialization.InitState {
 	return newWaitEnvironmentReady()
 }
 
-func (p triggerBuild) name() string {
+func (p triggerBuild) Name() string {
 	return initStateTriggerBuild
 }
 
-func (p triggerBuild) handle() error {
-	p.config.Set(config.InitStatus, p.name())
+func (p triggerBuild) Handle() error {
+	p.config.Set(config.InitStatus, p.Name())
 	p.config.Save()
 
 	apiKey, err := p.config.GetString(config.ApiKey)
@@ -310,9 +305,9 @@ func (p triggerBuild) handle() error {
 	//if the remote environment is not already building, make sure the remote git branch exists
 	//and then trigger a build via api
 	if remoteEnv.Status != cpapi.RemoteEnvironmentStatusBuilding {
+		fmt.Fprintln(p.writer, "Building the remote environment")
 		cplogs.V(5).Infof("triggering build for the remote environment, user: %s", cpUsername)
 
-		fmt.Fprintln(p.writer, "Pushing to remote")
 		err := p.createRemoteBranch(remoteName, gitBranch)
 		if err != nil {
 			return err
@@ -340,6 +335,7 @@ func (p triggerBuild) createRemoteBranch(remoteName string, gitBranch string) er
 }
 
 func (p triggerBuild) pushLocalBranchToRemote(remoteName string, gitBranch string) error {
+	fmt.Fprintln(p.writer, "Pushing to remote")
 	lbn, err := p.revParse.GetLocalBranchName()
 	cplogs.V(5).Infof("local branch name value is %s", lbn)
 	if err != nil {
@@ -377,16 +373,16 @@ func newWaitEnvironmentReady() *waitEnvironmentReady {
 	}
 }
 
-func (p waitEnvironmentReady) next() initState {
+func (p waitEnvironmentReady) Next() initialization.InitState {
 	return newApplyEnvironmentSettings()
 }
 
-func (p waitEnvironmentReady) name() string {
+func (p waitEnvironmentReady) Name() string {
 	return initStateWaitEnvironmentReady
 }
 
-func (p waitEnvironmentReady) handle() error {
-	p.config.Set(config.InitStatus, p.name())
+func (p waitEnvironmentReady) Handle() error {
+	p.config.Set(config.InitStatus, p.Name())
 	p.config.Save()
 
 	apiKey, err := p.config.GetString(config.ApiKey)
@@ -482,16 +478,16 @@ func newApplyEnvironmentSettings() *applyEnvironmentSettings {
 	}
 }
 
-func (p applyEnvironmentSettings) next() initState {
+func (p applyEnvironmentSettings) Next() initialization.InitState {
 	return newApplyDefaultService()
 }
 
-func (p applyEnvironmentSettings) name() string {
+func (p applyEnvironmentSettings) Name() string {
 	return initStateApplyEnvironmentSettings
 }
 
-func (p applyEnvironmentSettings) handle() error {
-	p.config.Set(config.InitStatus, p.name())
+func (p applyEnvironmentSettings) Handle() error {
+	p.config.Set(config.InitStatus, p.Name())
 	p.config.Save()
 
 	apiKey, err := p.config.GetString(config.ApiKey)
@@ -577,16 +573,16 @@ func newApplyDefaultService() *applyDefaultService {
 		services.NewKubeService()}
 }
 
-func (p applyDefaultService) next() initState {
+func (p applyDefaultService) Next() initialization.InitState {
 	return nil
 }
 
-func (p applyDefaultService) name() string {
+func (p applyDefaultService) Name() string {
 	return initStateApplyDefaultService
 }
 
-func (p applyDefaultService) handle() error {
-	p.config.Set(config.InitStatus, p.name())
+func (p applyDefaultService) Handle() error {
+	p.config.Set(config.InitStatus, p.Name())
 	p.config.Save()
 
 	environment, err := p.config.GetString(config.KubeEnvironmentName)

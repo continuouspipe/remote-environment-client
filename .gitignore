@@ -1,7 +1,9 @@
 public/
 vendor/
 bin/
+.cp-remote-settings.yml
 .cp-remote-env-settings.yml
 cp-remote-go
 glide.lock
 .idea
+cp-remote-logs

@@ -129,7 +129,7 @@ func TestParseSaveTokenInfo_Handle(t *testing.T) {
 		"some-api-key,remote-env-id,my-project,cp-user,my-branch",
 		spyApiProvider}
 
-	handler.handle()
+	handler.Handle()
 
 	//expectations
 	spyConfig.ExpectsCallCount(t, "Save", 2)
@@ -222,7 +222,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 		mockRevParse,
 		mockWriter}
 
-	handler.handle()
+	handler.Handle()
 
 	//expectations
 	spyConfig.ExpectsCallCount(t, "Save", 1)
@@ -311,7 +311,7 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 		mockTicker,
 		ioutil.Discard,
 	}
-	handler.handle()
+	handler.Handle()
 
 	//expectations
 	spyConfig.ExpectsCallCount(t, "Save", 1)
@@ -402,7 +402,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 		spyClusterInfoProvider,
 		ioutil.Discard,
 	}
-	handler.handle()
+	handler.Handle()
 
 	//expectations
 	spyConfig.ExpectsCallCount(t, "Save", 3)
@@ -469,7 +469,7 @@ func TestApplyDefaultService_Handle(t *testing.T) {
 		spyQuestionPrompt,
 		spyServiceFinder}
 
-	handler.handle()
+	handler.Handle()
 
 	//expectations
 	spyServiceFinder.ExpectsCallCount(t, "FindAll", 1)

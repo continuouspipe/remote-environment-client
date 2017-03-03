@@ -1,26 +1,20 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/continuouspipe/remote-environment-client/benchmark"
 	"github.com/continuouspipe/remote-environment-client/config"
-	"github.com/continuouspipe/remote-environment-client/cplogs"
-	"github.com/continuouspipe/remote-environment-client/git"
+	"github.com/continuouspipe/remote-environment-client/initialization"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
-	"strings"
 )
 
 func NewBuildCmd() *cobra.Command {
 	handler := &BuildHandle{}
-	handler.commit = git.NewCommit()
-	handler.lsRemote = git.NewLsRemote()
-	handler.push = git.NewPush()
-	handler.revList = git.NewRevList()
-	handler.revParse = git.NewRevParse()
-	handler.Stdout = os.Stdout
-
+	handler.stdout = os.Stdout
+	handler.config = config.C
+	handler.triggerBuild = newTriggerBuild()
+	handler.waitForEnvironmentReady = newWaitEnvironmentReady()
 	command := &cobra.Command{
 		Use:     "build",
 		Aliases: []string{"bu"},
@@ -35,8 +29,6 @@ find its IP address.`,
 			benchmrk := benchmark.NewCmdBenchmark()
 			benchmrk.Start("build")
 
-			checkErr(handler.Complete(cmd, args, config.C))
-			checkErr(handler.Validate())
 			checkErr(handler.Handle())
 			_, err := benchmrk.StopAndLog()
 			checkErr(err)
@@ -46,113 +38,22 @@ find its IP address.`,
 }
 
 type BuildHandle struct {
-	Command      *cobra.Command
-	commit       git.CommitExecutor
-	lsRemote     git.LsRemoteExecutor
-	push         git.PushExecutor
-	revList      git.RevListExecutor
-	revParse     git.RevParseExecutor
-	remoteName   string
-	remoteBranch string
-	Stdout       io.Writer
+	command                 *cobra.Command
+	config                  config.ConfigProvider
+	triggerBuild            initialization.InitState
+	waitForEnvironmentReady initialization.InitState
+	stdout                  io.Writer
 }
 
-// Complete verifies command line arguments and loads data from the command environment
-func (h *BuildHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
-	h.Command = cmd
-	var err error
-	h.remoteName, err = settings.GetString(config.RemoteName)
-	checkErr(err)
-	h.remoteBranch, err = settings.GetString(config.RemoteBranch)
-	checkErr(err)
-	return nil
-}
-
-// Validate checks that the provided build options are specified.
-func (h *BuildHandle) Validate() error {
-	if len(strings.Trim(h.remoteName, " ")) == 0 {
-		return fmt.Errorf("the remote name specified is invalid")
-	}
-	if len(strings.Trim(h.remoteBranch, " ")) == 0 {
-		return fmt.Errorf("the remote branch specified is invalid")
-	}
-	return nil
-}
-
-// Handle triggers a build on CP doing an empty commit on the given branch
-// The empty commit will create a remote branch if it does not exist yet
-// If there is a local commit ready to be pushed, it pushes those changes
+//build performs the 2 init stages that trigger that build and wait for the environment to be ready
 func (h *BuildHandle) Handle() error {
-	remoteExists, err := h.hasRemote()
+	err := h.triggerBuild.Handle()
 	if err != nil {
 		return err
 	}
-	cplogs.V(5).Infof("remoteExists value is %b", remoteExists)
-
-	if remoteExists == true {
-		localChanges, err := h.hasLocalChanges()
-		if err != nil {
-			return err
-		}
-		if localChanges == false {
-			h.commitAnEmptyChange()
-		}
-	}
-
-	fmt.Fprintln(h.Stdout, "Pushing to remote")
-	h.pushToLocalBranch()
-	fmt.Fprintln(h.Stdout, "Continuous Pipe will now build your developer environment")
-	fmt.Fprintln(h.Stdout, "You can see when it is complete and find its IP address at https://ui.continuouspipe.io/")
-	fmt.Fprintln(h.Stdout, "Please wait until the build is complete to use any of this tool's other commands.")
-
-	return nil
-}
-
-func (h *BuildHandle) pushToLocalBranch() error {
-	lbn, err := h.revParse.GetLocalBranchName()
-	cplogs.V(5).Infof("local branch name value is %s", lbn)
+	err = h.waitForEnvironmentReady.Handle()
 	if err != nil {
 		return err
 	}
-
-	h.push.Push(lbn, h.remoteName, h.remoteBranch)
 	return nil
-}
-
-func (h *BuildHandle) hasLocalChanges() (bool, error) {
-	lbn, err := h.revParse.GetLocalBranchName()
-	cplogs.V(5).Infof("local branch name value is %s", lbn)
-	if err != nil {
-		return false, err
-	}
-
-	changes, err := h.revList.GetLocalBranchAheadCount(lbn, h.remoteName, h.remoteBranch)
-	cplogs.V(5).Infof("amount of changes found is %s", changes)
-	if err != nil {
-		return false, err
-	}
-
-	if changes > 0 {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-func (h *BuildHandle) hasRemote() (bool, error) {
-	list, err := h.lsRemote.GetList(h.remoteName, h.remoteBranch)
-	cplogs.V(5).Infof("list of remote branches that matches remote name and branch are %s", list)
-	if err != nil {
-		return false, err
-	}
-	if len(list) == 0 {
-		return false, err
-	}
-	return true, err
-}
-
-func (h *BuildHandle) commitAnEmptyChange() error {
-	fmt.Println("No changes so making an empty commit to force rebuild")
-	_, err := h.commit.Commit("Add empty commit to force rebuild on continuous pipe")
-	return err
 }
