@@ -63,9 +63,20 @@ func (o RSyncRsh) Sync(paths []string) error {
 		"--checksum"}
 
 	var err error
+
 	paths = slice.RemoveDuplicateString(paths)
 
-	if len(paths) > 0 && len(paths) <= o.individualFileSyncThreshold {
+	paths, err = o.getRelativePathList(paths)
+	if err != nil {
+		return err
+	}
+
+	allPathsExists, notExistingPaths := o.allPathsExists(paths)
+	if !allPathsExists {
+		cplogs.V(5).Infof("detected not existing path/s %s. We will do a generic rsync rather that an individual one", notExistingPaths)
+	}
+
+	if len(paths) > 0 && len(paths) <= o.individualFileSyncThreshold && allPathsExists {
 		cplogs.V(5).Infof("individual file sync, files to sync %d, threshold: %d", len(paths), o.individualFileSyncThreshold)
 		err = o.syncIndividualFiles(paths, args)
 	} else {
@@ -76,12 +87,19 @@ func (o RSyncRsh) Sync(paths []string) error {
 	return err
 }
 
-func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
-	paths, err := o.getRelativePathList(paths)
-	if err != nil {
-		return err
+func (o RSyncRsh) allPathsExists(paths []string) (res bool, notExisting []string) {
+	for _, path := range paths {
+		_, err := os.Stat(path)
+		if os.IsNotExist(err) {
+			notExisting = append(notExisting, path)
+		} else if err != nil {
+			return false, []string{path}
+		}
 	}
+	return len(notExisting) == 0, notExisting
+}
 
+func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -95,36 +113,19 @@ func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 	//in the target. this is necessary because --include only works for files in the first level of the target directory
 	//and using --include is the only way to be able to delete a file remotely that doesn't exist locally
 	//and prevents the "rsync: link_stat" error above
-	errChan := make(chan error, 1)
-	doneCountChan := make(chan bool, len(paths))
 
 	for _, path := range paths {
-		go func(lPath string, lArgs []string) {
-			lArgs = append(lArgs,
-				"--include="+filepath.Base(lPath),
-				"--exclude=*",
-				"--",
-				cwd+string(filepath.Separator)+filepath.Dir(lPath)+string(filepath.Separator),
-				"--:"+o.remoteProjectPath+filepath.Dir(lPath)+string(filepath.Separator))
+		lArgs := args
+		lArgs = append(lArgs,
+			"--include="+filepath.Base(path),
+			"--exclude=*",
+			"--",
+			cwd+string(filepath.Separator)+filepath.Dir(path)+string(filepath.Separator),
+			"--:"+o.remoteProjectPath+filepath.Dir(path)+string(filepath.Separator))
 
-			fmt.Println(lPath)
-			err := o.executeRsync(lArgs, ioutil.Discard)
-			if err != nil {
-				errChan <- err
-			}
-			doneCountChan <- true
-		}(path, args)
-	}
-
-	doneCount := 0
-	for {
-		if doneCount == len(paths) {
-			break
-		}
-		select {
-		case <-doneCountChan:
-			doneCount = doneCount + 1
-		case err := <-errChan:
+		fmt.Println(path)
+		err := o.executeRsync(lArgs, ioutil.Discard)
+		if err != nil {
 			return err
 		}
 	}

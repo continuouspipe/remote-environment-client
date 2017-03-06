@@ -52,7 +52,7 @@ func (r *RSyncDaemon) SetRemoteProjectPath(remoteProjectPath string) {
 	r.remoteProjectPath = remoteProjectPath
 }
 
-func (r *RSyncDaemon) Sync(filePaths []string) error {
+func (r *RSyncDaemon) Sync(paths []string) error {
 	kscmd := kexec.KSCommand{}
 	kscmd.KubeConfigKey = r.kubeConfigKey
 	kscmd.Environment = r.environment
@@ -80,26 +80,43 @@ func (r *RSyncDaemon) Sync(filePaths []string) error {
 		"--blocking-io",
 		"--checksum"}
 
-	filePaths = slice.RemoveDuplicateString(filePaths)
+	paths = slice.RemoveDuplicateString(paths)
 
-	if len(filePaths) > 0 && len(filePaths) <= r.individualFileSyncThreshold {
-		cplogs.V(5).Infof("individual file sync, files to sync %d, threshold: %d", len(filePaths), r.individualFileSyncThreshold)
-		err = r.syncIndividualFiles(filePaths, args)
+	paths, err = r.getRelativePathList(paths)
+	if err != nil {
+		return err
+	}
+
+	allPathsExists, notExistingPaths := r.allPathsExists(paths)
+	if !allPathsExists {
+		cplogs.V(5).Infof("detected not existing path/s %s. We will do a generic rsync rather that an individual one", notExistingPaths)
+	}
+
+	if len(paths) > 0 && len(paths) <= r.individualFileSyncThreshold && allPathsExists {
+		cplogs.V(5).Infof("individual file sync, files to sync %d, threshold: %d", len(paths), r.individualFileSyncThreshold)
+		err = r.syncIndividualFiles(paths, args)
 	} else {
-		err = r.syncAllFiles(filePaths, args)
+		err = r.syncAllFiles(paths, args)
 	}
 
 	cplogs.Flush()
 	return err
 }
 
+func (o RSyncDaemon) allPathsExists(paths []string) (res bool, notExisting []string) {
+	for _, path := range paths {
+		_, err := os.Stat(path)
+		if os.IsNotExist(err) {
+			notExisting = append(notExisting, path)
+		} else if err != nil {
+			return false, []string{path}
+		}
+	}
+	return len(notExisting) == 0, notExisting
+}
+
 func (o RSyncDaemon) syncIndividualFiles(paths []string, args []string) error {
 	remoteRsyncUrl := o.remoteRsync.GetRsyncURL(rsyncConfigSection, o.remoteProjectPath)
-
-	paths, err := o.getRelativePathList(paths)
-	if err != nil {
-		return err
-	}
 
 	cwd, err := os.Getwd()
 	if err != nil {

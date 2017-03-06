@@ -29,7 +29,7 @@ BUILDARCH=amd64
 
 build:
 	mkdir bin 2>/dev/null; true
-	export ${GOROOT_FINAL}
+	export GOROOT_FINAL=${GOROOT_FINAL}
 	env GOOS=${BUILDOS} GOARCH=${BUILDARCH} go build ${LDFLAGS} -o bin/${BUILDOS}-${BUILDARCH}
 
 clean:

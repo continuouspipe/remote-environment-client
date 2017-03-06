@@ -6,7 +6,7 @@ const SyncExcluded = ".cp-remote-ignore"
 
 //use rsync to sync the files specified in filePaths. When filePaths is an empty slice, it syncs all project files
 type RsyncSyncer interface {
-	Sync(filePaths []string) error
+	Sync(paths []string) error
 	SetKubeConfigKey(string)
 	SetEnvironment(string)
 	SetPod(string)
