@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 )
 
 type QuestionPrompter interface {
@@ -21,9 +22,12 @@ func NewQuestionPrompt() *QuestionPrompt {
 
 func (qp QuestionPrompt) ReadString(q string) string {
 	fmt.Print(q, " ")
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	return scanner.Text()
+	reader := bufio.NewReader(os.Stdin)
+	res, err := reader.ReadString('\n')
+	if err != nil {
+		res = ""
+	}
+	return strings.TrimRight(res, "\n")
 }
 
 func (qp QuestionPrompt) ApplyDefault(question string, predef string) string {

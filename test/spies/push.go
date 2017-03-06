@@ -26,14 +26,14 @@ func (s *SpyPush) MockPush(mocked func() (string, error)) {
 	s.push = mocked
 }
 
-func (s *SpyPush) DeleteRemote(remoteName string, remoteBranch string) (string, error) {
+func (s *SpyPush) DeleteRemote(remoteName string, gitBranch string) (string, error) {
 	args := make(Arguments)
 	args["remoteName"] = remoteName
-	args["remoteBranch"] = remoteBranch
+	args["gitBranch"] = gitBranch
 
 	function := &Function{Name: "DeleteRemote", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
-	return s.deleteRemote(remoteName, remoteBranch)
+	return s.deleteRemote(remoteName, gitBranch)
 }
 
 func (s *SpyPush) MockDeleteRemote(mocked func(remoteName string, remoteBranch string) (string, error)) {

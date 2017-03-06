@@ -211,6 +211,10 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	mockWriter.MockWrite(func(p []byte) (n int, err error) {
 		return 100, nil
 	})
+	spyQuestionPrompt := spies.NewSpyQuestionPrompt()
+	spyQuestionPrompt.MockRepeatUntilValid(func(question string, isValid func(string) (bool, error)) string {
+		return "yes"
+	})
 
 	//get test subject
 	handler := &triggerBuild{
@@ -220,7 +224,9 @@ func TestTriggerBuild_Handle(t *testing.T) {
 		mocklsRemote,
 		spyPush,
 		mockRevParse,
-		mockWriter}
+		mockWriter,
+		spyQuestionPrompt,
+	}
 
 	handler.Handle()
 

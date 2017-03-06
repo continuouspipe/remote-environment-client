@@ -246,6 +246,7 @@ type triggerBuild struct {
 	push     git.PushExecutor
 	revParse git.RevParseExecutor
 	writer   io.Writer
+	qp       util.QuestionPrompter
 }
 
 func newTriggerBuild() *triggerBuild {
@@ -256,7 +257,9 @@ func newTriggerBuild() *triggerBuild {
 		git.NewLsRemote(),
 		git.NewPush(),
 		git.NewRevParse(),
-		os.Stdout}
+		os.Stdout,
+		util.NewQuestionPrompt(),
+	}
 }
 
 func (p triggerBuild) Next() initialization.InitState {
@@ -300,6 +303,28 @@ func (p triggerBuild) Handle() error {
 	remoteEnv, err := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if err != nil {
 		return err
+	}
+
+	cplogs.V(5).Infof("current remote environment status is %s", remoteEnv.Status)
+
+	//if the environment is already running ask the user if he wants to rebuild
+	if remoteEnv.Status == cpapi.RemoteEnvironmentRunning {
+
+		answer := p.qp.RepeatUntilValid("The remote environment is already running, do you want to rebuild it? (yes/no)",
+			func(answer string) (bool, error) {
+				switch answer {
+				case "yes", "no":
+					return true, nil
+				default:
+					return false, fmt.Errorf("Your answer needs to be either yes or no. Your answer was %s", answer)
+				}
+			})
+
+		cplogs.V(5).Infof("user aswered %s", answer)
+
+		if answer == "no" {
+			return nil
+		}
 	}
 
 	//if the remote environment is not already building, make sure the remote git branch exists
@@ -410,12 +435,15 @@ func (p waitEnvironmentReady) Handle() error {
 		return err
 	}
 
-	if remoteEnv.Status == cpapi.RemoteEnvironmentTideFailed {
+	switch remoteEnv.Status {
+	case cpapi.RemoteEnvironmentTideFailed:
 		fmt.Fprintln(p.writer, "The build had previously failed, retrying..")
 		err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 		if err != nil {
 			return err
 		}
+	case cpapi.RemoteEnvironmentRunning:
+		return nil
 	}
 
 	fmt.Fprintln(p.writer, "Waiting for the envionment to be ready..")
