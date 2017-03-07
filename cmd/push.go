@@ -21,6 +21,14 @@ cp-push pu
 cp-push pu -e techup-dev-user -s web
 `
 
+func NewSyncCmd() *cobra.Command {
+	pu := NewPushCmd()
+	pu.Use = "sync"
+	pu.Short = "Sync local changes to the remote filesystem (alias for push)"
+	pu.Aliases = []string{"sy"}
+	return pu
+}
+
 func NewPushCmd() *cobra.Command {
 	settings := config.C
 	handler := &PushHandle{}
