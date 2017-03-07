@@ -15,6 +15,9 @@
 # in order to have a quicker upgrade from the previous recent version
 #
 # after make package completes, copy all content of public/* into the github pages repository and commit/push
+#
+# Also update the homebrew-tools repo at https://github.com/inviqa/homebrew-tools/blob/master/Formula/cp-remote.rb#L6-L7
+#
 
 BINARY=cp-remote
 VERSION=0.1.0-beta.3
