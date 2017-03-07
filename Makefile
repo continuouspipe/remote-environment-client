@@ -17,7 +17,7 @@
 # after make package completes, copy all content of public/* into the github pages repository and commit/push
 
 BINARY=cp-remote
-VERSION=0.1.0-beta.2
+VERSION=0.1.0-beta.3
 
 GOROOT_FINAL=/usr/local/Cellar/go/1.7.4_2/libexec
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config
