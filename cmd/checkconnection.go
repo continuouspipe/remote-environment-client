@@ -10,6 +10,14 @@ import (
 	"strings"
 )
 
+func NewListPodsCmd() *cobra.Command {
+	ck := NewCheckConnectionCmd()
+	ck.Use = "pods"
+	ck.Short = "Lists the pods in the remote environment (alias for checkconnection)"
+	ck.Aliases = []string{"po"}
+	return ck
+}
+
 func NewCheckConnectionCmd() *cobra.Command {
 	settings := config.C
 	handler := &CheckConnectionHandle{}
@@ -19,7 +27,7 @@ func NewCheckConnectionCmd() *cobra.Command {
 		Aliases: []string{"ck"},
 		Short:   "Check the connection to the remote environment",
 		Long: `The checkconnection command can be used to check that the connection details
-for the Kubernetes cluster are correct and that if they are pods can be found for the environment.
+for the Kubernetes cluster are correct and lists any pods that can be found for the environment.
 It can be used with the environment option to check another environment`,
 		Run: func(cmd *cobra.Command, args []string) {
 			validateConfig()
@@ -73,21 +81,19 @@ func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) er
 
 	fmt.Println("checking connection for environment " + h.Environment)
 
-	countPods, err := fetchNumberOfPods(h.Environment, h.Environment, podsFinder)
+	podsList, err := podsFinder.FindAll(h.Environment, h.Environment)
 	if err != nil {
 		return err
 	}
-	color.Green("Connected succesfully and found %d pods for the environment\n", countPods)
-	return nil
-}
 
-func fetchNumberOfPods(kubeConfigKey string, environment string, podsFinder pods.Finder) (int, error) {
-	foundPods, err := podsFinder.FindAll(kubeConfigKey, environment)
-	if err != nil {
-		return 0, err
+	if len(podsList.Items) > 0 {
+		color.Green("%d pods have been found:", len(podsList.Items))
+		for _, item := range podsList.Items {
+			color.Green("Created at %s, %s", item.CreationTimestamp, item.Name)
+		}
+	} else {
+		color.Red("We could not find any pods on this environment")
 	}
-	if len(foundPods.Items) == 0 {
-		return 0, fmt.Errorf("connected to the cluster but no pods were found for the environment, has the environment been successfully built?")
-	}
-	return len(foundPods.Items), nil
+
+	return nil
 }

@@ -75,18 +75,20 @@ func Execute() {
 func init() {
 	RootCmd.PersistentFlags().StringVar(&localConfigFile, "config", ".cp-remote-settings.yml", "local config file (default is .cp-remote-settings.yml in the directory cp-remote is run from.)")
 
-	RootCmd.AddCommand(NewBashCmd())
+	RootCmd.AddCommand(NewInitCmd())
 	RootCmd.AddCommand(NewBuildCmd())
-	RootCmd.AddCommand(NewCheckConnectionCmd())
-	RootCmd.AddCommand(NewCheckUpdatesCmd())
 	RootCmd.AddCommand(NewDestroyCmd())
+	RootCmd.AddCommand(NewListPodsCmd())
+	RootCmd.AddCommand(NewCheckConnectionCmd())
+	RootCmd.AddCommand(NewBashCmd())
 	RootCmd.AddCommand(NewExecCmd())
+	RootCmd.AddCommand(NewWatchCmd())
 	RootCmd.AddCommand(NewFetchCmd())
 	RootCmd.AddCommand(NewPushCmd())
+	RootCmd.AddCommand(NewSyncCmd())
 	RootCmd.AddCommand(NewForwardCmd())
-	RootCmd.AddCommand(NewInitCmd())
 	RootCmd.AddCommand(NewVersionCmd())
-	RootCmd.AddCommand(NewWatchCmd())
+	RootCmd.AddCommand(NewCheckUpdatesCmd())
 
 	//adding kubectl commands as hidden
 	kubeCtlCommand := kubectlcmd.NewKubectlCommand(kubectlcmdutil.NewFactory(nil), os.Stdin, os.Stdout, os.Stderr)
