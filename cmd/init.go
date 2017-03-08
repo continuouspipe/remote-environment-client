@@ -38,7 +38,7 @@ func NewInitCmd() *cobra.Command {
 
 	command := &cobra.Command{
 		Use:     "init",
-		Aliases: []string{"in"},
+		Aliases: []string{"in", "setup"},
 		Short:   "Initialises the remote environment",
 		Long:    ``,
 		Run: func(cmd *cobra.Command, args []string) {
