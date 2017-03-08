@@ -13,8 +13,9 @@ import (
 //low timeout but we want to see the logs if something went wrong
 const flushInterval = 5 * time.Second
 
+const LogDirName = "cp-remote-logs"
+
 var logDir string
-var LogDir string
 
 func createLogDirs() {
 	if logDir != "" {
@@ -33,7 +34,7 @@ func init() {
 		panic(err)
 	}
 
-	defaultLogDir := cwd + "/cp-remote-logs/"
+	defaultLogDir := cwd + string(os.PathSeparator) + LogDirName + string(os.PathSeparator)
 
 	//create the log folder if is not there already
 	if err := os.MkdirAll(defaultLogDir, 0775); err != nil {
@@ -42,7 +43,6 @@ func init() {
 	}
 
 	logDir = defaultLogDir
-	LogDir = defaultLogDir
 
 	//overrides settings that glog usually sets by flag
 	logging.toStderr = false

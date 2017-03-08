@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/continuouspipe/remote-environment-client/git"
 	"github.com/fatih/color"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 )
 
@@ -104,6 +106,8 @@ func init() {
 func initConfig() {
 	initLocalConfig()
 	initGlobalConfig()
+	checkLegacyApplicationFile()
+	addApplicationFilesToGitIgnore()
 }
 
 func initLocalConfig() {
@@ -143,6 +147,22 @@ func initGlobalConfig() {
 
 	//load config file
 	checkErr(config.C.ReadInConfig(config.GlobalConfigType))
+}
+
+func checkLegacyApplicationFile() {
+	_, err := os.Stat(".cp-remote-env-settings.yml")
+	if os.IsNotExist(err) == false {
+		color.Red("Warning: you have the '.cp-remote-env-settings.yml' config file which from cp-remote version 0.1.0 it has been replaced by '.cp-remote-settings.yml'.\nPlease remove the old '.cp-remote-env-settings.yml' config file.")
+	}
+}
+
+func addApplicationFilesToGitIgnore() {
+	gitIgnore, err := git.NewIgnore()
+	checkErr(err)
+	logFile, err := config.C.ConfigFileUsed(config.LocalConfigType)
+	checkErr(err)
+	gitIgnore.AddToIgnore("/" + filepath.Base(logFile))
+	gitIgnore.AddToIgnore(cplogs.LogDirName)
 }
 
 func validateConfig() {

@@ -41,9 +41,8 @@ func (i *Ignore) AddToIgnore(fileNames ...string) (bool, error) {
 		return false, err
 	}
 	for _, f := range fileNames {
-		entry := "/" + f + "/"
-		if !i.AlreadyIgnored(entry) {
-			_, err := file.WriteString(entry)
+		if !i.AlreadyIgnored(f) {
+			_, err := file.WriteString(f)
 			if err != nil {
 				return false, err
 			}

@@ -42,8 +42,6 @@ func NewInitCmd() *cobra.Command {
 		Short:   "Initialises the remote environment",
 		Long:    ``,
 		Run: func(cmd *cobra.Command, args []string) {
-			addApplicationFilesToGitIgnore()
-
 			//Mock base64 token when 5 arguments are passed in
 			if len(args) == 5 {
 				args = []string{base64.StdEncoding.EncodeToString([]byte(strings.Join(args, ",")))}
@@ -60,15 +58,6 @@ func NewInitCmd() *cobra.Command {
 	command.PersistentFlags().StringVarP(&handler.remoteName, config.KubeEnvironmentName, "o", remoteName, "Override the default remote name (origin)")
 	command.PersistentFlags().BoolVarP(&handler.reset, "reset", "r", false, "With reset flag set to true, init will not attempt to restore interrupted initializations")
 	return command
-}
-
-func addApplicationFilesToGitIgnore() {
-	gitIgnore, err := git.NewIgnore()
-	checkErr(err)
-	logFile, err := config.C.ConfigFileUsed(config.LocalConfigType)
-	checkErr(err)
-	gitIgnore.AddToIgnore(logFile)
-	gitIgnore.AddToIgnore(cplogs.LogDir)
 }
 
 type initHandler struct {
