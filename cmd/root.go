@@ -168,7 +168,7 @@ func addApplicationFilesToGitIgnore() {
 func validateConfig() {
 	valid, missing := config.C.Validate()
 	if valid == false {
-		exitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the setup command.", missing))
+		exitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the init command.", missing))
 	}
 }
 
