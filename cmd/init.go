@@ -612,12 +612,12 @@ func (p applyDefaultService) Handle() error {
 		return err
 	}
 
-	if list.Size() == 0 {
+	if len(list.Items) == 0 {
 		cplogs.V(5).Infoln("No services where found.")
 		return nil
 	}
 
-	if list.Size() == 1 {
+	if len(list.Items) == 1 {
 		cplogs.V(5).Infoln("Only 1 service found, setting that one as default.")
 		p.config.Set(list.Items[0].GetName(), config.Service)
 		p.config.Save()
@@ -638,7 +638,7 @@ func (p applyDefaultService) Handle() error {
 				return true, nil
 			}
 		}
-		return false, fmt.Errorf("Please select an option between [0-%d]", list.Size())
+		return false, fmt.Errorf("Please select an option between [0-%d]", len(list.Items))
 
 	})
 	key, err := strconv.Atoi(serviceKey)
