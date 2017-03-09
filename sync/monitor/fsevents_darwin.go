@@ -62,14 +62,18 @@ func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error 
 			for _, e := range msg {
 				desc := m.GetEventDescription(e.Flags)
 				cplogs.V(1).Infof("filesystem event for %d(%s) %s\n", e.ID, e.Path, desc)
+				cplogs.Flush()
+
 				if (e.Flags & (fsevents.ItemCreated | fsevents.ItemRemoved | fsevents.ItemRenamed | fsevents.ItemModified | fsevents.ItemChangeOwner)) == 0 {
 					cplogs.V(5).Infof("skipping event %s on path %s as is not an item create, remove, renamed, modified or changed owner", desc, e.Path)
+					cplogs.Flush()
 					continue
 				}
 				//check if the file matches the exclusion list, if so ignore the event
 				match := m.Exclusions.MatchExclusionList(e.Path)
 				if match == true {
-					cplogs.V(2).Infof("skipping %s %s as is in the exclusion list", desc, e.Path)
+					cplogs.V(5).Infof("skipping %s %s as is in the exclusion list", desc, e.Path)
+					cplogs.Flush()
 					continue
 				}
 

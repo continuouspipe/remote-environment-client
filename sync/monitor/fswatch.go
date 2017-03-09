@@ -66,11 +66,13 @@ func (m FsWatch) AnyEventCall(directory string, observer EventsObserver) error {
 			case event := <-watcher.Events:
 				changeLock.Lock()
 				cplogs.V(1).Infof("filesystem event for %s(%s)\n", event.Name, event.Op)
+				cplogs.Flush()
 
 				//check if the file matches the exclusion list, if so ignore the event
 				match := m.Exclusions.MatchExclusionList(event.Name)
 				if match == true {
-					cplogs.V(2).Infof("skipped %s(%s) as is in the exclusion list", event.Name, event.Op)
+					cplogs.V(5).Infof("skipped %s(%s) as is in the exclusion list", event.Name, event.Op)
+					cplogs.Flush()
 					changeLock.Unlock()
 					continue
 				}
@@ -81,6 +83,7 @@ func (m FsWatch) AnyEventCall(directory string, observer EventsObserver) error {
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
 					if e := watcher.Remove(event.Name); e != nil {
 						cplogs.V(5).Infof("error removing watch for %s: %v", event.Name, e)
+						cplogs.Flush()
 					}
 				} else {
 					if e := m.AddRecursiveWatch(watcher, event.Name); e != nil && watchError == nil {
