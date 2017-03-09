@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
@@ -33,6 +34,7 @@ const remoteEnvironmentReadinessProbePeriodSeconds = 30
 func NewInitCmd() *cobra.Command {
 	settings := config.C
 	handler := &initHandler{}
+	handler.api = cpapi.NewCpApi()
 	handler.config = settings
 	handler.qp = util.NewQuestionPrompt()
 
@@ -67,6 +69,7 @@ type initHandler struct {
 	remoteName string
 	reset      bool
 	qp         util.QuestionPrompter
+	api        cpapi.CpApiProvider
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -170,6 +173,33 @@ func (i initHandler) Handle() error {
 	}
 	i.config.Set(config.InitStatus, initStateCompleted)
 	i.config.Save()
+
+	apiKey, err := i.config.GetString(config.ApiKey)
+	if err != nil {
+		return err
+	}
+	remoteEnvId, err := i.config.GetString(config.RemoteEnvironmentId)
+	if err != nil {
+		return err
+	}
+	flowId, err := i.config.GetString(config.FlowId)
+	if err != nil {
+		return err
+	}
+
+	i.api.SetApiKey(apiKey)
+
+	remoteEnv, err := i.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("\n# Get started !\n\n")
+	fmt.Println("You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
+	if len(remoteEnv.PublicEndpoints) >= 0 && remoteEnv.PublicEndpoints[0].Address != "" {
+		fmt.Printf("https://%s", remoteEnv.PublicEndpoints[0].Address)
+	}
+	fmt.Printf("\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
 
 	return nil
 }
@@ -294,10 +324,22 @@ func (p triggerBuild) Handle() error {
 		return err
 	}
 
+	environments, err := p.api.GetApiEnvironments(flowId)
+	if err != nil {
+		return err
+	}
+
+	envExists := false
+	for _, environment := range environments {
+		if environment.Identifier == remoteEnv.ClusterIdentifier {
+			envExists = true
+		}
+	}
+
 	cplogs.V(5).Infof("current remote environment status is %s", remoteEnv.Status)
 
-	//if the environment is already running ask the user if he wants to rebuild
-	if remoteEnv.Status == cpapi.RemoteEnvironmentRunning {
+	//if the environment is already running and exists ask the user if he wants to rebuild
+	if remoteEnv.Status == cpapi.RemoteEnvironmentRunning && envExists {
 
 		answer := p.qp.RepeatUntilValid("The remote environment is already running, do you want to rebuild it? (yes/no)",
 			func(answer string) (bool, error) {
@@ -319,7 +361,6 @@ func (p triggerBuild) Handle() error {
 	//if the remote environment is not already building, make sure the remote git branch exists
 	//and then trigger a build via api
 	if remoteEnv.Status != cpapi.RemoteEnvironmentTideRunning {
-		fmt.Fprintln(p.writer, "Building the remote environment")
 		cplogs.V(5).Infof("triggering build for the remote environment, user: %s", cpUsername)
 
 		err := p.createRemoteBranch(remoteName, gitBranch)
@@ -330,9 +371,7 @@ func (p triggerBuild) Handle() error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(p.writer, "Continuous Pipe will now build your developer environment")
-		fmt.Fprintln(p.writer, "You can see when it is complete and find its IP address at https://ui.continuouspipe.io/")
-		fmt.Fprintln(p.writer, "Please wait until the build is complete to use any of this tool's other commands.")
+		fmt.Fprintf(p.writer, "\n# Environment is building...\n")
 	}
 	return nil
 }
@@ -349,7 +388,7 @@ func (p triggerBuild) createRemoteBranch(remoteName string, gitBranch string) er
 }
 
 func (p triggerBuild) pushLocalBranchToRemote(remoteName string, gitBranch string) error {
-	fmt.Fprintln(p.writer, "Pushing to remote")
+	fmt.Fprintf(p.writer, "# Building your environment by push to the branch `%s`\n", gitBranch)
 	lbn, err := p.revParse.GetLocalBranchName()
 	cplogs.V(5).Infof("local branch name value is %s", lbn)
 	if err != nil {
@@ -424,28 +463,44 @@ func (p waitEnvironmentReady) Handle() error {
 		return err
 	}
 
-	switch remoteEnv.Status {
-	case cpapi.RemoteEnvironmentTideFailed:
+	environments, err := p.api.GetApiEnvironments(flowId)
+	if err != nil {
+		return err
+	}
+
+	envExists := false
+	for _, environment := range environments {
+		if environment.Identifier == remoteEnv.ClusterIdentifier {
+			envExists = true
+		}
+	}
+
+	if remoteEnv.Status == cpapi.RemoteEnvironmentTideFailed {
 		fmt.Fprintln(p.writer, "The build had previously failed, retrying..")
 		err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 		if err != nil {
 			return err
 		}
-	case cpapi.RemoteEnvironmentRunning:
+	}
+
+	if remoteEnv.Status == cpapi.RemoteEnvironmentRunning && envExists {
 		return nil
 	}
 
-	fmt.Fprintln(p.writer, "Waiting for the envionment to be ready..")
+	fmt.Fprintln(p.writer, "Continuous Pipe will now building your developer environment. You can checkout the logs of your first tide there:")
+	fmt.Fprintf(p.writer, "https://ui.continuouspipe.io/project/%s/%s/%s/logs\n", remoteEnv.LastTide.Team.Slug, remoteEnv.LastTide.FlowUuid, remoteEnv.LastTide.Uuid)
+
+	s := spinner.New(spinner.CharSets[34], 100*time.Millisecond)
+	s.Prefix = "Waiting for the envionment to be ready "
+	s.Start()
 
 	//wait until the remote environment has been built
 	for t := range p.ticker.C {
 		cplogs.V(5).Infoln("environment readiness check at ", t)
 
-		fmt.Fprintln(p.writer, "Checking at ", t)
-
 		remoteEnv, err = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 		if err != nil {
-			return err
+			break
 		}
 
 		cplogs.V(5).Infof("remote environment status is %s", remoteEnv.Status)
@@ -453,28 +508,26 @@ func (p waitEnvironmentReady) Handle() error {
 
 		switch remoteEnv.Status {
 		case cpapi.RemoteEnvironmentTideRunning:
-			fmt.Fprintln(p.writer, "The remote environment is still building")
+			cplogs.V(5).Infoln("The remote environment is still building")
 
 		case cpapi.RemoteEnvironmentTideNotStarted:
-			fmt.Fprintln(p.writer, "The remote environment build did't start, triggering a re-build")
-
 			cplogs.V(5).Infof("re-trying triggering build for the remote environment")
 			cplogs.Flush()
-			err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
-			if err != nil {
-				return err
-			}
+			err = p.api.RemoteEnvironmentBuild(flowId, gitBranch)
+			break
 		case cpapi.RemoteEnvironmentTideFailed:
-			return fmt.Errorf("remote environment id %s cretion has failed. To see more information about the error go to https://ui.continuouspipe.io/", remoteEnvId)
-
+			err = fmt.Errorf("remote environment id %s cretion has failed. To see more information about the error go to https://ui.continuouspipe.io/", remoteEnvId)
+			break
 		case cpapi.RemoteEnvironmentRunning:
-			fmt.Fprintln(p.writer, "The remote environment is running")
+			cplogs.V(5).Infoln("The remote environment is running")
+			s.Stop()
 			return nil
 		}
 
 	}
 
-	return nil
+	s.Stop()
+	return err
 }
 
 type applyEnvironmentSettings struct {
@@ -545,7 +598,6 @@ func (p applyEnvironmentSettings) Handle() error {
 }
 
 func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
-
 	environment, err := p.config.GetString(config.KubeEnvironmentName)
 	if err != nil {
 		return err
@@ -555,25 +607,6 @@ func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 	if err != nil {
 		return err
 	}
-
-	localConfigFile, err := p.config.ConfigFileUsed(config.LocalConfigType)
-	if err != nil {
-		return err
-	}
-	globalConfigFile, err := p.config.ConfigFileUsed(config.GlobalConfigType)
-	if err != nil {
-		return err
-	}
-
-	clusterInfo, err := p.clusterInfoProvider.ClusterInfo(environment)
-	if err != nil {
-		return err
-	}
-
-	fmt.Fprintf(p.writer, "\nRemote settings written to %s\n", localConfigFile)
-	fmt.Fprintf(p.writer, "\nRemote settings written to %s\n", globalConfigFile)
-	fmt.Fprintf(p.writer, "Created the kubernetes config key %s\n", environment)
-	fmt.Fprintln(p.writer, clusterInfo)
 	return nil
 }
 
@@ -581,13 +614,15 @@ type applyDefaultService struct {
 	config config.ConfigProvider
 	qp     util.QuestionPrompter
 	ks     services.ServiceFinder
+	writer io.Writer
 }
 
 func newApplyDefaultService() *applyDefaultService {
 	return &applyDefaultService{
 		config.C,
 		util.NewQuestionPrompt(),
-		services.NewKubeService()}
+		services.NewKubeService(),
+		os.Stdout}
 }
 
 func (p applyDefaultService) Next() initialization.InitState {
@@ -624,14 +659,15 @@ func (p applyDefaultService) Handle() error {
 		return nil
 	}
 
+	fmt.Fprintln(p.writer, "# Last steps!")
+
 	var options string
 	for key, s := range list.Items {
 		options = options + fmt.Sprintf("[%d] %s\n", key, s.GetName())
 	}
-	question := fmt.Sprintf("You have %[1]d services available in you remote environment.\n"+
-		"Which one you want to be the default service to be used for commands like: watch, fetch, bash and exec?\n"+
-		"Choose an option [0-%[2]d]\n\n"+
-		"%[3]s", len(list.Items), len(list.Items)-1, options)
+	question := fmt.Sprintf("Which default container would you like to use?\n"+
+		"%s\n\n"+
+		"Select an option from 0 to %d: ", options, len(list.Items)-1)
 	serviceKey := p.qp.RepeatUntilValid(question, func(answer string) (bool, error) {
 		for key := range list.Items {
 			if strconv.Itoa(key) == answer {

@@ -94,17 +94,6 @@ func (s *SpyApiProvider) RemoteEnvironmentDestroy(flowId string, environment str
 	return s.remoteEnvironmentDestroy(flowId, environment, cluster)
 }
 
-func (s *SpyApiProvider) GetTides(flowId string, limit int, page int) ([]cpapi.ApiTide, error) {
-	args := make(Arguments)
-	args["flowId"] = flowId
-	args["limit"] = limit
-	args["page"] = page
-
-	function := &Function{Name: "GetTides", Arguments: args}
-	s.calledFunctions = append(s.calledFunctions, *function)
-	return s.getTides(flowId, limit, page)
-}
-
 func (s *SpyApiProvider) CancelTide(tideId string) error {
 	args := make(Arguments)
 	args["tideId"] = tideId
@@ -140,10 +129,6 @@ func (s *SpyApiProvider) MockCancelRunningTide(mocked func(flowId string, gitBra
 
 func (s *SpyApiProvider) MockRemoteEnvironmentDestroy(mocked func(flowId string, environment string, cluster string) error) {
 	s.remoteEnvironmentDestroy = mocked
-}
-
-func (s *SpyApiProvider) MockGetTides(mocked func(flowId string, limit int, page int) ([]cpapi.ApiTide, error)) {
-	s.getTides = mocked
 }
 
 func (s *SpyApiProvider) MockCancelTide(mocked func(tideId string) error) {

@@ -16,11 +16,11 @@
 #
 # after make package completes, copy all content of public/* into the github pages repository and commit/push
 #
-# Also update the homebrew-tools repo at https://github.com/inviqa/homebrew-tools/blob/master/Formula/cp-remote.rb#L6-L7
+# Also update the homebrew-tools repo at https://github.com/continuouspipe/homebrew-tools/blob/master/Formula/cp-remote.rb#L6-L7
 #
 
 BINARY=cp-remote
-VERSION=0.1.0-rc.1
+VERSION=0.1.0-rc.2
 
 GOROOT_FINAL=/usr/local/Cellar/go/1.7.4_2/libexec
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config

@@ -75,6 +75,10 @@ func (h *DestroyHandle) Handle() error {
 	if err != nil {
 		return err
 	}
+	remoteEnvironmentId, err := h.config.GetString(config.RemoteEnvironmentId)
+	if err != nil {
+		return err
+	}
 	cluster, err := h.config.GetString(config.ClusterIdentifier)
 	if err != nil {
 		return err
@@ -91,13 +95,19 @@ func (h *DestroyHandle) Handle() error {
 	h.api.SetApiKey(apiKey)
 
 	//stop building any flows associated with the git branch
-	err = h.api.CancelRunningTide(flowId, gitBranch)
+	err = h.api.CancelRunningTide(flowId, remoteEnvironmentId)
 	if err != nil {
 		return err
 	}
 
 	//delete the remote environment via cp api
 	err = h.api.RemoteEnvironmentDestroy(flowId, environment, cluster)
+	if err != nil {
+		return err
+	}
+
+	//delete the remote development environment via cp api
+	err = h.api.RemoteDevelopmentEnvironmentDestroy(flowId, remoteEnvironmentId)
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
-	"strconv"
 )
 
 type CpApiProvider interface {
@@ -18,11 +17,12 @@ type CpApiProvider interface {
 	GetApiTeams() ([]ApiTeam, error)
 	GetApiBucketClusters(bucketUuid string) ([]ApiCluster, error)
 	GetApiUser(user string) (*ApiUser, error)
+	GetApiEnvironments(flowId string) ([]ApiEnvironment, error)
 	GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, error)
 	RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error
-	CancelRunningTide(flowId string, gitBranch string) error
+	CancelRunningTide(flowId string, remoteEnvironmentId string) error
 	RemoteEnvironmentDestroy(flowId string, environment string, cluster string) error
-	GetTides(flowId string, limit int, page int) ([]ApiTide, error)
+	RemoteDevelopmentEnvironmentDestroy(flowId string, remoteEnvironmentId string) error
 	CancelTide(tideId string) error
 }
 
@@ -77,9 +77,17 @@ type ApiCluster struct {
 }
 
 type ApiRemoteEnvironmentStatus struct {
-	Status              string `json:"status"`
-	KubeEnvironmentName string `json:"environment_name"`
-	ClusterIdentifier   string `json:"cluster_identifier"`
+	Status              string              `json:"status"`
+	KubeEnvironmentName string              `json:"environment_name"`
+	ClusterIdentifier   string              `json:"cluster_identifier"`
+	PublicEndpoints     []ApiPublicEndpoint `json:"public_endpoints"`
+	LastTide            ApiTide             `json:"last_tide"`
+}
+
+type ApiPublicEndpoint struct {
+	Address string        `json:"address"`
+	Name    string        `json:"name"`
+	Ports   []interface{} `json:"ports"`
 }
 
 type ApiTide struct {
@@ -93,15 +101,27 @@ type ApiTide struct {
 	StartDate      string           `json:"start_date"`
 	Status         string           `json:"status"`
 	Tasks          []interface{}    `json:"tasks"`
-	Team           interface{}      `json:"team"`
+	Team           ApiTideTeam      `json:"team"`
 	User           interface{}      `json:"user"`
 	Uuid           string           `json:"uuid"`
+}
+
+type ApiTideTeam struct {
+	Slug       string `json:"slug"`
+	Name       string `json:"name"`
+	BucketUuid string `json:"bucket_uuid"`
 }
 
 type ApiCodeReference struct {
 	Branch         string      `json:"branch"`
 	CodeRepository interface{} `json:"code_repository"`
 	Sha1           string      `json:"sha1"`
+}
+
+type ApiEnvironment struct {
+	Cluster    string        `json:"cluster"`
+	Components []interface{} `json:"components"`
+	Identifier string        `json:"identifier"`
 }
 
 func (c *CpApi) SetApiKey(apiKey string) {
@@ -213,6 +233,40 @@ func (c CpApi) GetApiUser(user string) (*ApiUser, error) {
 	return apiUserResponse, nil
 }
 
+func (c CpApi) GetApiEnvironments(flowId string) ([]ApiEnvironment, error) {
+	if c.apiKey == "" {
+		return nil, fmt.Errorf("api key not provided")
+	}
+
+	url, err := c.getRiverURL()
+	if err != nil {
+		return nil, err
+	}
+	url.Path = fmt.Sprintf("/flows/%s/environments", flowId)
+
+	cplogs.V(5).Infof("getting flow environments using url %s", url.String())
+
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
+	req.Header.Add("X-Api-Key", c.apiKey)
+	if err != nil {
+		return nil, err
+	}
+
+	respBody, err := c.getResponseBody(c.client, req)
+	if err != nil {
+		return nil, fmt.Errorf("error getting remote environment, %s", err.Error())
+	}
+
+	environments := make([]ApiEnvironment, 0)
+	err = json.Unmarshal(respBody, &environments)
+	if err != nil {
+		cplogs.V(4).Infof("error running Unmarshal() on response body %s", respBody)
+		return nil, err
+	}
+
+	return environments, nil
+}
+
 //calls CP Api to retrieve information about the remote environment
 func (c CpApi) GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, error) {
 	if c.apiKey == "" {
@@ -283,69 +337,18 @@ func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch 
 }
 
 //find the tide id associated with the branch and cancel the tide
-func (c CpApi) CancelRunningTide(flowId string, gitBranch string) error {
-	//get top list of tides
-	tides, err := c.GetTides(flowId, 20, 1)
+func (c CpApi) CancelRunningTide(flowId string, remoteEnvironmentId string) error {
+	remoteEnv, err := c.GetRemoteEnvironmentStatus(flowId, remoteEnvironmentId)
 	if err != nil {
 		return err
 	}
 
-	var runningTideForBranch string
-	for _, tide := range tides {
-		if tide.Status != TideRunning {
-			cplogs.V(5).Infof("TideId %s not running, skipping", tide.Uuid)
-			continue
-		}
-		if tide.CodeReference.Branch != gitBranch {
-			cplogs.V(5).Infof("TideId %s branch %s didn't match given branch %s", tide.Uuid, tide.CodeReference.Branch, gitBranch)
-			continue
-		}
-		runningTideForBranch = tide.Uuid
+	if remoteEnv.LastTide.Status != TideRunning {
+		cplogs.V(5).Infof("TideId %s not running, skipping", remoteEnv.LastTide.Uuid)
+		return nil
 	}
 
-	if runningTideForBranch != "" {
-		cplogs.V(5).Infof("found a running tide %s", runningTideForBranch)
-		return c.CancelTide(runningTideForBranch)
-	}
-
-	cplogs.V(5).Infof("no running tides where found for flowId %s and gitBranch %s", flowId, gitBranch)
-	return nil
-}
-
-func (c CpApi) GetTides(flowId string, limit int, page int) ([]ApiTide, error) {
-	if c.apiKey == "" {
-		return nil, fmt.Errorf("api key not provided")
-	}
-
-	url, err := c.getRiverURL()
-	if err != nil {
-		return nil, err
-	}
-	url.Path = fmt.Sprintf("/flows/%s/tides", flowId)
-	url.Query().Add("limit", strconv.Itoa(limit))
-	url.Query().Add("page", strconv.Itoa(page))
-
-	cplogs.V(5).Infof("getting list of tides for the flow using url %s", url.String())
-
-	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("X-Api-Key", c.apiKey)
-	if err != nil {
-		return nil, err
-	}
-
-	respBody, err := c.getResponseBody(c.client, req)
-	if err != nil {
-		return nil, err
-	}
-	tides := make([]ApiTide, 0)
-	err = json.Unmarshal(respBody, &tides)
-	if err != nil {
-		cplogs.V(4).Infof("error running Unmarshal() on response body %s", respBody)
-		return nil, err
-	}
-
-	return tides, nil
+	return c.CancelTide(remoteEnv.LastTide.Uuid)
 }
 
 func (c CpApi) CancelTide(tideId string) error {
@@ -390,6 +393,34 @@ func (c CpApi) RemoteEnvironmentDestroy(flowId string, environment string, clust
 	url.RawQuery = fmt.Sprintf("cluster=%s", cluster)
 
 	cplogs.V(5).Infof("destroying remote environment using url %s", url.String())
+
+	req, err := http.NewRequest(http.MethodDelete, url.String(), nil)
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("X-Api-Key", c.apiKey)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.getResponseBody(c.client, req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c CpApi) RemoteDevelopmentEnvironmentDestroy(flowId string, remoteEnvironmentId string) error {
+	if c.apiKey == "" {
+		return fmt.Errorf("api key not provided")
+	}
+
+	url, err := c.getRiverURL()
+	if err != nil {
+		return err
+	}
+	url.Path = fmt.Sprintf("/flows/%s/development-environments/%s", flowId, remoteEnvironmentId)
+
+	cplogs.V(5).Infof("destroying remote development environment using url %s", url.String())
 
 	req, err := http.NewRequest(http.MethodDelete, url.String(), nil)
 	req.Header.Add("Content-Type", "application/json")
