@@ -55,7 +55,7 @@ func NewInitCmd() *cobra.Command {
 
 	remoteName, err := settings.GetString(config.RemoteName)
 	checkErr(err)
-	command.PersistentFlags().StringVarP(&handler.remoteName, config.KubeEnvironmentName, "o", remoteName, "Override the default remote name (origin)")
+	command.PersistentFlags().StringVar(&handler.remoteName, config.RemoteName, remoteName, "Override the default remote name (origin)")
 	command.PersistentFlags().BoolVarP(&handler.reset, "reset", "r", false, "With reset flag set to true, init will not attempt to restore interrupted initializations")
 	return command
 }
@@ -465,7 +465,7 @@ func (p waitEnvironmentReady) Handle() error {
 				return err
 			}
 		case cpapi.RemoteEnvironmentTideFailed:
-			return fmt.Errorf("remote environment id %s cretion has failed, go to the continuouspipe website to find out about the error", remoteEnvId)
+			return fmt.Errorf("remote environment id %s cretion has failed. To see more information about the error go to https://ui.continuouspipe.io/", remoteEnvId)
 
 		case cpapi.RemoteEnvironmentRunning:
 			fmt.Fprintln(p.writer, "The remote environment is running")

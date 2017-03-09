@@ -13,12 +13,12 @@ import (
 	"strings"
 )
 
-var pushExample = `
+var pushSyncExample = `
 # push files and folders to the remote pod
-cp-push pu
+%[1]s %[2]s
 
 # push files and folders to the remote pod specifying the environment
-cp-push pu -e techup-dev-user -s web
+%[1]s %[2]s -e techup-dev-user -s web
 `
 
 func NewSyncCmd() *cobra.Command {
@@ -26,6 +26,7 @@ func NewSyncCmd() *cobra.Command {
 	pu.Use = "sync"
 	pu.Short = "Sync local changes to the remote filesystem (alias for push)"
 	pu.Aliases = []string{"sy"}
+	pu.Example = fmt.Sprintf(pushSyncExample, config.AppName, "sync")
 	return pu
 }
 
@@ -38,9 +39,9 @@ func NewPushCmd() *cobra.Command {
 		Use:     "push",
 		Aliases: []string{"pu"},
 		Short:   "Push local changes to the remote filesystem",
-		Example: pushExample,
+		Example: fmt.Sprintf(pushSyncExample, config.AppName, "push"),
 		Long: `The push command will copy changes from the local to the remote filesystem.
-		Note that this will delete any files/folders in the remote container that are not present locally.`,
+Note that this will delete any files/folders in the remote container that are not present locally.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			validateConfig()
 
@@ -71,7 +72,7 @@ func NewPushCmd() *cobra.Command {
 
 	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
-	command.PersistentFlags().StringVarP(&handler.File, "file", "f", "", "Allows to specify a file that needs to be pushed from the pod")
+	command.PersistentFlags().StringVarP(&handler.File, "file", "f", "", "Allows to specify a file that needs to be pushed to the pod")
 	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
 	return command
 }
