@@ -194,7 +194,7 @@ func (i initHandler) Handle() error {
 		return err
 	}
 
-	fmt.Printf("\n# Get started !\n\n")
+	fmt.Printf("\n\n# Get started !\n")
 	fmt.Println("You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
 	if len(remoteEnv.PublicEndpoints) >= 0 && remoteEnv.PublicEndpoints[0].Address != "" {
 		fmt.Printf("https://%s", remoteEnv.PublicEndpoints[0].Address)
