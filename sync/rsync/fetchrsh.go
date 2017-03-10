@@ -56,7 +56,7 @@ func (r RsyncRshFetch) Fetch(filePath string) error {
 		"-zrlptDv",
 		"--blocking-io",
 		"--force",
-		`--exclude=.*`,
+		`--exclude=.git`,
 		fmt.Sprintf(`--exclude-from=%s`, SyncExcluded),
 		"--",
 	}

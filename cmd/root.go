@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
-	"github.com/continuouspipe/remote-environment-client/git"
 	"github.com/fatih/color"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -157,8 +156,8 @@ func checkLegacyApplicationFile() {
 }
 
 func addApplicationFilesToGitIgnore() {
-	gitIgnore, err := git.NewIgnore()
-	checkErr(err)
+	gitIgnore := config.NewIgnore()
+	gitIgnore.File = config.GitIgnore
 	logFile, err := config.C.ConfigFileUsed(config.LocalConfigType)
 	checkErr(err)
 	gitIgnore.AddToIgnore("/" + filepath.Base(logFile))

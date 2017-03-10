@@ -78,7 +78,8 @@ func (r *RSyncDaemon) Sync(paths []string) error {
 		"--omit-dir-times",
 		"--delete",
 		"--blocking-io",
-		"--checksum"}
+		"--checksum",
+		`--exclude=.git`}
 
 	paths = slice.RemoveDuplicateString(paths)
 

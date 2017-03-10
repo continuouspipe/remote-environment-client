@@ -1,41 +1,41 @@
-package git
+package config
 
 import (
 	"bufio"
 	"os"
 )
 
+const GitIgnore = ".gitignore"
+
 type Ignore struct {
-	file string
-	list []string
+	File string
+	List []string
 }
 
-func NewIgnore() (*Ignore, error) {
-	ignore := &Ignore{}
-	ignore.file = ".gitignore"
-	return ignore, nil
+func NewIgnore() *Ignore {
+	return &Ignore{}
 }
 
-func (i *Ignore) loadFromIgnoreFile() error {
-	file, err := os.OpenFile(i.file, os.O_RDWR|os.O_CREATE, 0664)
+func (i *Ignore) LoadFromIgnoreFile() error {
+	file, err := os.OpenFile(i.File, os.O_RDWR|os.O_CREATE, 0664)
 	defer file.Close()
 	if err != nil {
 		return err
 	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		i.list = append(i.list, scanner.Text())
+		i.List = append(i.List, scanner.Text())
 	}
 	return nil
 }
 
 func (i *Ignore) AddToIgnore(fileNames ...string) (bool, error) {
-	err := i.loadFromIgnoreFile()
+	err := i.LoadFromIgnoreFile()
 	if err != nil {
 		return false, err
 	}
 
-	file, err := os.OpenFile(i.file, os.O_APPEND|os.O_WRONLY, 0664)
+	file, err := os.OpenFile(i.File, os.O_APPEND|os.O_WRONLY, 0664)
 	defer file.Close()
 	if err != nil {
 		return false, err
@@ -56,7 +56,7 @@ func (i *Ignore) AddToIgnore(fileNames ...string) (bool, error) {
 }
 
 func (i *Ignore) AlreadyIgnored(s string) bool {
-	for _, val := range i.list {
+	for _, val := range i.List {
 		if val == s {
 			return true
 		}

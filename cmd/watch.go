@@ -32,16 +32,8 @@ setup but you can specify another container to sync with.`,
 			validateConfig()
 
 			exclusion := monitor.NewExclusion()
-			exclusion.LoadCustomExclusionsFromFile()
-
-			//if the custom file/folder exclusions are empty write the default one on disk
-			if len(exclusion.CustomExclusions) == 0 {
-				res, err := exclusion.WriteDefaultExclusionsToFile()
-				checkErr(err)
-				if res == true {
-					fmt.Printf("\n%s was missing or empty and has been created with the default ignore settings.\n", monitor.CustomExclusionsFile)
-				}
-			}
+			_, err := exclusion.WriteDefaultExclusionsToFile()
+			checkErr(err)
 
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()

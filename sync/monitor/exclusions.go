@@ -2,85 +2,73 @@
 package monitor
 
 import (
-	"bufio"
+	"github.com/continuouspipe/remote-environment-client/config"
 	"os"
 	"regexp"
+	"strings"
 )
 
 const CustomExclusionsFile = ".cp-remote-ignore"
 
 type ExclusionProvider interface {
-	LoadCustomExclusionsFromFile() error
 	WriteDefaultExclusionsToFile() (bool, error)
-	GetListExclusions() []string
-	MatchExclusionList(target string) bool
+	MatchExclusionList(target string) (bool, error)
 }
 
 type Exclusion struct {
-	DefaultExclusions []string
-	CustomExclusions  []string
+	DefaultExclusions       []string
+	FirstCreationExclusions []string
+	ignore                  *config.Ignore
 }
 
 func NewExclusion() *Exclusion {
 	m := &Exclusion{}
-	m.DefaultExclusions = []string{`/\.[^/]*$`,
-		`\.idea`,
-		`\.git`,
+	m.ignore = config.NewIgnore()
+	m.ignore.File = CustomExclusionsFile
+	m.DefaultExclusions = []string{
+		`.idea`,
+		`.git`,
 		`___jb_old___`,
 		`___jb_tmp___`,
 		`cp-remote-logs`,
+		`.cp-remote-settings.yml`,
 		`.cp-remote-env-settings.yml`}
+	m.FirstCreationExclusions = []string{
+		`.*`,
+	}
 	return m
 }
 
-func (m *Exclusion) LoadCustomExclusionsFromFile() error {
-	file, err := os.OpenFile(CustomExclusionsFile, os.O_RDWR|os.O_CREATE, 0664)
-	defer file.Close()
-	if err != nil {
-		return err
+func (m *Exclusion) WriteDefaultExclusionsToFile() (bool, error) {
+	exclusions := []string{}
+	if _, err := os.Stat(m.ignore.File); os.IsNotExist(err) {
+		exclusions = append(exclusions, m.FirstCreationExclusions...)
 	}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		m.CustomExclusions = append(m.CustomExclusions, scanner.Text())
-	}
-	return nil
+	exclusions = append(exclusions, m.DefaultExclusions...)
+	return m.ignore.AddToIgnore(exclusions...)
 }
 
-func (m *Exclusion) WriteDefaultExclusionsToFile() (bool, error) {
-	file, err := os.OpenFile(CustomExclusionsFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0664)
-	defer file.Close()
+func (m Exclusion) MatchExclusionList(target string) (bool, error) {
+	err := m.ignore.LoadFromIgnoreFile()
 	if err != nil {
 		return false, err
 	}
-	w := bufio.NewWriter(file)
-	for _, line := range m.DefaultExclusions {
-		_, err := w.WriteString(line)
-		if err != nil {
-			return false, err
+
+	for _, elem := range m.ignore.List {
+		//if is an exact match return true
+		if elem == target {
+			return true, nil
 		}
-		w.WriteString("\n")
-	}
-	w.Flush()
-	return true, nil
-}
 
-//returns the default exclusions if there aren't custom one loaded
-func (m Exclusion) GetListExclusions() []string {
-	if len(m.CustomExclusions) > 0 {
-		return m.CustomExclusions
-	}
-	return m.DefaultExclusions
-}
-
-func (m Exclusion) MatchExclusionList(target string) bool {
-	for _, elem := range m.GetListExclusions() {
-		regex, err := regexp.Compile(elem)
+		//otherwise escape the "." and try to match it as a regex
+		escapedElem := strings.Replace(elem, ".", `\.`, -1)
+		regex, err := regexp.Compile(escapedElem)
 		if err != nil {
-			return false
+			return false, nil
 		}
 		if res := regex.MatchString(target); res == true {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }

@@ -18,7 +18,6 @@ var dirMonitor DirectoryMonitor
 
 func GetOsDirectoryMonitor() DirectoryMonitor {
 	exclusion := NewExclusion()
-	exclusion.LoadCustomExclusionsFromFile()
 	dirMonitor.SetExclusions(exclusion)
 	return dirMonitor
 }

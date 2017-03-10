@@ -60,7 +60,8 @@ func (o RSyncRsh) Sync(paths []string) error {
 		"-rlptDv",
 		"--delete",
 		"--blocking-io",
-		"--checksum"}
+		"--checksum",
+		`--exclude=.git`}
 
 	var err error
 

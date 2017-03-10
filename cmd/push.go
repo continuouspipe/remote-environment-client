@@ -8,6 +8,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
+	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/spf13/cobra"
 	"path/filepath"
 	"strings"
@@ -45,6 +46,10 @@ Note that this will delete any files/folders in the remote container that are no
 		Run: func(cmd *cobra.Command, args []string) {
 			validateConfig()
 
+			exclusion := monitor.NewExclusion()
+			_, err := exclusion.WriteDefaultExclusionsToFile()
+			checkErr(err)
+
 			fmt.Println("Push in progress")
 
 			benchmrk := benchmark.NewCmdBenchmark()
@@ -58,7 +63,7 @@ Note that this will delete any files/folders in the remote container that are no
 			checkErr(handler.Validate())
 			checkErr(handler.Handle(args, podsFinder, podsFilter, syncer))
 
-			_, err := benchmrk.StopAndLog()
+			_, err = benchmrk.StopAndLog()
 			checkErr(err)
 			fmt.Printf("Push complete, the files and folders that has been sent can be found in the logs %s\n", cplogs.GetLogInfoFile())
 			cplogs.Flush()

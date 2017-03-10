@@ -107,7 +107,7 @@ func (r RsyncDaemonFetch) Fetch(filePath string) error {
 		"--omit-dir-times",
 		"--blocking-io",
 		"--force",
-		`--exclude=.*`,
+		`--exclude=.git`,
 		fmt.Sprintf(`--exclude-from=%s`, SyncExcluded),
 		"--",
 	}

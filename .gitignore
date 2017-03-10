@@ -7,3 +7,4 @@ cp-remote-go
 glide.lock
 .idea
 cp-remote-logs
+/.cp-remote-settings.yml
