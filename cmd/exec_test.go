@@ -7,7 +7,6 @@ import (
 	"os"
 
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
-	"github.com/continuouspipe/remote-environment-client/test"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"k8s.io/client-go/pkg/api/v1"
@@ -29,8 +28,8 @@ func TestCommandsAreSpawned(t *testing.T) {
 		return mockPod, nil
 	})
 	spyLocalExecutor := spies.NewSpyLocalExecutor()
-	spyLocalExecutor.MockCommandExec(func() (string, error) {
-		return "some results back..", nil
+	spyLocalExecutor.MockStartProcess(func() error {
+		return nil
 	})
 	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
 	spyKubeCtlInitializer.MockInit(func(environment string) error {
@@ -53,9 +52,9 @@ func TestCommandsAreSpawned(t *testing.T) {
 	kscmd.Stdout = os.Stdout
 	kscmd.Stderr = os.Stderr
 
-	spyLocalExecutor.ExpectsCallCount(t, "CommandExec", 1)
-	spyLocalExecutor.ExpectsFirstCallArgument(t, "CommandExec", "kscmd", kscmd)
-	spyLocalExecutor.ExpectsFirstCallArgumentStringSlice(t, "CommandExec", "execCmdArgs", []string{"ls", "-a", "-l", "-l"})
+	spyLocalExecutor.ExpectsCallCount(t, "StartProcess", 1)
+	spyLocalExecutor.ExpectsFirstCallArgument(t, "StartProcess", "kscmd", kscmd)
+	spyLocalExecutor.ExpectsFirstCallArgumentStringSlice(t, "StartProcess", "execCmdArgs", []string{"ls", "-a", "-l", "-l"})
 
 	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
 }

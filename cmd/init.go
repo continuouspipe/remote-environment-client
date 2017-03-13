@@ -531,11 +531,10 @@ func (p waitEnvironmentReady) Handle() error {
 }
 
 type applyEnvironmentSettings struct {
-	config              config.ConfigProvider
-	api                 cpapi.CpApiProvider
-	kubeCtlInitializer  kubectlapi.KubeCtlInitializer
-	clusterInfoProvider kubectlapi.KubeCtlClusterInfoProvider
-	writer              io.Writer
+	config             config.ConfigProvider
+	api                cpapi.CpApiProvider
+	kubeCtlInitializer kubectlapi.KubeCtlInitializer
+	writer             io.Writer
 }
 
 func newApplyEnvironmentSettings() *applyEnvironmentSettings {
@@ -543,7 +542,6 @@ func newApplyEnvironmentSettings() *applyEnvironmentSettings {
 		config.C,
 		cpapi.NewCpApi(),
 		kubectlapi.NewKubeCtlInit(),
-		kubectlapi.NewKubeCtlClusterInfo(),
 		os.Stdout,
 	}
 }

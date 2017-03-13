@@ -192,6 +192,9 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
 		return nil
 	})
+	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, error) {
+		return []cpapi.ApiEnvironment{}, nil
+	})
 
 	mocklsRemote := mocks.NewMockLsRemote()
 	mocklsRemote.MockGetList(func(remoteName string, remoteBranch string) (string, error) {
@@ -250,6 +253,9 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	spyApi.ExpectsCallCount(t, "RemoteEnvironmentBuild", 1)
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentFlowID", "837d92hd-19su1d91")
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "gitBranch", "remote-dev-user-foo")
+
+	spyApi.ExpectsCallCount(t, "GetApiEnvironments", 1)
+	spyApi.ExpectsFirstCallArgument(t, "GetApiEnvironments", "flowId", "837d92hd-19su1d91")
 }
 
 func TestWaitEnvironmentReady_Handle(t *testing.T) {
@@ -286,7 +292,9 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
 		return nil
 	})
-
+	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, error) {
+		return []cpapi.ApiEnvironment{}, nil
+	})
 	//mock a response with a status of:
 	//RemoteEnvironmentTideFailed the first time
 	//RemoteEnvironmentTideRunning the second time
@@ -341,6 +349,9 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	spyApi.ExpectsCallCount(t, "RemoteEnvironmentBuild", 2)
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentFlowID", "837d92hd-19su1d91")
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "gitBranch", "remote-dev-user-foo")
+
+	spyApi.ExpectsCallCount(t, "GetApiEnvironments", 1)
+	spyApi.ExpectsFirstCallArgument(t, "GetApiEnvironments", "flowId", "837d92hd-19su1d91")
 }
 
 func TestApplyEnvironmentSettings_Handle(t *testing.T) {
@@ -384,6 +395,8 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 			cpapi.RemoteEnvironmentRunning,
 			"837d92hd-19su1d91-dev-some-user",
 			"the-cluster-one",
+			[]cpapi.ApiPublicEndpoint{},
+			cpapi.ApiTide{},
 		}, nil
 	})
 	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
@@ -395,17 +408,11 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 		return nil
 	})
 
-	spyClusterInfoProvider := spies.NewSpyKubeCtlClusterInfoProvider()
-	spyClusterInfoProvider.MockClusterInfo(func(kubeConfigKey string) (string, error) {
-		return "", nil
-	})
-
 	//get test subject
 	handler := &applyEnvironmentSettings{
 		spyConfig,
 		spyApi,
 		spyKubeCtlInitializer,
-		spyClusterInfoProvider,
 		ioutil.Discard,
 	}
 	handler.Handle()
@@ -428,9 +435,6 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	spyConfig.ExpectsCallNArgument(t, "Set", 3, "value", "837d92hd-19su1d91-dev-some-user")
 
 	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
-
-	spyClusterInfoProvider.ExpectsCallCount(t, "ClusterInfo", 1)
-	spyClusterInfoProvider.ExpectsFirstCallArgument(t, "ClusterInfo", "kubeConfigKey", "837d92hd-19su1d91-dev-some-user")
 }
 
 func TestApplyDefaultService_Handle(t *testing.T) {
@@ -473,7 +477,8 @@ func TestApplyDefaultService_Handle(t *testing.T) {
 	handler := &applyDefaultService{
 		spyConfig,
 		spyQuestionPrompt,
-		spyServiceFinder}
+		spyServiceFinder,
+		ioutil.Discard}
 
 	handler.Handle()
 
@@ -484,11 +489,12 @@ func TestApplyDefaultService_Handle(t *testing.T) {
 
 	spyQuestionPrompt.ExpectsCallCount(t, "RepeatUntilValid", 1)
 	spyQuestionPrompt.ExpectsFirstCallArgument(t, "RepeatUntilValid", "question",
-		"You have 2 services available in you remote environment.\n"+
-			"Which one you want to be the default service to be used for commands like: watch, fetch, bash and exec?\n"+
-			"Choose an option [0-1]\n\n"+
-			"[0] app\n"+
-			"[1] db\n")
+		`Which default container would you like to use?
+[0] app
+[1] db
+
+
+Select an option from 0 to 1: `)
 
 	spyConfig.ExpectsCallCount(t, "Save", 2)
 	spyConfig.ExpectsCallCount(t, "Set", 2)
