@@ -4,8 +4,6 @@ package monitor
 import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"os"
-	"regexp"
-	"strings"
 )
 
 const CustomExclusionsFile = ".cp-remote-ignore"
@@ -57,16 +55,6 @@ func (m Exclusion) MatchExclusionList(target string) (bool, error) {
 	for _, elem := range m.ignore.List {
 		//if is an exact match return true
 		if elem == target {
-			return true, nil
-		}
-
-		//otherwise escape the "." and try to match it as a regex
-		escapedElem := strings.Replace(elem, ".", `\.`, -1)
-		regex, err := regexp.Compile(escapedElem)
-		if err != nil {
-			return false, nil
-		}
-		if res := regex.MatchString(target); res == true {
 			return true, nil
 		}
 	}

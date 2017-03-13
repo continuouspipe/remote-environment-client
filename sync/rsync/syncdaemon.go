@@ -81,6 +81,14 @@ func (r *RSyncDaemon) Sync(paths []string) error {
 		"--checksum",
 		`--exclude=.git`}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(SyncExcluded); err == nil {
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncExcluded))
+	}
+
 	paths = slice.RemoveDuplicateString(paths)
 
 	paths, err = r.getRelativePathList(paths)
@@ -154,13 +162,6 @@ func (o RSyncDaemon) syncIndividualFiles(paths []string, args []string) error {
 
 func (o RSyncDaemon) syncAllFiles(paths []string, args []string) error {
 	remoteRsyncUrl := o.remoteRsync.GetRsyncURL(rsyncConfigSection, o.remoteProjectPath)
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	if _, err := os.Stat(SyncExcluded); err == nil {
-		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncExcluded))
-	}
 	args = append(args,
 		"--relative",
 		"--",
