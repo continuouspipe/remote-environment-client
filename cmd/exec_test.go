@@ -42,11 +42,9 @@ func TestCommandsAreSpawned(t *testing.T) {
 	handler.kubeCtlInit = spyKubeCtlInitializer
 	handler.Environment = "proj-feature-testing"
 	handler.Service = "web"
-	out, _ := handler.Handle([]string{"ls", "-a", "-l", "-l"}, mockPodsFinder, mockPodFilter, spyLocalExecutor)
+	handler.Handle([]string{"ls", "-a", "-l", "-l"}, mockPodsFinder, mockPodFilter, spyLocalExecutor)
 
 	//expectations
-	test.AssertSame(t, "some results back..", out)
-
 	kscmd := kexec.KSCommand{}
 	kscmd.KubeConfigKey = "proj-feature-testing"
 	kscmd.Environment = "proj-feature-testing"
