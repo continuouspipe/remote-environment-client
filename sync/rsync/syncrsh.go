@@ -5,7 +5,6 @@ package rsync
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -63,7 +62,13 @@ func (o RSyncRsh) Sync(paths []string) error {
 		"--checksum",
 		`--exclude=.git`}
 
-	var err error
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(SyncExcluded); err == nil {
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+string(filepath.Separator)+SyncExcluded))
+	}
 
 	paths = slice.RemoveDuplicateString(paths)
 
@@ -124,8 +129,7 @@ func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 			cwd+string(filepath.Separator)+filepath.Dir(path)+string(filepath.Separator),
 			"--:"+o.remoteProjectPath+filepath.Dir(path)+string(filepath.Separator))
 
-		fmt.Println(path)
-		err := o.executeRsync(lArgs, ioutil.Discard)
+		err := o.executeRsync(lArgs, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -135,13 +139,6 @@ func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 }
 
 func (o RSyncRsh) syncAllFiles(paths []string, args []string) error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	if _, err := os.Stat(SyncExcluded); err == nil {
-		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+string(filepath.Separator)+SyncExcluded))
-	}
 	args = append(args,
 		"--relative",
 		"--",
