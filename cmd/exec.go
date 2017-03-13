@@ -41,9 +41,8 @@ the exec command. The command and its arguments need to follow --`,
 
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())
-			res, err := handler.Handle(args, podsFinder, podsFilter, local)
+			err := handler.Handle(args, podsFinder, podsFilter, local)
 			checkErr(err)
-			fmt.Println(res)
 		},
 	}
 	environment, err := settings.GetString(config.KubeEnvironmentName)
@@ -91,11 +90,11 @@ func (h *ExecHandle) Validate() error {
 }
 
 // Handle executes a command inside a pod
-func (h *ExecHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, spawn exec.Spawner) (string, error) {
+func (h *ExecHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, executor exec.Executor) error {
 	//re-init kubectl in case the kube settings have been modified
 	err := h.kubeCtlInit.Init(h.Environment)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	allPods, err := podsFinder.FindAll(h.Environment, h.Environment)
@@ -112,5 +111,5 @@ func (h *ExecHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 	kscmd.Stdout = os.Stdout
 	kscmd.Stderr = os.Stderr
 
-	return spawn.CommandExec(kscmd, args...)
+	return executor.StartProcess(kscmd, args...)
 }

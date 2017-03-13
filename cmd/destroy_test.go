@@ -33,6 +33,8 @@ func TestDestroyHandle_Handle(t *testing.T) {
 			return "origin", nil
 		case config.RemoteBranch:
 			return "remote-dev-user-foo", nil
+		case config.RemoteEnvironmentId:
+			return "remote-env-id", nil
 		}
 		return "", nil
 	})
@@ -45,6 +47,9 @@ func TestDestroyHandle_Handle(t *testing.T) {
 		return nil
 	})
 	spyApiProvider.MockRemoteEnvironmentDestroy(func(flowId string, environment string, cluster string) error {
+		return nil
+	})
+	spyApiProvider.MockRemoteDevelopmentEnvironmentDestroy(func(flowId string, remoteEnvironmentId string) error {
 		return nil
 	})
 	mockLsRemote := mocks.NewMockLsRemote()
@@ -80,7 +85,7 @@ func TestDestroyHandle_Handle(t *testing.T) {
 
 	spyApiProvider.ExpectsCallCount(t, "CancelRunningTide", 1)
 	spyApiProvider.ExpectsFirstCallArgument(t, "CancelRunningTide", "flowId", "837d92hd-19su1d91")
-	spyApiProvider.ExpectsFirstCallArgument(t, "CancelRunningTide", "gitBranch", "remote-dev-user-foo")
+	spyApiProvider.ExpectsFirstCallArgument(t, "CancelRunningTide", "remoteEnvironmentId", "remote-env-id")
 
 	spyApiProvider.ExpectsCallCount(t, "RemoteEnvironmentDestroy", 1)
 	spyApiProvider.ExpectsFirstCallArgument(t, "RemoteEnvironmentDestroy", "flowId", "837d92hd-19su1d91")

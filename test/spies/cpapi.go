@@ -4,15 +4,16 @@ import "github.com/continuouspipe/remote-environment-client/cpapi"
 
 type SpyApiProvider struct {
 	Spy
-	getApiTeams                func() ([]cpapi.ApiTeam, error)
-	getApiBucketClusters       func(bucketUuid string) ([]cpapi.ApiCluster, error)
-	getApiUser                 func(user string) (*cpapi.ApiUser, error)
-	getRemoteEnvironmentStatus func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error)
-	remoteEnvironmentBuild     func(remoteEnvironmentFlowID string, gitBranch string) error
-	cancelRunningTide          func(flowId string, gitBranch string) error
-	remoteEnvironmentDestroy   func(flowId string, environment string, cluster string) error
-	getTides                   func(flowId string, limit int, page int) ([]cpapi.ApiTide, error)
-	cancelTide                 func(tideId string) error
+	getApiTeams                         func() ([]cpapi.ApiTeam, error)
+	getApiBucketClusters                func(bucketUuid string) ([]cpapi.ApiCluster, error)
+	getApiUser                          func(user string) (*cpapi.ApiUser, error)
+	getApiEnvironments                  func(flowId string) ([]cpapi.ApiEnvironment, error)
+	getRemoteEnvironmentStatus          func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error)
+	remoteEnvironmentBuild              func(remoteEnvironmentFlowID string, gitBranch string) error
+	cancelRunningTide                   func(flowId string, remoteEnvironmentId string) error
+	remoteEnvironmentDestroy            func(flowId string, environment string, cluster string) error
+	remoteDevelopmentEnvironmentDestroy func(flowId string, remoteEnvironmentId string) error
+	cancelTide                          func(tideId string) error
 }
 
 func NewSpyApiProvider() *SpyApiProvider {
@@ -53,6 +54,15 @@ func (s *SpyApiProvider) GetApiUser(user string) (*cpapi.ApiUser, error) {
 	return s.getApiUser(user)
 }
 
+func (s *SpyApiProvider) GetApiEnvironments(flowId string) ([]cpapi.ApiEnvironment, error) {
+	args := make(Arguments)
+	args["flowId"] = flowId
+
+	function := &Function{Name: "GetApiEnvironments", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
+	return s.getApiEnvironments(flowId)
+}
+
 func (s *SpyApiProvider) GetRemoteEnvironmentStatus(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
 	args := make(Arguments)
 	args["flowId"] = flowId
@@ -73,14 +83,24 @@ func (s *SpyApiProvider) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, 
 	return s.remoteEnvironmentBuild(remoteEnvironmentFlowID, gitBranch)
 }
 
-func (s *SpyApiProvider) CancelRunningTide(flowId string, gitBranch string) error {
+func (s *SpyApiProvider) RemoteDevelopmentEnvironmentDestroy(flowId string, remoteEnvironmentId string) error {
 	args := make(Arguments)
 	args["flowId"] = flowId
-	args["gitBranch"] = gitBranch
+	args["remoteEnvironmentId"] = remoteEnvironmentId
+
+	function := &Function{Name: "RemoteDevelopmentEnvironmentDestroy", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
+	return s.remoteDevelopmentEnvironmentDestroy(flowId, remoteEnvironmentId)
+}
+
+func (s *SpyApiProvider) CancelRunningTide(flowId string, remoteEnvironmentId string) error {
+	args := make(Arguments)
+	args["flowId"] = flowId
+	args["remoteEnvironmentId"] = remoteEnvironmentId
 
 	function := &Function{Name: "CancelRunningTide", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
-	return s.cancelRunningTide(flowId, gitBranch)
+	return s.cancelRunningTide(flowId, remoteEnvironmentId)
 }
 
 func (s *SpyApiProvider) RemoteEnvironmentDestroy(flowId string, environment string, cluster string) error {
@@ -115,6 +135,10 @@ func (s *SpyApiProvider) MockGetApiUser(mocked func(user string) (*cpapi.ApiUser
 	s.getApiUser = mocked
 }
 
+func (s *SpyApiProvider) MockGetApiEnvironments(mocked func(flowId string) ([]cpapi.ApiEnvironment, error)) {
+	s.getApiEnvironments = mocked
+}
+
 func (s *SpyApiProvider) MockGetRemoteEnvironmentStatus(mocked func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error)) {
 	s.getRemoteEnvironmentStatus = mocked
 }
@@ -123,7 +147,11 @@ func (s *SpyApiProvider) MockRemoteEnvironmentBuild(mocked func(remoteEnvironmen
 	s.remoteEnvironmentBuild = mocked
 }
 
-func (s *SpyApiProvider) MockCancelRunningTide(mocked func(flowId string, gitBranch string) error) {
+func (s *SpyApiProvider) MockRemoteDevelopmentEnvironmentDestroy(mocked func(flowId string, remoteEnvironmentId string) error) {
+	s.remoteDevelopmentEnvironmentDestroy = mocked
+}
+
+func (s *SpyApiProvider) MockCancelRunningTide(mocked func(flowId string, remoteEnvironmentId string) error) {
 	s.cancelRunningTide = mocked
 }
 
