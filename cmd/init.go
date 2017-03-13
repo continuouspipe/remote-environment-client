@@ -491,7 +491,7 @@ func (p waitEnvironmentReady) Handle() error {
 	fmt.Fprintf(p.writer, "https://ui.continuouspipe.io/project/%s/%s/%s/logs\n", remoteEnv.LastTide.Team.Slug, remoteEnv.LastTide.FlowUuid, remoteEnv.LastTide.Uuid)
 
 	s := spinner.New(spinner.CharSets[34], 100*time.Millisecond)
-	s.Prefix = "Waiting for the envionment to be ready "
+	s.Prefix = "Waiting for the environment to be ready "
 	s.Start()
 
 	//wait until the remote environment has been built
