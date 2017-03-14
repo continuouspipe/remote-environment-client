@@ -87,11 +87,6 @@ func TestDestroyHandle_Handle(t *testing.T) {
 	spyApiProvider.ExpectsFirstCallArgument(t, "CancelRunningTide", "flowId", "837d92hd-19su1d91")
 	spyApiProvider.ExpectsFirstCallArgument(t, "CancelRunningTide", "remoteEnvironmentId", "remote-env-id")
 
-	spyApiProvider.ExpectsCallCount(t, "RemoteEnvironmentDestroy", 1)
-	spyApiProvider.ExpectsFirstCallArgument(t, "RemoteEnvironmentDestroy", "flowId", "837d92hd-19su1d91")
-	spyApiProvider.ExpectsFirstCallArgument(t, "RemoteEnvironmentDestroy", "environment", "29fsdfjk2d9sj-sadfj2-32342-remote-dev-user-foo")
-	spyApiProvider.ExpectsFirstCallArgument(t, "RemoteEnvironmentDestroy", "cluster", "my-cluster")
-
 	spyPush.ExpectsCallCount(t, "DeleteRemote", 1)
 	spyPush.ExpectsFirstCallArgument(t, "DeleteRemote", "remoteName", "origin")
 	spyPush.ExpectsFirstCallArgument(t, "DeleteRemote", "gitBranch", "remote-dev-user-foo")

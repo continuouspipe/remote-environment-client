@@ -196,8 +196,8 @@ func (i initHandler) Handle() error {
 
 	fmt.Printf("\n\n# Get started !\n")
 	fmt.Println("You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
-	if len(remoteEnv.PublicEndpoints) >= 0 && remoteEnv.PublicEndpoints[0].Address != "" {
-		fmt.Printf("https://%s", remoteEnv.PublicEndpoints[0].Address)
+	for _, publicEndpoint := range remoteEnv.PublicEndpoints {
+		fmt.Printf("%s \t https://%s\n", publicEndpoint.Name, publicEndpoint.Address)
 	}
 	fmt.Printf("\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
 
@@ -363,7 +363,7 @@ func (p triggerBuild) Handle() error {
 	if remoteEnv.Status != cpapi.RemoteEnvironmentTideRunning {
 		cplogs.V(5).Infof("triggering build for the remote environment, user: %s", cpUsername)
 
-		err := p.createRemoteBranch(remoteName, gitBranch)
+		err := p.pushLocalBranchToRemote(remoteName, gitBranch)
 		if err != nil {
 			return err
 		}
@@ -374,17 +374,6 @@ func (p triggerBuild) Handle() error {
 		fmt.Fprintf(p.writer, "\n# Environment is building...\n")
 	}
 	return nil
-}
-
-func (p triggerBuild) createRemoteBranch(remoteName string, gitBranch string) error {
-	remoteExists, err := p.hasRemote(remoteName, gitBranch)
-	if err != nil {
-		return err
-	}
-	if remoteExists == true {
-		return nil
-	}
-	return p.pushLocalBranchToRemote(remoteName, gitBranch)
 }
 
 func (p triggerBuild) pushLocalBranchToRemote(remoteName string, gitBranch string) error {

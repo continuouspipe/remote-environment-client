@@ -106,12 +106,6 @@ func (h *DestroyHandle) Handle() error {
 		return err
 	}
 
-	//delete the remote development environment via cp api
-	err = h.api.RemoteDevelopmentEnvironmentDestroy(flowId, remoteEnvironmentId)
-	if err != nil {
-		return err
-	}
-
 	//if remote exists delete remote branch
 	remoteExists, err := h.hasRemote(remoteName, gitBranch)
 	if err != nil {

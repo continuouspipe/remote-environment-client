@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/continuouspipe/remote-environment-client/benchmark"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/initialization"
 	"github.com/spf13/cobra"
 	"io"
@@ -15,6 +17,7 @@ func NewBuildCmd() *cobra.Command {
 	handler.config = config.C
 	handler.triggerBuild = newTriggerBuild()
 	handler.waitForEnvironmentReady = newWaitEnvironmentReady()
+	handler.api = cpapi.NewCpApi()
 	command := &cobra.Command{
 		Use:     "build",
 		Aliases: []string{"bu"},
@@ -43,6 +46,7 @@ type BuildHandle struct {
 	triggerBuild            initialization.InitState
 	waitForEnvironmentReady initialization.InitState
 	stdout                  io.Writer
+	api                     cpapi.CpApiProvider
 }
 
 //build performs the 2 init stages that trigger that build and wait for the environment to be ready
@@ -55,5 +59,33 @@ func (h *BuildHandle) Handle() error {
 	if err != nil {
 		return err
 	}
+
+	apiKey, err := h.config.GetString(config.ApiKey)
+	if err != nil {
+		return err
+	}
+	remoteEnvId, err := h.config.GetString(config.RemoteEnvironmentId)
+	if err != nil {
+		return err
+	}
+	flowId, err := h.config.GetString(config.FlowId)
+	if err != nil {
+		return err
+	}
+
+	h.api.SetApiKey(apiKey)
+
+	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("\n\n# Get started !\n")
+	fmt.Println("You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
+	for _, publicEndpoint := range remoteEnv.PublicEndpoints {
+		fmt.Printf("%s \t https://%s\n", publicEndpoint.Name, publicEndpoint.Address)
+	}
+	fmt.Printf("\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
+
 	return nil
 }
