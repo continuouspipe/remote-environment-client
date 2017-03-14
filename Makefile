@@ -10,17 +10,38 @@
 # make build BUILDOS=linux BUILDARCH=amd64
 # make build BUILDOS=linux BUILDARCH=386
 #
+#
+# Auto-Upgrade Section:
+#
 # make build will put the binaries into the bin/ folder.
 # After this is done run "make package" which will put the new binaries into public/ along with the binary diffs
 # in order to have a quicker upgrade from the previous recent version
 #
-# after make package completes, copy all content of public/* into the github pages repository and commit/push
+# after make package completes, copy all content of public/* into the github pages repository
+# ----------------------------------
 #
-# Also update the homebrew-tools repo at https://github.com/continuouspipe/homebrew-tools/blob/master/Formula/cp-remote.rb#L6-L7
+# User-Friendly Latest Release Downloads Links:
+#
+# cd latest/darwin-amd64/; chmod +x cp-remote; tar -czvf cp-remote.tar.gz cp-remote;
+# cd ../../latest/linux-386/; chmod +x cp-remote; tar -czvf cp-remote.tar.gz cp-remote;
+# cd ../../latest/linux-amd64/; chmod +x cp-remote; tar -czvf cp-remote.tar.gz cp-remote;
+# cd ../../latest/windows-386/; zip -r cp-remote.zip cp-remote.exe;
+# cd ../../latest/windows-amd64/; zip -r cp-remote.zip cp-remote.exe;/Users/azucca/dev/cp-remote-updater-gh-pages/
+#
+# commit and push the remote-environment-client gh-pages branch
+#
+#
+# ----------------------------------
+#
+# Home Brew Tools:
+#
+# Update the homebrew-tools repo at https://github.com/continuouspipe/homebrew-tools/blob/master/Formula/cp-remote.rb#L6-L7
+#
 #
 
+
 BINARY=cp-remote
-VERSION=0.1.1-beta.2
+VERSION=0.1.1-beta.3
 
 GOROOT_FINAL=/usr/local/Cellar/go/1.7.4_2/libexec
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config
