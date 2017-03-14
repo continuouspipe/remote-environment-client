@@ -19,7 +19,7 @@ func NewPush() *push {
 func (g *push) Push(localBranch string, remoteName string, remoteBranch string) (string, error) {
 	args := []string{
 		"push",
-		"--force",
+		"--force-with-lease",
 		remoteName,
 		localBranch + ":" + remoteBranch,
 	}
