@@ -196,9 +196,7 @@ func (i initHandler) Handle() error {
 
 	fmt.Printf("\n\n# Get started !\n")
 	fmt.Println("You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
-	for _, publicEndpoint := range remoteEnv.PublicEndpoints {
-		fmt.Printf("%s \t https://%s\n", publicEndpoint.Name, publicEndpoint.Address)
-	}
+	cpapi.PrintPublicEndpoints(os.Stdout, remoteEnv.PublicEndpoints)
 	fmt.Printf("\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
 
 	return nil

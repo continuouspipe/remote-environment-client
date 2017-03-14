@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
@@ -46,6 +48,35 @@ func TestWatch(t *testing.T) {
 	spyKubeCtlInitializer.MockInit(func(environment string) error {
 		return nil
 	})
+	spyApiProvider := spies.NewSpyApiProvider()
+	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+		r := &cpapi.ApiRemoteEnvironmentStatus{}
+		r.PublicEndpoints = []cpapi.ApiPublicEndpoint{
+			{
+				Address: "10.0.0.0",
+				Name:    "web",
+				Ports: []cpapi.ApiPublicEndpointPort{
+					{
+						Number:   80,
+						Protocol: "tcp",
+					},
+				},
+			},
+		}
+		return r, nil
+	})
+	spyConfig := spies.NewSpyConfig()
+	spyConfig.MockGetString(func(key string) (string, error) {
+		switch key {
+		case config.ApiKey:
+			return "some-api-key", nil
+		case config.RemoteEnvironmentId:
+			return "987654321", nil
+		case config.FlowId:
+			return "837d92hd-19su1d91", nil
+		}
+		return "", nil
+	})
 
 	//test subject called
 	handler := &WatchHandle{}
@@ -57,6 +88,8 @@ func TestWatch(t *testing.T) {
 	handler.Stdout = mockStdout
 	handler.IndividualFileSyncThreshold = 20
 	handler.syncer = spySyncer
+	handler.config = spyConfig
+	handler.api = spyApiProvider
 	handler.Handle(spyOsDirectoryMonitor, mockPodsFinder, mockPodFilter)
 
 	//expectations

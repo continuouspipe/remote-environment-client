@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"io"
 )
 
 type CpApiProvider interface {
@@ -85,9 +86,14 @@ type ApiRemoteEnvironmentStatus struct {
 }
 
 type ApiPublicEndpoint struct {
-	Address string        `json:"address"`
-	Name    string        `json:"name"`
-	Ports   []interface{} `json:"ports"`
+	Address string                  `json:"address"`
+	Name    string                  `json:"name"`
+	Ports   []ApiPublicEndpointPort `json:"ports"`
+}
+
+type ApiPublicEndpointPort struct {
+	Number   int    `json:"number"`
+	Protocol string `json:"protocol"`
 }
 
 type ApiTide struct {
@@ -475,4 +481,19 @@ func (c CpApi) getRiverURL() (*url.URL, error) {
 		return nil, err
 	}
 	return u, nil
+}
+
+func PrintPublicEndpoints(writer io.Writer, endpoints []ApiPublicEndpoint) {
+	for _, publicEndpoint := range endpoints {
+		for _, port := range publicEndpoint.Ports {
+			switch port.Number {
+			case 80:
+				fmt.Fprintf(writer, "%s \t http://%s\n", publicEndpoint.Name, publicEndpoint.Address)
+			case 443:
+				fmt.Fprintf(writer, "%s \t https://%s\n", publicEndpoint.Name, publicEndpoint.Address)
+			default:
+				fmt.Fprintf(writer, "%s \t %s:%d\n", publicEndpoint.Name, publicEndpoint.Address, port.Number)
+			}
+		}
+	}
 }

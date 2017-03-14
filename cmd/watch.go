@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
@@ -18,6 +19,8 @@ func NewWatchCmd() *cobra.Command {
 	settings := config.C
 	handler := &WatchHandle{}
 	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
+	handler.api = cpapi.NewCpApi()
+	handler.config = settings
 	command := &cobra.Command{
 		Use:     "watch",
 		Aliases: []string{"wa"},
@@ -70,6 +73,8 @@ type WatchHandle struct {
 	RemoteProjectPath           string
 	syncer                      sync.Syncer
 	kubeCtlInit                 kubectlapi.KubeCtlInitializer
+	api                         cpapi.CpApiProvider
+	config                      config.ConfigProvider
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -125,10 +130,30 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 		return err
 	}
 
+	apiKey, err := h.config.GetString(config.ApiKey)
+	if err != nil {
+		return err
+	}
+	remoteEnvId, err := h.config.GetString(config.RemoteEnvironmentId)
+	if err != nil {
+		return err
+	}
+	flowId, err := h.config.GetString(config.FlowId)
+	if err != nil {
+		return err
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
+
+	h.api.SetApiKey(apiKey)
+	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if err != nil {
+		return err
+	}
+	cpapi.PrintPublicEndpoints(h.Stdout, remoteEnv.PublicEndpoints)
 
 	h.syncer.SetKubeConfigKey(h.Environment)
 	h.syncer.SetEnvironment(h.Environment)
