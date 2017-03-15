@@ -36,10 +36,11 @@ func TestSysCallIsCalledToOpenBashSession(t *testing.T) {
 	})
 
 	//test subject called
-	handler := &BashHandle{}
+	handler := &bashHandle{}
+	handler.interactive = false
 	handler.kubeCtlInit = spyKubeCtlInitializer
-	handler.Environment = "proj-feature-testing"
-	handler.Service = "web"
+	handler.environment = "proj-feature-testing"
+	handler.service = "web"
 	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spyLocalExecutor)
 
 	kscmd := kexec.KSCommand{}
