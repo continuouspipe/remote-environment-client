@@ -114,7 +114,7 @@ func TestParseSaveTokenInfo_Handle(t *testing.T) {
 	spyConfig.MockSet(func(key string, value interface{}) error {
 		return nil
 	})
-	spyConfig.MockSave(func() error {
+	spyConfig.MockSave(func(configType config.ConfigType) error {
 		return nil
 	})
 	spyApiProvider := spies.NewSpyApiProvider()
@@ -176,7 +176,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 		}
 		return "", nil
 	})
-	spyConfig.MockSave(func() error {
+	spyConfig.MockSave(func(configType config.ConfigType) error {
 		return nil
 	})
 	spyConfig.MockSet(func(key string, value interface{}) error {
@@ -277,7 +277,7 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 		}
 		return "", nil
 	})
-	spyConfig.MockSave(func() error {
+	spyConfig.MockSave(func(configType config.ConfigType) error {
 		return nil
 	})
 	spyConfig.MockSet(func(key string, value interface{}) error {
@@ -382,7 +382,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	spyConfig.MockConfigFileUsed(func(configType config.ConfigType) (string, error) {
 		return "", nil
 	})
-	spyConfig.MockSave(func() error {
+	spyConfig.MockSave(func(configType config.ConfigType) error {
 		return nil
 	})
 	spyConfig.MockSet(func(key string, value interface{}) error {
@@ -450,7 +450,7 @@ func TestApplyDefaultService_Handle(t *testing.T) {
 		}
 		return "", nil
 	})
-	spyConfig.MockSave(func() error {
+	spyConfig.MockSave(func(configType config.ConfigType) error {
 		return nil
 	})
 	spyConfig.MockSet(func(key string, value interface{}) error {
@@ -502,4 +502,110 @@ Select an option from 0 to 1: `)
 	spyConfig.ExpectsFirstCallArgument(t, "Set", "value", initStateApplyDefaultService)
 	spyConfig.ExpectsCallNArgument(t, "Set", 2, "key", config.Service)
 	spyConfig.ExpectsCallNArgument(t, "Set", 2, "value", "db")
+}
+
+func TestInitInteractiveHandler_Handle(t *testing.T) {
+	fmt.Println("Running TestInitInteractiveHandler_Handle")
+	defer fmt.Println("TestInitInteractiveHandler_Handle Done")
+
+	type expectation func(*testing.T, *spies.SpyConfig, *spies.SpyApiProvider, *spies.SpyQuestionPrompt)
+	type scenario struct {
+		currentUsername  string
+		currentApiKey    string
+		insertedUsername string
+		insertedApiKey   string
+		reset            bool
+		expectations     []expectation
+	}
+
+	usernameSet := func(t *testing.T, spyConfig *spies.SpyConfig, spyApiProvider *spies.SpyApiProvider, spyQuestionPrompt *spies.SpyQuestionPrompt) {
+		spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.Username)
+		spyConfig.ExpectsFirstCallArgument(t, "Set", "value", "foo")
+	}
+	apiKeySet := func(t *testing.T, spyConfig *spies.SpyConfig, spyApiProvider *spies.SpyApiProvider, spyQuestionPrompt *spies.SpyQuestionPrompt) {
+		spyConfig.ExpectsCallNArgument(t, "Set", 2, "key", config.ApiKey)
+		spyConfig.ExpectsCallNArgument(t, "Set", 2, "value", "bar")
+	}
+	configSaved := func(t *testing.T, spyConfig *spies.SpyConfig, spyApiProvider *spies.SpyApiProvider, spyQuestionPrompt *spies.SpyQuestionPrompt) {
+		spyConfig.ExpectsCallCount(t, "Save", 1)
+		spyConfig.ExpectsFirstCallArgument(t, "Save", "configType", config.GlobalConfigType)
+	}
+
+	scenarios := []scenario{
+		{
+			currentUsername:  "",
+			currentApiKey:    "",
+			insertedUsername: "foo",
+			insertedApiKey:   "bar",
+			reset:            false,
+			expectations: []expectation{
+				usernameSet, apiKeySet, configSaved,
+			},
+		},
+		{
+			currentUsername:  "",
+			currentApiKey:    "",
+			insertedUsername: "foo",
+			insertedApiKey:   "bar",
+			reset:            true,
+			expectations: []expectation{
+				usernameSet, apiKeySet, configSaved,
+			},
+		},
+	}
+
+	for _, scenario := range scenarios {
+		//get mocked dependencies
+		spyConfig := spies.NewSpyConfig()
+		spyConfig.MockSet(func(key string, value interface{}) error {
+			return nil
+		})
+		spyConfig.MockSave(func(configType config.ConfigType) error {
+			return nil
+		})
+		spyConfig.MockGetString(func(key string) (string, error) {
+			switch key {
+			case config.Username:
+				return scenario.currentUsername, nil
+			case config.ApiKey:
+				return scenario.currentApiKey, nil
+			}
+			return "", nil
+		})
+		spyApiProvider := spies.NewSpyApiProvider()
+		spyApiProvider.MockGetApiUser(func(user string) (*cpapi.ApiUser, error) {
+			u := &cpapi.ApiUser{}
+			u.Username = scenario.insertedUsername
+			return u, nil
+		})
+
+		spyQuestionPrompt := spies.NewSpyQuestionPrompt()
+		spyQuestionPrompt.MockRepeatIfEmpty(func(question string) string {
+			switch question {
+			case "Insert your CP Username:":
+				return scenario.insertedUsername
+			case "Insert your CP Api Key:":
+				return scenario.insertedApiKey
+			default:
+				return "foo"
+			}
+		})
+
+		//get test subject
+		handler := &initInteractiveHandler{}
+		handler.api = spyApiProvider
+		handler.config = spyConfig
+		handler.qp = spyQuestionPrompt
+		handler.writer = ioutil.Discard
+		handler.reset = false
+
+		//call handler
+		err := handler.Handle()
+		test.AssertNotError(t, err)
+
+		for _, expectation := range scenario.expectations {
+			expectation(t, spyConfig, spyApiProvider, spyQuestionPrompt)
+		}
+	}
+
 }

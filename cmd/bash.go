@@ -12,6 +12,8 @@ import (
 	"strings"
 )
 
+var bashInteractiveFullExample = `cp-remote bash --interactive ([-i]) --environment ([-e]) php-example-cpdev-foo --service ([-s]) web --flow ([-f]) 1268cc54-b265-11e6-b835-0c360641bb54`;
+
 func NewBashCmd() *cobra.Command {
 	settings := config.C
 	handler := &BashHandle{}

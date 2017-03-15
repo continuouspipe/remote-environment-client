@@ -36,7 +36,7 @@ type SpyConfig struct {
 	setConfigPath  func(configType config.ConfigType, in string) error
 	configFileUsed func(configType config.ConfigType) (string, error)
 	readInConfig   func(configType config.ConfigType) error
-	save           func() error
+	save           func(configType config.ConfigType) error
 }
 
 func NewSpyConfig() *SpyConfig {
@@ -117,13 +117,14 @@ func (m *SpyConfig) ReadInConfig(configType config.ConfigType) error {
 	return m.readInConfig(configType)
 }
 
-func (m *SpyConfig) Save() error {
+func (m *SpyConfig) Save(configType config.ConfigType) error {
 	args := make(Arguments)
+	args["configType"] = configType
 
 	function := &Function{Name: "Save", Arguments: args}
 	m.calledFunctions = append(m.calledFunctions, *function)
 
-	return m.save()
+	return m.save(configType)
 }
 
 //setters for mock functions
@@ -154,6 +155,6 @@ func (m *SpyConfig) MockReadInConfig(mocked func(configType config.ConfigType) e
 	m.readInConfig = mocked
 }
 
-func (m *SpyConfig) MockSave(mocked func() error) {
+func (m *SpyConfig) MockSave(mocked func(configType config.ConfigType) error) {
 	m.save = mocked
 }

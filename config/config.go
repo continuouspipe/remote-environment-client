@@ -14,6 +14,7 @@ type ConfigType string
 
 const LocalConfigType ConfigType = "local"
 const GlobalConfigType ConfigType = "global"
+const AllConfigTypes ConfigType = "all"
 
 type Setting struct {
 	Name         string
@@ -29,7 +30,7 @@ type ConfigProvider interface {
 	SetConfigPath(configType ConfigType, in string) error
 	ConfigFileUsed(configType ConfigType) (string, error)
 	ReadInConfig(configType ConfigType) error
-	Save() error
+	Save(configType ConfigType) error
 }
 
 //allows to fetch settings either from global or local config
@@ -122,12 +123,20 @@ func (c *Config) ReadInConfig(configType ConfigType) error {
 }
 
 //save the local and global settings on disk
-func (c *Config) Save() error {
-	err := c.local.Save()
-	if err != nil {
-		return err
+func (c *Config) Save(configType ConfigType) error {
+	switch configType {
+	case LocalConfigType:
+		return c.local.Save()
+	case GlobalConfigType:
+		return c.global.Save()
+	case AllConfigTypes:
+		err := c.local.Save()
+		if err != nil {
+			return err
+		}
+		return c.global.Save()
 	}
-	return c.global.Save()
+	return fmt.Errorf("Specify a config type: %s, %s or %s?", LocalConfigType, GlobalConfigType, AllConfigTypes)
 }
 
 //check if all mandatory settings are set for both config types
