@@ -69,7 +69,7 @@ func (m FsWatch) AnyEventCall(directory string, observer EventsObserver) error {
 				cplogs.Flush()
 
 				//check if the file matches the exclusion list, if so ignore the event
-				match := m.Exclusions.MatchExclusionList(event.Name)
+				match, _ := m.Exclusions.MatchExclusionList(event.Name)
 				if match == true {
 					cplogs.V(5).Infof("skipped %s(%s) as is in the exclusion list", event.Name, event.Op)
 					cplogs.Flush()
@@ -159,7 +159,7 @@ func (m FsWatch) AddRecursiveWatch(watcher *fsnotify.Watcher, path string) error
 	for _, v := range folders {
 
 		//check if the folder matches the exclusion list, if so ignore the event
-		match := m.Exclusions.MatchExclusionList(v)
+		match, _ := m.Exclusions.MatchExclusionList(v)
 		if match == true {
 			cplogs.V(5).Infof("skipped path as matches exlusion list, path %s", v)
 			continue
