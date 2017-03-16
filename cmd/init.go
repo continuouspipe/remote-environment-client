@@ -33,10 +33,6 @@ const remoteEnvironmentReadinessProbePeriodSeconds = 30
 //NewInitCmd Initialises the remote environment
 func NewInitCmd() *cobra.Command {
 	settings := config.C
-	handler := &initHandler{}
-	handler.api = cpapi.NewCpApi()
-	handler.config = settings
-	handler.qp = util.NewQuestionPrompt()
 
 	command := &cobra.Command{
 		Use:     "init",
@@ -49,6 +45,22 @@ func NewInitCmd() *cobra.Command {
 				args = []string{base64.StdEncoding.EncodeToString([]byte(strings.Join(args, ",")))}
 			}
 
+			interactive, err := cmd.PersistentFlags().GetBool("interactive")
+			checkErr(err)
+			reset, err := cmd.PersistentFlags().GetBool("reset")
+			checkErr(err)
+
+			var handler InitStrategy
+
+			if interactive {
+				handler = NewInitInteractiveHandler(reset)
+			} else {
+				remoteName, err := cmd.PersistentFlags().GetString(config.RemoteName)
+				checkErr(err)
+
+				handler = NewInitHandler(remoteName, reset)
+			}
+
 			checkErr(handler.Complete(args))
 			checkErr(handler.Validate())
 			checkErr(handler.Handle())
@@ -57,19 +69,120 @@ func NewInitCmd() *cobra.Command {
 
 	remoteName, err := settings.GetString(config.RemoteName)
 	checkErr(err)
-	command.PersistentFlags().StringVar(&handler.remoteName, config.RemoteName, remoteName, "Override the default remote name (origin)")
-	command.PersistentFlags().BoolVarP(&handler.reset, "reset", "r", false, "With reset flag set to true, init will not attempt to restore interrupted initializations")
+	command.PersistentFlags().String(config.RemoteName, remoteName, "Override the default remote name (origin)")
+	command.PersistentFlags().BoolP("reset", "r", false, "With reset flag set to true, init will not attempt to restore interrupted initializations")
+	command.PersistentFlags().BoolP("interactive", "i", false, "Interactive mode allow you specify your cp username and api-key without a token so they can be used with commands that allow the interactive mode.")
 	return command
 }
 
+type InitStrategy interface {
+	Complete(argsIn []string) error
+	Validate() error
+	Handle() error
+	SetWriter(io.Writer)
+}
+
+//initInteractiveHandler is a interactive mode strategy where we request the user to insert the global configuration data
+//which is the cp username and cp api-key which are mandatory to use the interactive mode on all command that support it.
+type initInteractiveHandler struct {
+	config config.ConfigProvider
+	qp     util.QuestionPrompter
+	api    cpapi.CpApiProvider
+	writer io.Writer
+	reset  bool
+}
+
+func NewInitInteractiveHandler(reset bool) *initInteractiveHandler {
+	p := &initInteractiveHandler{}
+	p.api = cpapi.NewCpApi()
+	p.config = config.C
+	p.qp = util.NewQuestionPrompt()
+	p.reset = reset
+	p.writer = os.Stdout
+	return p
+}
+
+func (i *initInteractiveHandler) SetWriter(writer io.Writer) {
+	i.writer = writer
+}
+
+//Complete verifies command line arguments and loads data from the command environment
+func (i *initInteractiveHandler) Complete(argsIn []string) error {
+	return nil
+}
+
+//Validate checks that the handler has all it needs
+func (i initInteractiveHandler) Validate() error {
+	return nil
+}
+
+//Handle request the user the config data required for the interactive mode to work
+func (i initInteractiveHandler) Handle() error {
+	username, err := i.config.GetString(config.Username)
+	if err != nil {
+		return err
+	}
+	apiKey, err := i.config.GetString(config.ApiKey)
+	if err != nil {
+		return err
+	}
+
+	var changed bool = false
+
+	if username == "" || i.reset == true {
+		username = i.qp.RepeatIfEmpty("Insert your CP Username:")
+		i.config.Set(config.Username, username)
+		changed = true
+
+	}
+	if apiKey == "" || i.reset == true {
+		apiKey = i.qp.RepeatIfEmpty("Insert your CP Api Key:")
+		i.config.Set(config.ApiKey, apiKey)
+		changed = true
+	}
+
+	if changed == true {
+		i.api.SetApiKey(apiKey)
+		user, err := i.api.GetApiUser(username)
+		if err != nil {
+			return err
+		}
+		if user.Username != username {
+			return fmt.Errorf("The api key provided does not match your the cp username %s.", username)
+		}
+		i.config.Save(config.GlobalConfigType)
+	}
+
+	fmt.Fprintf(i.writer, "\n# Get started !\n")
+	fmt.Fprintf(i.writer, "You can now run commands in interactive mode such as\n%s\n", bashInteractiveFullExample)
+
+	return nil
+}
+
+//initHandler is the default initialisation mode which prepare the remote environment so that can be used with any command.
 type initHandler struct {
-	command    *cobra.Command
-	config     config.ConfigProvider
-	token      string
-	remoteName string
-	reset      bool
-	qp         util.QuestionPrompter
-	api        cpapi.CpApiProvider
+	interactive bool
+	config      config.ConfigProvider
+	token       string
+	remoteName  string
+	reset       bool
+	qp          util.QuestionPrompter
+	api         cpapi.CpApiProvider
+	writer      io.Writer
+}
+
+func NewInitHandler(remoteName string, reset bool) *initHandler {
+	p := &initHandler{}
+	p.api = cpapi.NewCpApi()
+	p.config = config.C
+	p.qp = util.NewQuestionPrompt()
+	p.remoteName = remoteName
+	p.reset = reset
+	return p
+}
+
+func (i *initHandler) SetWriter(writer io.Writer) {
+	i.writer = writer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -172,7 +285,7 @@ func (i initHandler) Handle() error {
 		initState = initState.Next()
 	}
 	i.config.Set(config.InitStatus, initStateCompleted)
-	i.config.Save()
+	i.config.Save(config.AllConfigTypes)
 
 	apiKey, err := i.config.GetString(config.ApiKey)
 	if err != nil {
@@ -194,10 +307,10 @@ func (i initHandler) Handle() error {
 		return err
 	}
 
-	fmt.Printf("\n\n# Get started !\n")
-	fmt.Println("You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
-	cpapi.PrintPublicEndpoints(os.Stdout, remoteEnv.PublicEndpoints)
-	fmt.Printf("\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
+	fmt.Fprintf(i.writer, "\n\n# Get started !\n")
+	fmt.Fprintln(i.writer, "You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
+	cpapi.PrintPublicEndpoints(i.writer, remoteEnv.PublicEndpoints)
+	fmt.Fprintf(i.writer, "\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
 
 	return nil
 }
@@ -218,7 +331,7 @@ func (p parseSaveTokenInfo) Name() string {
 
 func (p parseSaveTokenInfo) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
-	p.config.Save()
+	p.config.Save(config.AllConfigTypes)
 
 	//we expect the token to have: api-key, remote-environment-id, project, cp-username, git-branch
 	splitToken := strings.Split(p.token, ",")
@@ -249,7 +362,7 @@ func (p parseSaveTokenInfo) Handle() error {
 	p.config.Set(config.FlowId, flowId)
 	p.config.Set(config.RemoteBranch, gitBranch)
 	p.config.Set(config.RemoteEnvironmentId, remoteEnvId)
-	p.config.Save()
+	p.config.Save(config.AllConfigTypes)
 	cplogs.V(5).Infof("saved parsed token info for user: %s", cpUsername)
 	cplogs.Flush()
 	return nil
@@ -289,7 +402,7 @@ func (p triggerBuild) Name() string {
 
 func (p triggerBuild) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
-	p.config.Save()
+	p.config.Save(config.AllConfigTypes)
 
 	apiKey, err := p.config.GetString(config.ApiKey)
 	if err != nil {
@@ -381,8 +494,8 @@ func (p triggerBuild) pushLocalBranchToRemote(remoteName string, gitBranch strin
 	if err != nil {
 		return err
 	}
-	p.push.Push(lbn, remoteName, gitBranch)
-	return nil
+	_, err = p.push.Push(lbn, remoteName, gitBranch)
+	return err
 }
 
 func (p triggerBuild) hasRemote(remoteName string, gitBranch string) (bool, error) {
@@ -423,7 +536,7 @@ func (p waitEnvironmentReady) Name() string {
 
 func (p waitEnvironmentReady) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
-	p.config.Save()
+	p.config.Save(config.AllConfigTypes)
 
 	apiKey, err := p.config.GetString(config.ApiKey)
 	if err != nil {
@@ -543,7 +656,7 @@ func (p applyEnvironmentSettings) Name() string {
 
 func (p applyEnvironmentSettings) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
-	p.config.Save()
+	p.config.Save(config.AllConfigTypes)
 
 	apiKey, err := p.config.GetString(config.ApiKey)
 	if err != nil {
@@ -569,7 +682,7 @@ func (p applyEnvironmentSettings) Handle() error {
 	//the environment has been built, so save locally the settings received from the server
 	p.config.Set(config.ClusterIdentifier, remoteEnv.ClusterIdentifier)
 	p.config.Set(config.KubeEnvironmentName, remoteEnv.KubeEnvironmentName)
-	p.config.Save()
+	p.config.Save(config.AllConfigTypes)
 	cplogs.V(5).Infoln("saved remote environment info")
 	cplogs.Flush()
 
@@ -577,7 +690,7 @@ func (p applyEnvironmentSettings) Handle() error {
 	if err != nil {
 		return err
 	}
-	p.config.Save()
+	p.config.Save(config.AllConfigTypes)
 	cplogs.Flush()
 	return nil
 }
@@ -620,7 +733,7 @@ func (p applyDefaultService) Name() string {
 
 func (p applyDefaultService) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
-	p.config.Save()
+	p.config.Save(config.AllConfigTypes)
 
 	environment, err := p.config.GetString(config.KubeEnvironmentName)
 	if err != nil {
@@ -640,7 +753,7 @@ func (p applyDefaultService) Handle() error {
 	if len(list.Items) == 1 {
 		cplogs.V(5).Infoln("Only 1 service found, setting that one as default.")
 		p.config.Set(list.Items[0].GetName(), config.Service)
-		p.config.Save()
+		p.config.Save(config.AllConfigTypes)
 		return nil
 	}
 
@@ -668,6 +781,6 @@ func (p applyDefaultService) Handle() error {
 	}
 	serviceName := list.Items[key].GetName()
 	p.config.Set(config.Service, serviceName)
-	p.config.Save()
+	p.config.Save(config.AllConfigTypes)
 	return nil
 }
