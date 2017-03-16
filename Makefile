@@ -22,11 +22,26 @@
 #
 # User-Friendly Latest Release Downloads Links:
 #
-# cd latest/darwin-amd64/; chmod +x cp-remote; tar -czvf cp-remote.tar.gz cp-remote;
-# cd ../../latest/linux-386/; chmod +x cp-remote; tar -czvf cp-remote.tar.gz cp-remote;
-# cd ../../latest/linux-amd64/; chmod +x cp-remote; tar -czvf cp-remote.tar.gz cp-remote;
-# cd ../../latest/windows-386/; zip -r cp-remote.zip cp-remote.exe;
-# cd ../../latest/windows-amd64/; zip -r cp-remote.zip cp-remote.exe;/Users/azucca/dev/cp-remote-updater-gh-pages/
+# cp 0.1.1/darwin-amd64.gz latest/darwin-amd64/;
+# cp 0.1.1/linux-amd64.gz latest/linux-amd64/;
+# cp 0.1.1/linux-386.gz latest/linux-386/;
+# cp 0.1.1/windows-amd64.gz latest/windows-amd64/;
+# cp 0.1.1/windows-386.gz latest/windows-386/;
+#
+# cd latest/darwin-amd64/; gzip -d darwin-amd64.gz; chmod +x darwin-amd64; mv darwin-amd64 cp-remote;
+# tar -czvf cp-remote.tar.gz cp-remote;
+#
+# cd ../../latest/linux-amd64/; gzip -d linux-amd64.gz; chmod +x linux-amd64; mv linux-amd64 cp-remote;
+# tar -czvf cp-remote.tar.gz cp-remote;
+#
+# cd ../../latest/linux-386/; gzip -d linux-386.gz chmod +x linux-386 mv linux-386 cp-remote
+# tar -czvf cp-remote.tar.gz cp-remote;
+#
+# cd ../../latest/windows-386/; gzip -d windows-386; mv windows-386 cp-remote.exe
+# zip -r cp-remote.zip cp-remote.exe;
+#
+# cd ../../latest/windows-amd64/; gzip -d windows-amd64; mv windows-amd64 cp-remote.exe
+# zip -r cp-remote.zip cp-remote.exe;
 #
 # commit and push the remote-environment-client gh-pages branch
 #
