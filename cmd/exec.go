@@ -105,6 +105,11 @@ func (h *execHandle) Validate() error {
 	if len(strings.Trim(h.service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
 	}
+	if h.interactive {
+		if len(strings.Trim(h.flowId, " ")) == 0 {
+			return fmt.Errorf("the flowId specified is invalid")
+		}
+	}
 	return nil
 }
 
