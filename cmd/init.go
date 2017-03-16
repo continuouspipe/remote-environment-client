@@ -136,7 +136,7 @@ func (i initInteractiveHandler) Handle() error {
 
 	}
 	if apiKey == "" || i.reset == true {
-		apiKey = i.qp.RepeatIfEmpty("Insert your CP Api Key:")
+		apiKey = i.qp.RepeatPasswordIfEmpty("Insert your CP Api Key:")
 		i.config.Set(config.ApiKey, apiKey)
 		changed = true
 	}
@@ -178,6 +178,7 @@ func NewInitHandler(remoteName string, reset bool) *initHandler {
 	p.qp = util.NewQuestionPrompt()
 	p.remoteName = remoteName
 	p.reset = reset
+	p.writer = os.Stdout
 	return p
 }
 
