@@ -79,6 +79,7 @@ type InitStrategy interface {
 	Complete(argsIn []string) error
 	Validate() error
 	Handle() error
+	SetWriter(io.Writer)
 }
 
 //initInteractiveHandler is a interactive mode strategy where we request the user to insert the global configuration data
@@ -89,6 +90,20 @@ type initInteractiveHandler struct {
 	api    cpapi.CpApiProvider
 	writer io.Writer
 	reset  bool
+}
+
+func NewInitInteractiveHandler(reset bool) *initInteractiveHandler {
+	p := &initInteractiveHandler{}
+	p.api = cpapi.NewCpApi()
+	p.config = config.C
+	p.qp = util.NewQuestionPrompt()
+	p.reset = reset
+	p.writer = os.Stdout
+	return p
+}
+
+func (i *initInteractiveHandler) SetWriter(writer io.Writer) {
+	i.writer = writer
 }
 
 //Complete verifies command line arguments and loads data from the command environment
@@ -144,16 +159,6 @@ func (i initInteractiveHandler) Handle() error {
 	return nil
 }
 
-func NewInitInteractiveHandler(reset bool) *initInteractiveHandler {
-	p := &initInteractiveHandler{}
-	p.api = cpapi.NewCpApi()
-	p.config = config.C
-	p.qp = util.NewQuestionPrompt()
-	p.reset = reset
-	p.writer = os.Stdout
-	return p
-}
-
 //initHandler is the default initialisation mode which prepare the remote environment so that can be used with any command.
 type initHandler struct {
 	interactive bool
@@ -163,6 +168,7 @@ type initHandler struct {
 	reset       bool
 	qp          util.QuestionPrompter
 	api         cpapi.CpApiProvider
+	writer      io.Writer
 }
 
 func NewInitHandler(remoteName string, reset bool) *initHandler {
@@ -173,6 +179,10 @@ func NewInitHandler(remoteName string, reset bool) *initHandler {
 	p.remoteName = remoteName
 	p.reset = reset
 	return p
+}
+
+func (i *initHandler) SetWriter(writer io.Writer) {
+	i.writer = writer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -297,10 +307,10 @@ func (i initHandler) Handle() error {
 		return err
 	}
 
-	fmt.Printf("\n\n# Get started !\n")
-	fmt.Println("You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
-	cpapi.PrintPublicEndpoints(os.Stdout, remoteEnv.PublicEndpoints)
-	fmt.Printf("\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
+	fmt.Fprintf(i.writer, "\n\n# Get started !\n")
+	fmt.Fprintln(i.writer, "You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
+	cpapi.PrintPublicEndpoints(i.writer, remoteEnv.PublicEndpoints)
+	fmt.Fprintf(i.writer, "\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
 
 	return nil
 }
@@ -484,8 +494,8 @@ func (p triggerBuild) pushLocalBranchToRemote(remoteName string, gitBranch strin
 	if err != nil {
 		return err
 	}
-	p.push.Push(lbn, remoteName, gitBranch)
-	return nil
+	_, err = p.push.Push(lbn, remoteName, gitBranch)
+	return err
 }
 
 func (p triggerBuild) hasRemote(remoteName string, gitBranch string) (bool, error) {
