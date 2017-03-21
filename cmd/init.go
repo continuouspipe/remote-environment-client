@@ -588,7 +588,7 @@ func (p waitEnvironmentReady) Handle() error {
 		return nil
 	}
 
-	fmt.Fprintln(p.writer, "Continuous Pipe will now building your developer environment. You can checkout the logs of your first tide there:")
+	fmt.Fprintln(p.writer, "ContinuousPipe is now building your developer environment. You can view the logs of your first tide here:")
 	fmt.Fprintf(p.writer, "https://ui.continuouspipe.io/project/%s/%s/%s/logs\n", remoteEnv.LastTide.Team.Slug, remoteEnv.LastTide.FlowUuid, remoteEnv.LastTide.Uuid)
 
 	s := spinner.New(spinner.CharSets[34], 100*time.Millisecond)
