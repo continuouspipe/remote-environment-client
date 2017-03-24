@@ -16,7 +16,7 @@ func NewKubePodsFind() *KubePodsFind {
 }
 
 func (p KubePodsFind) FindAll(user string, apiKey string, address string, environment string) (*api.PodList, error) {
-	config, err := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, address).ClientConfig()
+	config, err := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, address, environment).ClientConfig()
 
 	if err != nil {
 		return nil, err

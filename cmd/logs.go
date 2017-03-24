@@ -10,6 +10,7 @@ import (
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -137,11 +138,14 @@ func (h *LogsCmdHandle) Handle(args []string, podsFinder pods.Finder, podsFilter
 	cplogs.V(5).Infof("getting container logs for environment %s, pod %s", h.environment, pod.GetName())
 	cplogs.Flush()
 
-	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr)
-
+	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr, h.environment)
 	kubeCmdLogs := kubectlcmd.NewCmdLogs(kubectlcmdutil.NewFactory(clientConfig), os.Stdout)
 
-	kubeCmdLogs.Run(kubeCmdLogs, []string{pod.GetName()})
+	kubeCmdLogs.Flags().Set("since", h.since.String())
+	kubeCmdLogs.Flags().Set("tail", strconv.FormatInt(h.tail, 10))
+	kubeCmdLogs.Flags().Set("follow", strconv.FormatBool(h.follow))
+	kubeCmdLogs.Flags().Set("previous", strconv.FormatBool(h.previous))
 
+	kubeCmdLogs.Run(kubeCmdLogs, []string{pod.GetName()})
 	return nil
 }

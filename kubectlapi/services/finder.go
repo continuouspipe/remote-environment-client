@@ -16,7 +16,7 @@ func NewKubeService() *KubeService {
 }
 
 func (p KubeService) FindAll(user string, apiKey string, address string, environment string) (*api.ServiceList, error) {
-	config, err := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, address).ClientConfig()
+	config, err := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, address, environment).ClientConfig()
 
 	if err != nil {
 		return nil, err

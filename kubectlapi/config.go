@@ -184,8 +184,9 @@ func (k kubeCtlConfig) ConfigSetContext(environment string, username string) (st
 	return osapi.CommandExec(getScmd(), args...)
 }
 
-func GetNonInteractiveDeferredLoadingClientConfig(user string, apiKey string, address string) clientcmd.ClientConfig {
+func GetNonInteractiveDeferredLoadingClientConfig(user string, apiKey string, address string, namespace string) clientcmd.ClientConfig {
 	ctx := clientcmdapi.NewContext()
+	ctx.Namespace = namespace
 	cfg := clientcmdapi.NewConfig()
 	authInfo := clientcmdapi.NewAuthInfo()
 
