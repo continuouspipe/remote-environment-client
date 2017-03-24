@@ -110,6 +110,11 @@ func (h *ForwardHandle) Validate() error {
 }
 
 func (h *ForwardHandle) Handle() error {
+	//TODO: Remove this when we get rid of the dependency on ~/.kube/config and call directly the NewCmdPortForward without spawning
+	err := h.kubeCtlInit.Init(h.Environment)
+	if err != nil {
+		return err
+	}
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
 		return nil

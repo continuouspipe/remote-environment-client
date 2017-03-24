@@ -163,6 +163,12 @@ func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 		cplogs.V(5).Infof("interactive mode: cluster found and is set to %s", clusterIdentifier)
 	}
 
+	//TODO: Remove this when we get rid of the dependency on ~/.kube/config and call directly the KubeExecCmd without spawning
+	err := h.kubeCtlInit.Init(h.environment)
+	if err != nil {
+		return err
+	}
+
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
 		return nil
