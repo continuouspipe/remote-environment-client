@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/spf13/cobra"
@@ -10,6 +11,7 @@ import (
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"os"
 	"strings"
+	"time"
 )
 
 var (
@@ -36,7 +38,6 @@ var (
 func NewLogsCmd() *cobra.Command {
 	settings := config.C
 	handler := &LogsCmdHandle{}
-	handler.kubeLogsOptions = kubectlcmd.NewCmdLogs(kubectlcmdutil.NewFactory(nil), os.Stdout)
 	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 	command := &cobra.Command{
 		Use:     "logs",
@@ -63,28 +64,24 @@ func NewLogsCmd() *cobra.Command {
 	command.PersistentFlags().StringVarP(&handler.environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
 	command.PersistentFlags().StringVarP(&handler.service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 
-	//will be passed to the kubectl logs command
-	since, err := handler.kubeLogsOptions.Flags().GetDuration("since")
-	checkErr(err)
-	tail, err := handler.kubeLogsOptions.Flags().GetInt64("tail")
-	checkErr(err)
-	follow, err := handler.kubeLogsOptions.Flags().GetBool("follow")
-	checkErr(err)
-	previous, err := handler.kubeLogsOptions.Flags().GetBool("previous")
-	checkErr(err)
-
-	command.PersistentFlags().DurationVar(&since, "since", 0, "Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to all logs. Only one of since-time / since may be used.")
-	command.PersistentFlags().Int64Var(&tail, "tail", -1, "Lines of recent log file to display. Defaults to -1, showing all log lines.")
-	command.PersistentFlags().BoolVarP(&follow, "follow", "f", false, "Specify if the logs should be streamed.")
-	command.PersistentFlags().BoolVarP(&previous, "previous", "p", false, "If true, print the logs for the previous instance of the container in a pod if it exists.")
+	command.PersistentFlags().DurationVar(&handler.since, "since", 0, "Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to all logs. Only one of since-time / since may be used.")
+	command.PersistentFlags().Int64Var(&handler.tail, "tail", -1, "Lines of recent log file to display. Defaults to -1, showing all log lines.")
+	command.PersistentFlags().BoolVarP(&handler.follow, "follow", "f", false, "Specify if the logs should be streamed.")
+	command.PersistentFlags().BoolVarP(&handler.previous, "previous", "p", false, "If true, print the logs for the previous instance of the container in a pod if it exists.")
 	return command
 }
 
 type LogsCmdHandle struct {
-	environment     string
-	service         string
-	kubeCtlInit     kubectlapi.KubeCtlInitializer
-	kubeLogsOptions *cobra.Command
+	environment string
+	service     string
+	username    string
+	apiKey      string
+	conf        config.ConfigProvider
+	kubeCtlInit kubectlapi.KubeCtlInitializer
+	since       time.Duration
+	tail        int64
+	follow      bool
+	previous    bool
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -96,6 +93,14 @@ func (h *LogsCmdHandle) Complete(cmd *cobra.Command, argsIn []string, settings *
 	}
 	if h.service == "" {
 		h.service, err = settings.GetString(config.Service)
+		checkErr(err)
+	}
+	if h.username == "" {
+		h.username, err = settings.GetString(config.Username)
+		checkErr(err)
+	}
+	if h.apiKey == "" {
+		h.apiKey, err = settings.GetString(config.ApiKey)
 		checkErr(err)
 	}
 	return nil
@@ -114,19 +119,29 @@ func (h *LogsCmdHandle) Validate() error {
 
 // Handle set the flags in the kubeclt logs handle command and executes it
 func (h *LogsCmdHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter) error {
-	//re-init kubectl in case the kube settings have been modified
-	err := h.kubeCtlInit.Init(h.environment)
+	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
 		return nil
 	}
 
-	allPods, err := podsFinder.FindAll(h.environment, h.environment)
-	checkErr(err)
+	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.environment)
+	if err != nil {
+		return err
+	}
 
 	pod, err := podsFilter.ByService(allPods, h.service)
-	checkErr(err)
+	if err != nil {
+		return err
+	}
 
-	h.kubeLogsOptions.Run(h.kubeLogsOptions, []string{pod.GetName()})
+	cplogs.V(5).Infof("getting container logs for environment %s, pod %s", h.environment, pod.GetName())
+	cplogs.Flush()
+
+	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr)
+
+	kubeCmdLogs := kubectlcmd.NewCmdLogs(kubectlcmdutil.NewFactory(clientConfig), os.Stdout)
+
+	kubeCmdLogs.Run(kubeCmdLogs, []string{pod.GetName()})
 
 	return nil
 }

@@ -110,13 +110,15 @@ func (h *ForwardHandle) Validate() error {
 }
 
 func (h *ForwardHandle) Handle() error {
-	//re-init kubectl in case the kube settings have been modified
-	err := h.kubeCtlInit.Init(h.Environment)
+	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
+	if err != nil {
+		return nil
+	}
+
+	allPods, err := h.podsFinder.FindAll(user, apiKey, addr, h.Environment)
 	if err != nil {
 		return err
 	}
-
-	allPods, err := h.podsFinder.FindAll(h.Environment, h.Environment)
 	if err != nil {
 		cplogs.V(5).Infof("pods not found for environment %s", h.Environment)
 		return err
@@ -130,5 +132,6 @@ func (h *ForwardHandle) Handle() error {
 
 	cplogs.V(5).Infof("setting up forwarding for target pod %s and ports %s", pod.GetName(), h.ports)
 	cplogs.Flush()
+	//TODO: Change to call directly the KubeCtl NewCmdPortForward()
 	return kubectlapi.Forward(h.Environment, h.Environment, pod.GetName(), h.ports, nil)
 }
