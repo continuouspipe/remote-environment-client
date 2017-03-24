@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	errorPkg "github.com/continuouspipe/remote-environment-client/error"
 	"github.com/fatih/color"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -11,7 +12,6 @@ import (
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 )
 
 var localConfigFile string
@@ -90,6 +90,7 @@ func init() {
 	RootCmd.AddCommand(NewForwardCmd())
 	RootCmd.AddCommand(NewVersionCmd())
 	RootCmd.AddCommand(NewCheckUpdatesCmd())
+	RootCmd.AddCommand(NewLogsCmd())
 
 	//adding kubectl commands as hidden
 	kubeCtlCommand := kubectlcmd.NewKubectlCommand(kubectlcmdutil.NewFactory(nil), os.Stdin, os.Stdout, os.Stderr)
@@ -167,23 +168,11 @@ func addApplicationFilesToGitIgnore() {
 func validateConfig() {
 	valid, missing := config.C.Validate()
 	if valid == false {
-		exitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the init command.", missing))
+		errorPkg.ExitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the init command.", missing))
+
 	}
 }
 
 func checkErr(err error) {
-	if err != nil {
-		exitWithMessage(err.Error())
-	}
-}
-
-func exitWithMessage(message string) {
-	color.Set(color.FgRed)
-	fmt.Println("ERROR: " + message)
-
-	stack := debug.Stack()
-	cplogs.V(4).Info(string(stack[:]))
-	color.Unset()
-	cplogs.Flush()
-	os.Exit(1)
+	errorPkg.CheckErr(err)
 }
