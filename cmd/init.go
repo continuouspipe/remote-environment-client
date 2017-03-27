@@ -431,14 +431,14 @@ func (p triggerBuild) Handle() error {
 	}
 
 	p.api.SetApiKey(apiKey)
-	remoteEnv, err := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
-	if err != nil {
-		return err
+	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if el != nil {
+		return el
 	}
 
-	environments, err := p.api.GetApiEnvironments(flowId)
-	if err != nil {
-		return err
+	environments, el := p.api.GetApiEnvironments(flowId)
+	if el != nil {
+		return el
 	}
 
 	envExists := false
@@ -559,14 +559,14 @@ func (p waitEnvironmentReady) Handle() error {
 	p.api.SetApiKey(apiKey)
 	var remoteEnv *cpapi.ApiRemoteEnvironmentStatus
 
-	remoteEnv, err = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
-	if err != nil {
-		return err
+	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if el != nil {
+		return el
 	}
 
-	environments, err := p.api.GetApiEnvironments(flowId)
-	if err != nil {
-		return err
+	environments, el := p.api.GetApiEnvironments(flowId)
+	if el != nil {
+		return el
 	}
 
 	envExists := false
@@ -596,8 +596,8 @@ WAIT_LOOP:
 	for t := range p.ticker.C {
 		cplogs.V(5).Infoln("environment readiness check at ", t)
 
-		remoteEnv, err = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
-		if err != nil {
+		remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+		if el != nil {
 			break
 		}
 
@@ -698,9 +698,9 @@ func (p applyEnvironmentSettings) Handle() error {
 
 	p.api.SetApiKey(apiKey)
 
-	remoteEnv, err := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
-	if err != nil {
-		return err
+	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if el != nil {
+		return el
 	}
 
 	cplogs.V(5).Infof("saving remote environment info for environment name: %s, environment id: %s", remoteEnv.KubeEnvironmentName, remoteEnvId)

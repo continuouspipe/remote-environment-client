@@ -144,9 +144,9 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 	}
 
 	h.api.SetApiKey(apiKey)
-	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
-	if err != nil {
-		return err
+	remoteEnv, el := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if el != nil {
+		return el
 	}
 	cpapi.PrintPublicEndpoints(h.Stdout, remoteEnv.PublicEndpoints)
 

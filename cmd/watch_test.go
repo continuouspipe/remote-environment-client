@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
+	"github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
@@ -49,7 +49,7 @@ func TestWatch(t *testing.T) {
 		return "", "", "", nil
 	})
 	spyApiProvider := spies.NewSpyApiProvider()
-	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, *errors.ErrorList) {
 		r := &cpapi.ApiRemoteEnvironmentStatus{}
 		r.PublicEndpoints = []cpapi.ApiPublicEndpoint{
 			{

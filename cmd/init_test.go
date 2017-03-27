@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"testing"
-
+	"github.com/continuouspipe/remote-environment-client/errors"
 	"encoding/base64"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
@@ -118,7 +118,7 @@ func TestParseSaveTokenInfo_Handle(t *testing.T) {
 		return nil
 	})
 	spyApiProvider := spies.NewSpyApiProvider()
-	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, *errors.ErrorList) {
 		r := &cpapi.ApiRemoteEnvironmentStatus{}
 		return r, nil
 	})
@@ -184,7 +184,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	})
 
 	spyApi := spies.NewSpyApiProvider()
-	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, *errors.ErrorList) {
 		return &cpapi.ApiRemoteEnvironmentStatus{
 			Status: cpapi.RemoteEnvironmentTideNotStarted,
 		}, nil
@@ -192,7 +192,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
 		return nil
 	})
-	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, error) {
+	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, *errors.ErrorList) {
 		return []cpapi.ApiEnvironment{}, nil
 	})
 
@@ -292,14 +292,14 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
 		return nil
 	})
-	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, error) {
+	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, *errors.ErrorList) {
 		return []cpapi.ApiEnvironment{}, nil
 	})
 	//mock a response with a status of:
 	//RemoteEnvironmentTideFailed the first time
 	//RemoteEnvironmentTideRunning the second time
 	//RemoteEnvironmentRunning second time
-	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, *errors.ErrorList) {
 		var s string
 		callCount := spyApi.CallsCountFor("GetRemoteEnvironmentStatus")
 
@@ -390,7 +390,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	})
 
 	spyApi := spies.NewSpyApiProvider()
-	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, *errors.ErrorList) {
 		return &cpapi.ApiRemoteEnvironmentStatus{
 			cpapi.RemoteEnvironmentRunning,
 			"837d92hd-19su1d91-dev-some-user",

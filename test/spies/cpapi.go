@@ -1,14 +1,17 @@
 package spies
 
-import "github.com/continuouspipe/remote-environment-client/cpapi"
+import (
+	"github.com/continuouspipe/remote-environment-client/cpapi"
+	"github.com/continuouspipe/remote-environment-client/errors"
+)
 
 type SpyApiProvider struct {
 	Spy
 	getApiTeams                         func() ([]cpapi.ApiTeam, error)
 	getApiBucketClusters                func(bucketUuid string) ([]cpapi.ApiCluster, error)
 	getApiUser                          func(user string) (*cpapi.ApiUser, error)
-	getApiEnvironments                  func(flowId string) ([]cpapi.ApiEnvironment, error)
-	getRemoteEnvironmentStatus          func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error)
+	getApiEnvironments                  func(flowId string) ([]cpapi.ApiEnvironment, *errors.ErrorList)
+	getRemoteEnvironmentStatus          func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, *errors.ErrorList)
 	remoteEnvironmentBuild              func(remoteEnvironmentFlowID string, gitBranch string) error
 	cancelRunningTide                   func(flowId string, remoteEnvironmentId string) error
 	remoteEnvironmentDestroy            func(flowId string, environment string, cluster string) error
@@ -54,7 +57,7 @@ func (s *SpyApiProvider) GetApiUser(user string) (*cpapi.ApiUser, error) {
 	return s.getApiUser(user)
 }
 
-func (s *SpyApiProvider) GetApiEnvironments(flowId string) ([]cpapi.ApiEnvironment, error) {
+func (s *SpyApiProvider) GetApiEnvironments(flowId string) ([]cpapi.ApiEnvironment, *errors.ErrorList) {
 	args := make(Arguments)
 	args["flowId"] = flowId
 
@@ -63,7 +66,7 @@ func (s *SpyApiProvider) GetApiEnvironments(flowId string) ([]cpapi.ApiEnvironme
 	return s.getApiEnvironments(flowId)
 }
 
-func (s *SpyApiProvider) GetRemoteEnvironmentStatus(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+func (s *SpyApiProvider) GetRemoteEnvironmentStatus(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, *errors.ErrorList) {
 	args := make(Arguments)
 	args["flowId"] = flowId
 	args["environmentId"] = environmentId
@@ -135,11 +138,11 @@ func (s *SpyApiProvider) MockGetApiUser(mocked func(user string) (*cpapi.ApiUser
 	s.getApiUser = mocked
 }
 
-func (s *SpyApiProvider) MockGetApiEnvironments(mocked func(flowId string) ([]cpapi.ApiEnvironment, error)) {
+func (s *SpyApiProvider) MockGetApiEnvironments(mocked func(flowId string) ([]cpapi.ApiEnvironment, *errors.ErrorList)) {
 	s.getApiEnvironments = mocked
 }
 
-func (s *SpyApiProvider) MockGetRemoteEnvironmentStatus(mocked func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error)) {
+func (s *SpyApiProvider) MockGetRemoteEnvironmentStatus(mocked func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, *errors.ErrorList)) {
 	s.getRemoteEnvironmentStatus = mocked
 }
 

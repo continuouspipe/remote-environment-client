@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/continuouspipe/remote-environment-client/errors"
 	"io"
 )
 
@@ -18,8 +19,8 @@ type CpApiProvider interface {
 	GetApiTeams() ([]ApiTeam, error)
 	GetApiBucketClusters(bucketUuid string) ([]ApiCluster, error)
 	GetApiUser(user string) (*ApiUser, error)
-	GetApiEnvironments(flowId string) ([]ApiEnvironment, error)
-	GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, error)
+	GetApiEnvironments(flowId string) ([]ApiEnvironment, errors.ErrorListProvider)
+	GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, errors.ErrorListProvider)
 	RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error
 	CancelRunningTide(flowId string, remoteEnvironmentId string) error
 	RemoteEnvironmentDestroy(flowId string, environment string, cluster string) error
@@ -239,14 +240,18 @@ func (c CpApi) GetApiUser(user string) (*ApiUser, error) {
 	return apiUserResponse, nil
 }
 
-func (c CpApi) GetApiEnvironments(flowId string) ([]ApiEnvironment, error) {
+func (c CpApi) GetApiEnvironments(flowId string) ([]ApiEnvironment, errors.ErrorListProvider) {
+	el := errors.NewErrorList()
 	if c.apiKey == "" {
-		return nil, fmt.Errorf("api key not provided")
+		el.Add(fmt.Errorf("api key not provided"))
+		return nil, el
 	}
 
 	url, err := c.getRiverURL()
 	if err != nil {
-		return nil, err
+		el.Add(fmt.Errorf("error when getting the river url"))
+		el.Add(err)
+		return nil, el
 	}
 	url.Path = fmt.Sprintf("/flows/%s/environments", flowId)
 
@@ -255,33 +260,44 @@ func (c CpApi) GetApiEnvironments(flowId string) ([]ApiEnvironment, error) {
 	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
-		return nil, err
+		el.Add(fmt.Errorf("error when getting a new http request object for fetching the list of environments"))
+		el.Add(err)
+		return nil, el
 	}
 
-	respBody, err := c.getResponseBody(c.client, req)
+	respBody, respErrList := c.getResponseBody(c.client, req)
 	if err != nil {
-		return nil, fmt.Errorf("error getting remote environment, %s", err.Error())
+		el.Add(fmt.Errorf("error when getting the list of the environments"))
+		el.Add(respErrList.Items()...)
+		return nil, el
 	}
 
 	environments := make([]ApiEnvironment, 0)
 	err = json.Unmarshal(respBody, &environments)
 	if err != nil {
-		cplogs.V(4).Infof("error running Unmarshal() on response body %s", respBody)
-		return nil, err
+		errText := fmt.Sprintf("error running Unmarshal() on response body %s", respBody)
+		cplogs.V(4).Infof(errText)
+		el.Add(fmt.Errorf(errText))
+		el.Add(err)
+		return nil, el
 	}
 
 	return environments, nil
 }
 
 //calls CP Api to retrieve information about the remote environment
-func (c CpApi) GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, error) {
+func (c CpApi) GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, errors.ErrorListProvider) {
+	el := errors.NewErrorList()
 	if c.apiKey == "" {
-		return nil, fmt.Errorf("api key not provided")
+		el.Add(fmt.Errorf("api key not provided"))
+		return nil, el
 	}
 
 	url, err := c.getRiverURL()
 	if err != nil {
-		return nil, err
+		el.Add(fmt.Errorf("error when getting the river url"))
+		el.Add(err)
+		return nil, el
 	}
 	url.Path = fmt.Sprintf("/flows/%s/development-environments/%s/status", flowId, environmentId)
 
@@ -290,19 +306,26 @@ func (c CpApi) GetRemoteEnvironmentStatus(flowId string, environmentId string) (
 	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
-		return nil, err
+		el.Add(fmt.Errorf("error when getting a new http request object for fetching the environment status"))
+		el.Add(err)
+		return nil, el
 	}
 
-	respBody, err := c.getResponseBody(c.client, req)
+	respBody, respErrList := c.getResponseBody(c.client, req)
 	if err != nil {
-		return nil, fmt.Errorf("error getting remote environment, %s", err.Error())
+		el.Add(fmt.Errorf("error when getting the remote environment status"))
+		el.Add(respErrList.Items()...)
+		return nil, el
 	}
 
 	apiRemoteEnvironment := &ApiRemoteEnvironmentStatus{}
 	err = json.Unmarshal(respBody, apiRemoteEnvironment)
 	if err != nil {
-		cplogs.V(4).Infof("error running Unmarshal() on response body %s", respBody)
-		return nil, err
+		errText := fmt.Sprintf("error running Unmarshal() on response body %s", respBody)
+		cplogs.V(4).Infof(errText)
+		el.Add(fmt.Errorf(errText))
+		el.Add(err)
+		return nil, el
 	}
 
 	return apiRemoteEnvironment, nil
@@ -344,9 +367,9 @@ func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch 
 
 //find the tide id associated with the branch and cancel the tide
 func (c CpApi) CancelRunningTide(flowId string, remoteEnvironmentId string) error {
-	remoteEnv, err := c.GetRemoteEnvironmentStatus(flowId, remoteEnvironmentId)
-	if err != nil {
-		return err
+	remoteEnv, el := c.GetRemoteEnvironmentStatus(flowId, remoteEnvironmentId)
+	if el != nil {
+		return el
 	}
 
 	if remoteEnv.LastTide.Status != TideRunning {
@@ -420,15 +443,15 @@ func (c CpApi) RemoteDevelopmentEnvironmentDestroy(flowId string, remoteEnvironm
 		return fmt.Errorf("api key not provided")
 	}
 
-	url, err := c.getRiverURL()
+	u, err := c.getRiverURL()
 	if err != nil {
 		return err
 	}
-	url.Path = fmt.Sprintf("/flows/%s/development-environments/%s", flowId, remoteEnvironmentId)
+	u.Path = fmt.Sprintf("/flows/%s/development-environments/%s", flowId, remoteEnvironmentId)
 
-	cplogs.V(5).Infof("destroying remote development environment using url %s", url.String())
+	cplogs.V(5).Infof("destroying remote development environment using url %s", u.String())
 
-	req, err := http.NewRequest(http.MethodDelete, url.String(), nil)
+	req, err := http.NewRequest(http.MethodDelete, u.String(), nil)
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
@@ -443,18 +466,22 @@ func (c CpApi) RemoteDevelopmentEnvironmentDestroy(flowId string, remoteEnvironm
 	return nil
 }
 
-func (c CpApi) getResponseBody(client *http.Client, req *http.Request) ([]byte, error) {
+func (c CpApi) getResponseBody(client *http.Client, req *http.Request) ([]byte, errors.ErrorListProvider) {
+	el := errors.NewErrorList()
 	res, err := client.Do(req)
 	defer res.Body.Close()
 	if err != nil {
-		return nil, err
+		el.Add(err)
+		return nil, el
 	}
 	if res.StatusCode < 200 && res.StatusCode > 202 {
-		return nil, fmt.Errorf("error getting response body, status: %d, url: %s", res.StatusCode, req.URL.String())
+		el.Add(fmt.Errorf("error getting response body, status: %d, url: %s", res.StatusCode, req.URL.String()))
+		return nil, el
 	}
 	resBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		el.Add(err)
+		return nil, el
 	}
 	return resBody, nil
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"testing"
+	"github.com/continuouspipe/remote-environment-client/errors"
 )
 
 func TestDestroyHandle_Handle(t *testing.T) {
@@ -39,7 +40,7 @@ func TestDestroyHandle_Handle(t *testing.T) {
 		return "", nil
 	})
 	spyApiProvider := spies.NewSpyApiProvider()
-	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, *errors.ErrorList) {
 		r := &cpapi.ApiRemoteEnvironmentStatus{}
 		return r, nil
 	})

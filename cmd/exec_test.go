@@ -4,14 +4,14 @@ import (
 	"testing"
 
 	"fmt"
-	"os"
-
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
+	"github.com/continuouspipe/remote-environment-client/errors"
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"k8s.io/kubernetes/pkg/api"
+	"os"
 )
 
 func TestCommandsAreSpawned(t *testing.T) {
@@ -90,7 +90,7 @@ func TestExecHandle_Handle_InteractiveMode(t *testing.T) {
 		return nil
 	})
 	spyKubeCtlInitializer.MockGetSettings(func() (addr string, user string, apiKey string, err error) {
-		return "", "", "", nil
+		return "a", "b", "c", nil
 	})
 	spyConfig := spies.NewSpyConfig()
 	spyConfig.MockGetString(func(key string) (string, error) {
@@ -112,7 +112,7 @@ func TestExecHandle_Handle_InteractiveMode(t *testing.T) {
 	})
 
 	spyApi := spies.NewSpyApiProvider()
-	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, error) {
+	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, *errors.ErrorList) {
 		return []cpapi.ApiEnvironment{
 			{
 				"my-cluster",
@@ -121,7 +121,6 @@ func TestExecHandle_Handle_InteractiveMode(t *testing.T) {
 			},
 		}, nil
 	})
-
 	//test subject called
 	handler := &execHandle{}
 	handler.kubeCtlInit = spyKubeCtlInitializer
