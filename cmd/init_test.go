@@ -350,7 +350,7 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentFlowID", "837d92hd-19su1d91")
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "gitBranch", "remote-dev-user-foo")
 
-	spyApi.ExpectsCallCount(t, "GetApiEnvironments", 1)
+	spyApi.ExpectsCallCount(t, "GetApiEnvironments", 2)
 	spyApi.ExpectsFirstCallArgument(t, "GetApiEnvironments", "flowId", "837d92hd-19su1d91")
 }
 

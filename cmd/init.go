@@ -443,7 +443,7 @@ func (p triggerBuild) Handle() error {
 
 	envExists := false
 	for _, environment := range environments {
-		if environment.Identifier == remoteEnv.ClusterIdentifier {
+		if environment.Identifier == remoteEnv.KubeEnvironmentName {
 			envExists = true
 		}
 	}
@@ -571,21 +571,17 @@ func (p waitEnvironmentReady) Handle() error {
 
 	envExists := false
 	for _, environment := range environments {
-		if environment.Identifier == remoteEnv.ClusterIdentifier {
+		if environment.Identifier == remoteEnv.KubeEnvironmentName {
 			envExists = true
 		}
 	}
 
-	if remoteEnv.Status == cpapi.RemoteEnvironmentTideFailed {
+	if (remoteEnv.Status == cpapi.RemoteEnvironmentTideFailed) || (remoteEnv.Status == cpapi.RemoteEnvironmentRunning && envExists == false) {
 		fmt.Fprintln(p.writer, "The build had previously failed, retrying..")
 		err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 		if err != nil {
 			return err
 		}
-	}
-
-	if remoteEnv.Status == cpapi.RemoteEnvironmentRunning && envExists {
-		return nil
 	}
 
 	fmt.Fprintln(p.writer, "ContinuousPipe is now building your developer environment. You can view the logs of your first tide here:")
@@ -595,6 +591,7 @@ func (p waitEnvironmentReady) Handle() error {
 	s.Prefix = "Waiting for the environment to be ready "
 	s.Start()
 
+WAIT_LOOP:
 	//wait until the remote environment has been built
 	for t := range p.ticker.C {
 		cplogs.V(5).Infoln("environment readiness check at ", t)
@@ -616,18 +613,45 @@ func (p waitEnvironmentReady) Handle() error {
 			cplogs.Flush()
 			err = p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 			break
+
 		case cpapi.RemoteEnvironmentTideFailed:
 			err = fmt.Errorf("remote environment id %s cretion has failed. To see more information about the error go to https://ui.continuouspipe.io/", remoteEnvId)
-			break
+			break WAIT_LOOP
+
 		case cpapi.RemoteEnvironmentRunning:
 			cplogs.V(5).Infoln("The remote environment is running")
 			s.Stop()
-			return nil
+			//clear any error
+			err = nil
+			break WAIT_LOOP
 		}
 
 	}
 
 	s.Stop()
+
+	//if there has been an error return it
+	if err != nil {
+		return err
+	}
+
+	//when there has been no errors reported, check if the environment actually exist, if not return an error.
+	envExists = false
+	environments, err = p.api.GetApiEnvironments(flowId)
+	if err != nil {
+		return err
+	}
+	for _, environment := range environments {
+		if environment.Identifier == remoteEnv.KubeEnvironmentName {
+			envExists = true
+		}
+	}
+	if envExists == false {
+		err = fmt.Errorf(
+			"\nContinuousPipe could not build your developer environment. Please check the logs of your first tide here:\n"+
+				"https://ui.continuouspipe.io/project/%s/%s/%s/logs\n"+
+				"If there are any changes required to the continuous-pipe.yml file, push them to the repository and retry with cp-remote init [token] --reset.\n", remoteEnv.LastTide.Team.Slug, remoteEnv.LastTide.FlowUuid, remoteEnv.LastTide.Uuid)
+	}
 	return err
 }
 

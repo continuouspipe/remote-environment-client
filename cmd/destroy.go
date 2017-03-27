@@ -25,10 +25,7 @@ func NewDestroyCmd() *cobra.Command {
 		Long: `The destroy command will delete the remote branch used for your remote
 environment, ContinuousPipe will then remove the environment.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			validateConfig()
-
 			checkErr(handler.Handle())
-
 		},
 	}
 	return command
@@ -92,29 +89,35 @@ func (h *DestroyHandle) Handle() error {
 		return err
 	}
 
-	h.api.SetApiKey(apiKey)
+	if apiKey != "" && flowId != "" && remoteEnvironmentId != "" {
+		h.api.SetApiKey(apiKey)
+		//stop building any flows associated with the git branch
+		err = h.api.CancelRunningTide(flowId, remoteEnvironmentId)
+		if err != nil {
+			return err
+		}
 
-	//stop building any flows associated with the git branch
-	err = h.api.CancelRunningTide(flowId, remoteEnvironmentId)
-	if err != nil {
-		return err
+		if cluster != "" {
+			//delete the remote environment via cp api
+			err = h.api.RemoteEnvironmentDestroy(flowId, environment, cluster)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
-	//delete the remote environment via cp api
-	err = h.api.RemoteEnvironmentDestroy(flowId, environment, cluster)
-	if err != nil {
-		return err
+	if remoteName != "" && gitBranch != "" {
+		//if remote exists delete remote branch
+		remoteExists, err := h.hasRemote(remoteName, gitBranch)
+		if err != nil {
+			return err
+		}
+
+		if remoteExists == true {
+			_, err = h.push.DeleteRemote(remoteName, gitBranch)
+		}
 	}
 
-	//if remote exists delete remote branch
-	remoteExists, err := h.hasRemote(remoteName, gitBranch)
-	if err != nil {
-		return err
-	}
-
-	if remoteExists == true {
-		_, err = h.push.DeleteRemote(remoteName, gitBranch)
-	}
 	return err
 }
 
