@@ -163,12 +163,18 @@ func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 		cplogs.V(5).Infof("interactive mode: cluster found and is set to %s", clusterIdentifier)
 	}
 
+	//TODO: Remove this when we get rid of the dependency on ~/.kube/config and call directly the KubeExecCmd without spawning
 	err := h.kubeCtlInit.Init(h.environment)
 	if err != nil {
 		return err
 	}
 
-	podsList, err := podsFinder.FindAll(h.environment, h.environment)
+	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
+	if err != nil {
+		return nil
+	}
+
+	podsList, err := podsFinder.FindAll(user, apiKey, addr, h.environment)
 	if err != nil {
 		return err
 	}
@@ -178,6 +184,7 @@ func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 		return err
 	}
 
+	//TODO: Change to call directly the KubeCtl NewCmdExec()
 	kscmd := kexec.KSCommand{}
 	kscmd.KubeConfigKey = h.environment
 	kscmd.Environment = h.environment

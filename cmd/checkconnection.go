@@ -73,15 +73,14 @@ func (h *CheckConnectionHandle) Validate() error {
 
 // Finds the pods and prints them
 func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) error {
-	//re-init kubectl in case the kube settings have been modified
-	err := h.kubeCtlInit.Init(h.Environment)
+	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
-		return err
+		return nil
 	}
 
 	fmt.Println("checking connection for environment " + h.Environment)
 
-	podsList, err := podsFinder.FindAll(h.Environment, h.Environment)
+	podsList, err := podsFinder.FindAll(user, apiKey, addr, h.Environment)
 	if err != nil {
 		return err
 	}

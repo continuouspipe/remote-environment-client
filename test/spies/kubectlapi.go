@@ -1,6 +1,6 @@
 package spies
 
-import "k8s.io/client-go/pkg/api/v1"
+import "k8s.io/kubernetes/pkg/api"
 
 type SpyKubeCtlConfigProvider struct {
 	Spy
@@ -82,30 +82,33 @@ func (s *SpyKubeCtlClusterInfoProvider) MockClusterInfo(mocked func(kubeConfigKe
 
 type SpyServiceFinder struct {
 	Spy
-	findAll func(kubeConfigKey string, environment string) (*v1.ServiceList, error)
+	findAll func(user string, apiKey string, address string, environment string) (*api.ServiceList, error)
 }
 
 func NewSpyServiceFinder() *SpyServiceFinder {
 	return &SpyServiceFinder{}
 }
 
-func (s *SpyServiceFinder) FindAll(kubeConfigKey string, environment string) (*v1.ServiceList, error) {
+func (s *SpyServiceFinder) FindAll(user string, apiKey string, address string, environment string) (*api.ServiceList, error) {
 	args := make(Arguments)
-	args["kubeConfigKey"] = kubeConfigKey
+	args["user"] = user
+	args["apiKey"] = apiKey
+	args["address"] = address
 	args["environment"] = environment
 
 	function := &Function{Name: "FindAll", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
-	return s.findAll(kubeConfigKey, environment)
+	return s.findAll(user, apiKey, address, environment)
 }
 
-func (s *SpyServiceFinder) MockFindAll(mocked func(kubeConfigKey string, environment string) (*v1.ServiceList, error)) {
+func (s *SpyServiceFinder) MockFindAll(mocked func(user string, apiKey string, address string, environment string) (*api.ServiceList, error)) {
 	s.findAll = mocked
 }
 
 type SpyKubeCtlInitializer struct {
 	Spy
-	init func(environment string) error
+	init        func(environment string) error
+	getSettings func() (addr string, user string, apiKey string, err error)
 }
 
 func NewSpyKubeCtlInitializer() *SpyKubeCtlInitializer {
@@ -121,6 +124,18 @@ func (s *SpyKubeCtlInitializer) Init(environment string) error {
 	return s.init(environment)
 }
 
+func (s *SpyKubeCtlInitializer) GetSettings() (addr string, user string, apiKey string, err error) {
+	args := make(Arguments)
+
+	function := &Function{Name: "GetSettings", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
+	return s.getSettings()
+}
+
 func (s *SpyKubeCtlInitializer) MockInit(mocked func(environment string) error) {
 	s.init = mocked
+}
+
+func (s *SpyKubeCtlInitializer) MockGetSettings(mocked func() (addr string, user string, apiKey string, err error)) {
+	s.getSettings = mocked
 }

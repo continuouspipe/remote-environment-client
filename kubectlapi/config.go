@@ -4,15 +4,20 @@ import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/osapi"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/client/restclient"
+	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
+	clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 	"strings"
 )
 
 type KubeCtlInitializer interface {
+	GetSettings() (addr string, user string, apiKey string, err error)
 	Init(environment string) error
 }
 
 type kubeCtlClusterSettingsProvider interface {
-	settings() (addr string, user string, password string, err error)
+	settings() (addr string, user string, apiKey string, err error)
 }
 
 type KubeCtlInit struct {
@@ -31,27 +36,25 @@ func NewKubeCtlInit() *KubeCtlInit {
 	return i
 }
 
-func (i *KubeCtlInit) Init(environment string) error {
+func (i KubeCtlInit) GetSettings() (addr string, user string, apiKey string, err error) {
 	cpKubeProxyEnabled, err := i.config.GetString(config.CpKubeProxyEnabled)
 	if err != nil {
-		return err
+		return "", "", "", err
 	}
-
-	var addr string
-	var user string
-	var password string
 
 	if cpKubeProxyEnabled == "true" {
-		addr, user, password, err = i.proxy.settings()
+		addr, user, apiKey, err = i.proxy.settings()
 	} else {
-		addr, user, password, err = i.direct.settings()
+		addr, user, apiKey, err = i.direct.settings()
 	}
 
-	if err != nil {
-		return err
-	}
+	return
+}
 
-	_, err = i.kubeConfig.ConfigSetAuthInfo(environment, user, password)
+func (i KubeCtlInit) Init(environment string) error {
+	addr, user, apiKey, err := i.GetSettings()
+
+	_, err = i.kubeConfig.ConfigSetAuthInfo(environment, user, apiKey)
 	if err != nil {
 		return err
 	}
@@ -70,7 +73,7 @@ type kubeCtlDirect struct {
 	config config.ConfigProvider
 }
 
-func (i *kubeCtlDirect) settings() (addr string, user string, password string, err error) {
+func (i *kubeCtlDirect) settings() (addr string, user string, apiKey string, err error) {
 	addr, err = i.config.GetString(config.KubeDirectClusterAddr)
 	if err != nil {
 		return
@@ -79,7 +82,7 @@ func (i *kubeCtlDirect) settings() (addr string, user string, password string, e
 	if err != nil {
 		return
 	}
-	password, err = i.config.GetString(config.KubeDirectClusterPassword)
+	apiKey, err = i.config.GetString(config.KubeDirectClusterPassword)
 	if err != nil {
 		return
 	}
@@ -97,7 +100,7 @@ type kubeCtlProxy struct {
 	kubeCtlConfig kubeCtlConfigProvider
 }
 
-func (i *kubeCtlProxy) settings() (addr string, user string, password string, err error) {
+func (i *kubeCtlProxy) settings() (addr string, user string, apiKey string, err error) {
 	flowId, err := i.config.GetString(config.FlowId)
 	if err != nil {
 		return
@@ -115,7 +118,7 @@ func (i *kubeCtlProxy) settings() (addr string, user string, password string, er
 	if err != nil {
 		return
 	}
-	password, err = i.config.GetString(config.ApiKey)
+	apiKey, err = i.config.GetString(config.ApiKey)
 	if err != nil {
 		return
 	}
@@ -130,7 +133,7 @@ func newKubeCtlProxy() *kubeCtlProxy {
 }
 
 type kubeCtlConfigProvider interface {
-	ConfigSetAuthInfo(environment string, username string, password string) (string, error)
+	ConfigSetAuthInfo(environment string, username string, apiKey string) (string, error)
 	ConfigSetCluster(environment string, clusterAddr string) (string, error)
 	ConfigSetContext(environment string, username string) (string, error)
 }
@@ -141,14 +144,14 @@ func newKubeCtlConfig() *kubeCtlConfig {
 	return &kubeCtlConfig{}
 }
 
-func (k kubeCtlConfig) ConfigSetAuthInfo(environment string, username string, password string) (string, error) {
+func (k kubeCtlConfig) ConfigSetAuthInfo(environment string, username string, apiKey string) (string, error) {
 	args := []string{
 		config.KubeCtlName,
 		"config",
 		"set-credentials",
 		environment + "-" + username,
 		"--username=" + username,
-		"--password=" + password,
+		"--password=" + apiKey,
 	}
 	return osapi.CommandExec(getScmd(), args...)
 }
@@ -179,4 +182,30 @@ func (k kubeCtlConfig) ConfigSetContext(environment string, username string) (st
 		"--user=" + environment + "-" + username,
 	}
 	return osapi.CommandExec(getScmd(), args...)
+}
+
+func GetNonInteractiveDeferredLoadingClientConfig(user string, apiKey string, address string, namespace string) clientcmd.ClientConfig {
+	ctx := clientcmdapi.NewContext()
+	ctx.Namespace = namespace
+	cfg := clientcmdapi.NewConfig()
+	authInfo := clientcmdapi.NewAuthInfo()
+
+	authInfo.Username = user
+	authInfo.Password = apiKey
+
+	cluster := clientcmdapi.NewCluster()
+	cluster.Server = address
+	cluster.InsecureSkipTLSVerify = true
+
+	cfg.Contexts = map[string]*clientcmdapi.Context{"default": ctx}
+	cfg.CurrentContext = "default"
+	overrides := clientcmd.ConfigOverrides{
+		ClusterInfo: *cluster,
+		AuthInfo:    *authInfo,
+	}
+	return clientcmd.NewNonInteractiveClientConfig(*cfg, "default", &overrides, nil)
+}
+
+func CreateClient(config *restclient.Config) (*internalclientset.Clientset, error) {
+	return internalclientset.NewForConfig(config)
 }

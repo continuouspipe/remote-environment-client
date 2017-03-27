@@ -114,13 +114,12 @@ func (h *WatchHandle) Validate() error {
 }
 
 func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
-	//re-init kubectl in case the kube settings have been modified
-	err := h.kubeCtlInit.Init(h.Environment)
+	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
-		return err
+		return nil
 	}
 
-	allPods, err := podsFinder.FindAll(h.Environment, h.Environment)
+	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.Environment)
 	if err != nil {
 		return err
 	}
@@ -130,10 +129,6 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 		return err
 	}
 
-	apiKey, err := h.config.GetString(config.ApiKey)
-	if err != nil {
-		return err
-	}
 	remoteEnvId, err := h.config.GetString(config.RemoteEnvironmentId)
 	if err != nil {
 		return err

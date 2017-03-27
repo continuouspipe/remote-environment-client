@@ -24,8 +24,8 @@ func NewQuestionPrompt() *QuestionPrompt {
 	return &QuestionPrompt{}
 }
 
-func (qp QuestionPrompt) ReadString(q string) string {
-	fmt.Print(q, " ")
+func (qp QuestionPrompt) ReadString(question string) string {
+	fmt.Print(question, " ")
 	reader := bufio.NewReader(os.Stdin)
 	res, err := reader.ReadString('\n')
 	if err != nil {

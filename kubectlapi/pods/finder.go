@@ -1,14 +1,12 @@
 package pods
 
 import (
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 type Finder interface {
-	FindAll(kubeConfigKey string, environment string) (*v1.PodList, error)
+	FindAll(user string, apiKey string, address string, environment string) (*api.PodList, error)
 }
 
 type KubePodsFind struct{}
@@ -17,28 +15,18 @@ func NewKubePodsFind() *KubePodsFind {
 	return &KubePodsFind{}
 }
 
-func (p KubePodsFind) FindAll(kubeConfigKey string, environment string) (*v1.PodList, error) {
-	config, err := readConfig(kubeConfigKey)
+func (p KubePodsFind) FindAll(user string, apiKey string, address string, environment string) (*api.PodList, error) {
+	config, err := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, address, environment).ClientConfig()
 
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := createClient(config)
+	client, err := kubectlapi.CreateClient(config)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return client.Core().Pods(environment).List(v1.ListOptions{})
-}
-
-func readConfig(kubeConfigKey string) (*rest.Config, error) {
-	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		clientcmd.NewDefaultClientConfigLoadingRules(),
-		&clientcmd.ConfigOverrides{CurrentContext: kubeConfigKey}).ClientConfig()
-}
-
-func createClient(config *rest.Config) (*kubernetes.Clientset, error) {
-	return kubernetes.NewForConfig(config)
+	return client.Core().Pods(environment).List(api.ListOptions{})
 }

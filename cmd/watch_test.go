@@ -10,7 +10,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 func TestWatch(t *testing.T) {
@@ -19,12 +19,12 @@ func TestWatch(t *testing.T) {
 
 	//get mocked dependencies
 	mockPodsFinder := mocks.NewMockPodsFinder()
-	mockPodsFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.PodList, error) {
-		return &v1.PodList{}, nil
+	mockPodsFinder.MockFindAll(func(user string, apiKey string, address string, environment string) (*api.PodList, error) {
+		return &api.PodList{}, nil
 	})
 	mockPodFilter := mocks.NewMockPodsFilter()
-	mockPodFilter.MockByService(func(podList *v1.PodList, service string) (*v1.Pod, error) {
-		mockPod := &v1.Pod{}
+	mockPodFilter.MockByService(func(podList *api.PodList, service string) (*api.Pod, error) {
+		mockPod := &api.Pod{}
 		mockPod.SetName("web-123456")
 		return mockPod, nil
 	})
@@ -45,8 +45,8 @@ func TestWatch(t *testing.T) {
 	})
 
 	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
-	spyKubeCtlInitializer.MockInit(func(environment string) error {
-		return nil
+	spyKubeCtlInitializer.MockGetSettings(func() (addr string, user string, apiKey string, err error) {
+		return "", "", "", nil
 	})
 	spyApiProvider := spies.NewSpyApiProvider()
 	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
@@ -91,7 +91,6 @@ func TestWatch(t *testing.T) {
 	handler.config = spyConfig
 	handler.api = spyApiProvider
 	handler.Handle(spyOsDirectoryMonitor, mockPodsFinder, mockPodFilter)
-
 	//expectations
 	spySyncer.ExpectsCallCount(t, "SetKubeConfigKey", 1)
 	spySyncer.ExpectsCallCount(t, "SetEnvironment", 1)
@@ -110,5 +109,5 @@ func TestWatch(t *testing.T) {
 
 	spyOsDirectoryMonitor.ExpectsFirstCallArgument(t, "SetLatency", "latency", time.Duration(1000))
 
-	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
+	spyKubeCtlInitializer.ExpectsCallCount(t, "GetSettings", 1)
 }

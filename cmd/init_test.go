@@ -11,7 +11,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"io/ioutil"
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/api"
 	"time"
 )
 
@@ -458,13 +458,13 @@ func TestApplyDefaultService_Handle(t *testing.T) {
 	})
 
 	spyServiceFinder := spies.NewSpyServiceFinder()
-	spyServiceFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.ServiceList, error) {
-		mockWeb := v1.Service{}
+	spyServiceFinder.MockFindAll(func(user string, apiKey string, address string, environment string) (*api.ServiceList, error) {
+		mockWeb := api.Service{}
 		mockWeb.Name = "app"
-		mockDb := v1.Service{}
+		mockDb := api.Service{}
 		mockDb.Name = "db"
-		sl := &v1.ServiceList{}
-		sl.Items = []v1.Service{mockWeb, mockDb}
+		sl := &api.ServiceList{}
+		sl.Items = []api.Service{mockWeb, mockDb}
 		return sl, nil
 	})
 
@@ -473,18 +473,26 @@ func TestApplyDefaultService_Handle(t *testing.T) {
 		return "1"
 	})
 
+	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
+	spyKubeCtlInitializer.MockGetSettings(func() (addr string, user string, apiKey string, err error) {
+		return "http://kube-proxy/123/456/", "bill", "123-bill-white-456", nil
+	})
+
 	//get test subject
 	handler := &applyDefaultService{
 		spyConfig,
 		spyQuestionPrompt,
 		spyServiceFinder,
+		spyKubeCtlInitializer,
 		ioutil.Discard}
 
 	handler.Handle()
 
 	//expectations
 	spyServiceFinder.ExpectsCallCount(t, "FindAll", 1)
-	spyServiceFinder.ExpectsFirstCallArgument(t, "FindAll", "kubeConfigKey", "837d92hd-19su1d91-dev-some-user")
+	spyServiceFinder.ExpectsFirstCallArgument(t, "FindAll", "user", "bill")
+	spyServiceFinder.ExpectsFirstCallArgument(t, "FindAll", "apiKey", "123-bill-white-456")
+	spyServiceFinder.ExpectsFirstCallArgument(t, "FindAll", "address", "http://kube-proxy/123/456/")
 	spyServiceFinder.ExpectsFirstCallArgument(t, "FindAll", "environment", "837d92hd-19su1d91-dev-some-user")
 
 	spyQuestionPrompt.ExpectsCallCount(t, "RepeatUntilValid", 1)
@@ -584,6 +592,12 @@ func TestInitInteractiveHandler_Handle(t *testing.T) {
 			switch question {
 			case "Insert your CP Username:":
 				return scenario.insertedUsername
+			default:
+				return "foo"
+			}
+		})
+		spyQuestionPrompt.MockRepeatPasswordIfEmpty(func(question string) string {
+			switch question {
 			case "Insert your CP Api Key:":
 				return scenario.insertedApiKey
 			default:

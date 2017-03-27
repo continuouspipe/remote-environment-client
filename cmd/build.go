@@ -80,10 +80,10 @@ func (h *BuildHandle) Handle() error {
 		return err
 	}
 
-	fmt.Printf("\n\n# Get started !\n")
-	fmt.Println("You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
+	fmt.Fprintf(h.stdout, "\n\n# Get started !\n")
+	fmt.Fprintln(h.stdout, "You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
 	cpapi.PrintPublicEndpoints(h.stdout, remoteEnv.PublicEndpoints)
-	fmt.Printf("\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
+	fmt.Fprintf(h.stdout, "\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
 
 	return nil
 }

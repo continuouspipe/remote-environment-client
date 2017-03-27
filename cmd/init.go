@@ -710,10 +710,11 @@ func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 }
 
 type applyDefaultService struct {
-	config config.ConfigProvider
-	qp     util.QuestionPrompter
-	ks     services.ServiceFinder
-	writer io.Writer
+	config             config.ConfigProvider
+	qp                 util.QuestionPrompter
+	ks                 services.ServiceFinder
+	kubeCtlInitializer kubectlapi.KubeCtlInitializer
+	writer             io.Writer
 }
 
 func newApplyDefaultService() *applyDefaultService {
@@ -721,6 +722,7 @@ func newApplyDefaultService() *applyDefaultService {
 		config.C,
 		util.NewQuestionPrompt(),
 		services.NewKubeService(),
+		kubectlapi.NewKubeCtlInit(),
 		os.Stdout}
 }
 
@@ -736,12 +738,17 @@ func (p applyDefaultService) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
 	p.config.Save(config.AllConfigTypes)
 
+	address, username, apiKey, err := p.kubeCtlInitializer.GetSettings()
+	if err != nil {
+		return err
+	}
+
 	environment, err := p.config.GetString(config.KubeEnvironmentName)
 	if err != nil {
 		return err
 	}
 
-	list, err := p.ks.FindAll(environment, environment)
+	list, err := p.ks.FindAll(username, apiKey, address, environment)
 	if err != nil {
 		return err
 	}
