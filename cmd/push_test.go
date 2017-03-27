@@ -7,7 +7,7 @@ import (
 
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/api"
 	"path/filepath"
 )
 
@@ -17,12 +17,12 @@ func TestPush(t *testing.T) {
 
 	//get mocked dependencies
 	mockPodsFinder := mocks.NewMockPodsFinder()
-	mockPodsFinder.MockFindAll(func(kubeConfigKey string, environment string) (*v1.PodList, error) {
-		return &v1.PodList{}, nil
+	mockPodsFinder.MockFindAll(func(user string, apiKey string, address string, environment string) (*api.PodList, error) {
+		return &api.PodList{}, nil
 	})
 	mockPodFilter := mocks.NewMockPodsFilter()
-	mockPodFilter.MockByService(func(podList *v1.PodList, service string) (*v1.Pod, error) {
-		mockPod := &v1.Pod{}
+	mockPodFilter.MockByService(func(podList *api.PodList, service string) (*api.Pod, error) {
+		mockPod := &api.Pod{}
 		mockPod.SetName("web-123456")
 		return mockPod, nil
 	})
@@ -31,10 +31,9 @@ func TestPush(t *testing.T) {
 		return nil
 	})
 	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
-	spyKubeCtlInitializer.MockInit(func(environment string) error {
-		return nil
+	spyKubeCtlInitializer.MockGetSettings(func() (addr string, user string, apiKey string, err error) {
+		return "", "", "", nil
 	})
-
 	//test subject called
 	handler := &PushHandle{}
 	handler.kubeCtlInit = spyKubeCtlInitializer
@@ -57,5 +56,5 @@ func TestPush(t *testing.T) {
 	spySyncer.ExpectsFirstCallArgument(t, "SetPod", "pod", "web-123456")
 	spySyncer.ExpectsFirstCallArgumentStringSlice(t, "Sync", "filePaths", []string{absFilePath})
 
-	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
+	spyKubeCtlInitializer.ExpectsCallCount(t, "GetSettings", 1)
 }
