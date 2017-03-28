@@ -31,7 +31,6 @@ for the Kubernetes cluster are correct and lists any pods that can be found for 
 It can be used with the environment option to check another environment`,
 		Run: func(cmd *cobra.Command, args []string) {
 			validateConfig()
-
 			podsFinder := pods.NewKubePodsFind()
 			checkErr(handler.Complete(cmd, args, settings))
 			checkErr(handler.Validate())

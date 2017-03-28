@@ -245,8 +245,8 @@ func (i initHandler) Handle() error {
 		return err
 	}
 
-	if currentStatus == initStateCompleted {
-		answer := i.qp.RepeatIfEmpty("The environment is already initialized, do you want to re-initialize? (yes/no)")
+	if currentStatus == initStateCompleted && i.reset == false {
+		answer := i.qp.RepeatIfEmpty("The configuration file is already present, do you want override it and re-initialize? (yes/no)")
 		if answer == "no" {
 			return nil
 		}
@@ -431,21 +431,14 @@ func (p triggerBuild) Handle() error {
 	}
 
 	p.api.SetApiKey(apiKey)
-	remoteEnv, err := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
-	if err != nil {
-		return err
+	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if el != nil {
+		return el
 	}
 
-	environments, err := p.api.GetApiEnvironments(flowId)
-	if err != nil {
-		return err
-	}
-
-	envExists := false
-	for _, environment := range environments {
-		if environment.Identifier == remoteEnv.KubeEnvironmentName {
-			envExists = true
-		}
+	envExists, elr := p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
+	if elr != nil {
+		return elr
 	}
 
 	cplogs.V(5).Infof("current remote environment status is %s", remoteEnv.Status)
@@ -559,21 +552,14 @@ func (p waitEnvironmentReady) Handle() error {
 	p.api.SetApiKey(apiKey)
 	var remoteEnv *cpapi.ApiRemoteEnvironmentStatus
 
-	remoteEnv, err = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
-	if err != nil {
-		return err
+	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if el != nil {
+		return el
 	}
 
-	environments, err := p.api.GetApiEnvironments(flowId)
-	if err != nil {
-		return err
-	}
-
-	envExists := false
-	for _, environment := range environments {
-		if environment.Identifier == remoteEnv.KubeEnvironmentName {
-			envExists = true
-		}
+	envExists, elr := p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
+	if elr != nil {
+		return elr
 	}
 
 	if (remoteEnv.Status == cpapi.RemoteEnvironmentTideFailed) || (remoteEnv.Status == cpapi.RemoteEnvironmentRunning && envExists == false) {
@@ -596,8 +582,8 @@ WAIT_LOOP:
 	for t := range p.ticker.C {
 		cplogs.V(5).Infoln("environment readiness check at ", t)
 
-		remoteEnv, err = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
-		if err != nil {
+		remoteEnv, el = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+		if el != nil {
 			break
 		}
 
@@ -620,38 +606,49 @@ WAIT_LOOP:
 
 		case cpapi.RemoteEnvironmentRunning:
 			cplogs.V(5).Infoln("The remote environment is running")
-			s.Stop()
 			//clear any error
 			err = nil
 			break WAIT_LOOP
 		}
-
 	}
-
-	s.Stop()
 
 	//if there has been an error return it
 	if err != nil {
+		s.Stop()
 		return err
 	}
 
 	//when there has been no errors reported, check if the environment actually exist, if not return an error.
-	envExists = false
-	environments, err = p.api.GetApiEnvironments(flowId)
-	if err != nil {
-		return err
-	}
-	for _, environment := range environments {
-		if environment.Identifier == remoteEnv.KubeEnvironmentName {
-			envExists = true
+	//try 3 times to get a matching environment in case the environment has been created by CP Api is not showing it immediately
+	attempts := 3
+
+	envCreated := false
+	for i := 0; i < attempts; i++ {
+		envCreated, elr = p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
+		if elr != nil {
+			s.Stop()
+			return elr
 		}
+
+		if envCreated {
+			cplogs.V(5).Infof("The environment exists")
+			break
+		}
+
+		cplogs.V(5).Infof("Then environment could not be found, retrying...")
+		//sleep for 3 seconds and try again
+		time.Sleep(time.Second * remoteEnvironmentReadinessProbePeriodSeconds)
 	}
-	if envExists == false {
+
+	if !envCreated {
+		cplogs.V(5).Infof("The environment could not be found, returning an error")
 		err = fmt.Errorf(
 			"\nContinuousPipe could not build your developer environment. Please check the logs of your first tide here:\n"+
 				"https://ui.continuouspipe.io/project/%s/%s/%s/logs\n"+
 				"If there are any changes required to the continuous-pipe.yml file, push them to the repository and retry with cp-remote init [token] --reset.\n", remoteEnv.LastTide.Team.Slug, remoteEnv.LastTide.FlowUuid, remoteEnv.LastTide.Uuid)
 	}
+
+	s.Stop()
 	return err
 }
 
@@ -698,9 +695,9 @@ func (p applyEnvironmentSettings) Handle() error {
 
 	p.api.SetApiKey(apiKey)
 
-	remoteEnv, err := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
-	if err != nil {
-		return err
+	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if el != nil {
+		return el
 	}
 
 	cplogs.V(5).Infof("saving remote environment info for environment name: %s, environment id: %s", remoteEnv.KubeEnvironmentName, remoteEnvId)

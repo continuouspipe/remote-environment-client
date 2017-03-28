@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
+	"github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"testing"
 )
@@ -26,7 +27,7 @@ func TestRemoteBranchNotPresent(t *testing.T) {
 		return nil
 	})
 	spyApiProvider := spies.NewSpyApiProvider()
-	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, errors.ErrorListProvider) {
 		r := &cpapi.ApiRemoteEnvironmentStatus{}
 		r.PublicEndpoints = []cpapi.ApiPublicEndpoint{
 			{

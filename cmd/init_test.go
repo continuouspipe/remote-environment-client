@@ -1,17 +1,17 @@
 package cmd
 
 import (
-	"fmt"
-	"testing"
-
 	"encoding/base64"
+	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
+	"github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/test"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"io/ioutil"
 	"k8s.io/kubernetes/pkg/api"
+	"testing"
 	"time"
 )
 
@@ -75,8 +75,8 @@ func TestInitHandler_Validate(t *testing.T) {
 }
 
 func TestInitHandler_Handle_InitStatusAlreadyCompleted(t *testing.T) {
-	fmt.Println("Running TestInitHandler_Validate")
-	defer fmt.Println("TestInitHandler_Validate Done")
+	fmt.Println("Running TestInitHandler_Handle_InitStatusAlreadyCompleted")
+	defer fmt.Println("TestInitHandler_Handle_InitStatusAlreadyCompleted Done")
 
 	//get mocked dependencies
 	spyConfig := spies.NewSpyConfig()
@@ -100,7 +100,7 @@ func TestInitHandler_Handle_InitStatusAlreadyCompleted(t *testing.T) {
 	handler.Handle()
 
 	//Expect that we ask the user if we want to re-initialize
-	expectedQuestion := "The environment is already initialized, do you want to re-initialize? (yes/no)"
+	expectedQuestion := "The configuration file is already present, do you want override it and re-initialize? (yes/no)"
 	spyQuestionPrompt.ExpectsCallCount(t, "RepeatIfEmpty", 1)
 	spyQuestionPrompt.ExpectsFirstCallArgument(t, "RepeatIfEmpty", "question", expectedQuestion)
 }
@@ -118,7 +118,7 @@ func TestParseSaveTokenInfo_Handle(t *testing.T) {
 		return nil
 	})
 	spyApiProvider := spies.NewSpyApiProvider()
-	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, errors.ErrorListProvider) {
 		r := &cpapi.ApiRemoteEnvironmentStatus{}
 		return r, nil
 	})
@@ -184,7 +184,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	})
 
 	spyApi := spies.NewSpyApiProvider()
-	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, errors.ErrorListProvider) {
 		return &cpapi.ApiRemoteEnvironmentStatus{
 			Status: cpapi.RemoteEnvironmentTideNotStarted,
 		}, nil
@@ -192,7 +192,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
 		return nil
 	})
-	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, error) {
+	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, errors.ErrorListProvider) {
 		return []cpapi.ApiEnvironment{}, nil
 	})
 
@@ -254,8 +254,8 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentFlowID", "837d92hd-19su1d91")
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "gitBranch", "remote-dev-user-foo")
 
-	spyApi.ExpectsCallCount(t, "GetApiEnvironments", 1)
-	spyApi.ExpectsFirstCallArgument(t, "GetApiEnvironments", "flowId", "837d92hd-19su1d91")
+	spyApi.ExpectsCallCount(t, "RemoteEnvironmentRunningAndExists", 1)
+	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentRunningAndExists", "flowId", "837d92hd-19su1d91")
 }
 
 func TestWaitEnvironmentReady_Handle(t *testing.T) {
@@ -292,14 +292,17 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	spyApi.MockRemoteEnvironmentBuild(func(remoteEnvId string, gitBranch string) error {
 		return nil
 	})
-	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, error) {
+	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, errors.ErrorListProvider) {
 		return []cpapi.ApiEnvironment{}, nil
+	})
+	spyApi.MockRemoteEnvironmentRunningAndExists(func(flowId string, environmentId string) (bool, errors.ErrorListProvider) {
+		return true, nil
 	})
 	//mock a response with a status of:
 	//RemoteEnvironmentTideFailed the first time
 	//RemoteEnvironmentTideRunning the second time
 	//RemoteEnvironmentRunning second time
-	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, errors.ErrorListProvider) {
 		var s string
 		callCount := spyApi.CallsCountFor("GetRemoteEnvironmentStatus")
 
@@ -350,8 +353,8 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "remoteEnvironmentFlowID", "837d92hd-19su1d91")
 	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentBuild", "gitBranch", "remote-dev-user-foo")
 
-	spyApi.ExpectsCallCount(t, "GetApiEnvironments", 2)
-	spyApi.ExpectsFirstCallArgument(t, "GetApiEnvironments", "flowId", "837d92hd-19su1d91")
+	spyApi.ExpectsCallCount(t, "RemoteEnvironmentRunningAndExists", 2)
+	spyApi.ExpectsFirstCallArgument(t, "RemoteEnvironmentRunningAndExists", "flowId", "837d92hd-19su1d91")
 }
 
 func TestApplyEnvironmentSettings_Handle(t *testing.T) {
@@ -390,7 +393,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	})
 
 	spyApi := spies.NewSpyApiProvider()
-	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, error) {
+	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, errors.ErrorListProvider) {
 		return &cpapi.ApiRemoteEnvironmentStatus{
 			cpapi.RemoteEnvironmentRunning,
 			"837d92hd-19su1d91-dev-some-user",

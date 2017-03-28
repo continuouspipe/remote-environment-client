@@ -131,7 +131,6 @@ func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 		if err != nil {
 			return err
 		}
-
 		apiKey, err := h.config.GetString(config.ApiKey)
 		if err != nil {
 			return err
@@ -139,9 +138,9 @@ func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 
 		h.api.SetApiKey(apiKey)
 
-		environments, err := h.api.GetApiEnvironments(h.flowId)
-		if err != nil {
-			return err
+		environments, el := h.api.GetApiEnvironments(h.flowId)
+		if el != nil {
+			return el
 		}
 
 		clusterIdentifier := ""

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
-	errorPkg "github.com/continuouspipe/remote-environment-client/error"
+	"github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/fatih/color"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -168,11 +168,11 @@ func addApplicationFilesToGitIgnore() {
 func validateConfig() {
 	valid, missing := config.C.Validate()
 	if valid == false {
-		errorPkg.ExitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the init command.", missing))
+		errors.ExitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the init command.", missing))
 
 	}
 }
 
 func checkErr(err error) {
-	errorPkg.CheckErr(err)
+	errors.CheckErr(err)
 }

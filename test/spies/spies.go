@@ -58,8 +58,9 @@ func (spy *Spy) CallsCountFor(functionName string) int {
 }
 
 func (spy *Spy) ExpectsCallCount(t *testing.T, functionName string, expectedCallCount int) {
-	if spy.CallsCountFor(functionName) != expectedCallCount {
-		t.Errorf("Expected %s call count to be %d", functionName, expectedCallCount)
+	callsCount := spy.CallsCountFor(functionName)
+	if callsCount != expectedCallCount {
+		t.Errorf("Expected %s call count to be %d, actual call count %d", functionName, expectedCallCount, callsCount)
 	}
 }
 
