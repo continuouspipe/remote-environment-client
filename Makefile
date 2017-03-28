@@ -61,6 +61,7 @@ VERSION=0.1.2-beta.1
 GOROOT_FINAL=/usr/local/Cellar/go/1.7.4_2/libexec
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config
 LDFLAGS=-ldflags="-X ${CONFIG_PKG}.CurrentVersion=${VERSION}"
+TRIMFLAGS=-gcflags=-trimpath=${GOPATH} -asmflags=-trimpath=${GOPATH}
 
 #overwrite this to build for different arch and operative systems
 BUILDOS=darwin
@@ -68,7 +69,7 @@ BUILDARCH=amd64
 
 build:
 	mkdir bin 2>/dev/null; true
-	env GOROOT_FINAL=${GOROOT_FINAL} GOOS=${BUILDOS} GOARCH=${BUILDARCH} go build ${LDFLAGS} -o bin/${BUILDOS}-${BUILDARCH}
+	env GOROOT_FINAL=${GOROOT_FINAL} GOOS=${BUILDOS} GOARCH=${BUILDARCH} go build ${LDFLAGS} ${TRIMFLAGS} -o bin/${BUILDOS}-${BUILDARCH}
 
 clean:
 	rm -f ${BINARY}
