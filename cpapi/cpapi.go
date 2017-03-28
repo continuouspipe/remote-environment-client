@@ -243,12 +243,12 @@ func (c CpApi) GetApiEnvironments(flowId string) ([]ApiEnvironment, errors.Error
 	cplogs.V(5).Infof("getting flow environments using url %s", url.String())
 
 	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
-	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
 		el.AddErrorf("error when getting a new http request object for fetching the list of environments")
 		el.Add(err)
 		return nil, el
 	}
+	req.Header.Add("X-Api-Key", c.apiKey)
 
 	respBody, elr := c.getResponseBody(c.client, req)
 	if elr != nil {
@@ -498,12 +498,12 @@ func (c CpApi) RemoteDevelopmentEnvironmentDestroy(flowId string, remoteEnvironm
 	cplogs.V(5).Infof("destroying remote development environment using url %s", u.String())
 
 	req, err := http.NewRequest(http.MethodDelete, u.String(), nil)
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("X-Api-Key", c.apiKey)
 	if err != nil {
 		el.Add(err)
 		return el
 	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("X-Api-Key", c.apiKey)
 
 	_, elr := c.getResponseBody(c.client, req)
 	if elr != nil {
