@@ -108,9 +108,20 @@ func (r RsyncDaemonFetch) Fetch(filePath string) error {
 		"--blocking-io",
 		"--force",
 		`--exclude=.git`,
-		fmt.Sprintf(`--exclude-from=%s`, SyncExcluded),
-		"--",
 	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(FetchExcluded); err == nil {
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+FetchExcluded))
+	}
+	if _, err := os.Stat(SyncFetchExcluded); err == nil {
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncFetchExcluded))
+	}
+
+	args = append(args, "--")
 
 	if filePath == "" {
 		cplogs.V(5).Infoln("fetching all files")

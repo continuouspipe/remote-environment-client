@@ -85,8 +85,8 @@ func (r *RSyncDaemon) Sync(paths []string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(SyncExcluded); err == nil {
-		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncExcluded))
+	if _, err := os.Stat(SyncFetchExcluded); err == nil {
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncFetchExcluded))
 	}
 
 	paths = slice.RemoveDuplicateString(paths)

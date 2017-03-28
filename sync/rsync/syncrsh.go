@@ -66,8 +66,8 @@ func (o RSyncRsh) Sync(paths []string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(SyncExcluded); err == nil {
-		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+string(filepath.Separator)+SyncExcluded))
+	if _, err := os.Stat(SyncFetchExcluded); err == nil {
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+string(filepath.Separator)+SyncFetchExcluded))
 	}
 
 	paths = slice.RemoveDuplicateString(paths)
