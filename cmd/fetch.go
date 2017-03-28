@@ -8,7 +8,10 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
+	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/spf13/cobra"
+	"io"
+	"os"
 	"strings"
 )
 
@@ -23,6 +26,7 @@ func NewFetchCmd() *cobra.Command {
 	settings := config.C
 	handler := &FetchHandle{}
 	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
+	handler.writer = os.Stdout
 
 	command := &cobra.Command{
 		Use:     "fetch",
@@ -42,8 +46,8 @@ with the default container specified during setup but you can specify another co
 
 			fmt.Println("Fetch in progress")
 
-			benchmark := benchmark.NewCmdBenchmark()
-			benchmark.Start("fetch")
+			b := benchmark.NewCmdBenchmark()
+			b.Start("fetch")
 
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
@@ -53,7 +57,7 @@ with the default container specified during setup but you can specify another co
 			checkErr(handler.Validate())
 			checkErr(handler.Handle(args, podsFinder, podsFilter, fetcher))
 
-			_, err := benchmark.StopAndLog()
+			_, err := b.StopAndLog()
 			checkErr(err)
 			fmt.Printf("Fetch complete, files and folders retrieved has been logged in %s\n", cplogs.GetLogInfoFile())
 			cplogs.Flush()
@@ -70,6 +74,7 @@ with the default container specified during setup but you can specify another co
 	command.PersistentFlags().StringVarP(&handler.File, "file", "f", "", "Allows to specify a file that needs to be fetch from the pod")
 	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
 	command.PersistentFlags().BoolVar(&handler.rsyncVerbose, "rsync-verbose", false, "Allows to use rsync in verbose mode and debug issues with exclusions")
+	command.PersistentFlags().BoolVar(&handler.dryRun, "dry-run", false, "Show what would have been transferred")
 	return command
 }
 
@@ -81,6 +86,8 @@ type FetchHandle struct {
 	RemoteProjectPath string
 	kubeCtlInit       kubectlapi.KubeCtlInitializer
 	rsyncVerbose      bool
+	dryRun            bool
+	writer            io.Writer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -133,10 +140,17 @@ func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter p
 		return err
 	}
 
-	fetcher.SetVerbose(h.rsyncVerbose)
-	fetcher.SetEnvironment(h.Environment)
-	fetcher.SetKubeConfigKey(h.Environment)
-	fetcher.SetPod(pod.GetName())
-	fetcher.SetRemoteProjectPath(h.RemoteProjectPath)
+	if h.dryRun {
+		fmt.Fprintln(h.writer, "Dry run mode enabled")
+	}
+
+	syncOptions := options.SyncOptions{}
+	syncOptions.Verbose = h.rsyncVerbose
+	syncOptions.Environment = h.Environment
+	syncOptions.KubeConfigKey = h.Environment
+	syncOptions.Pod = pod.GetName()
+	syncOptions.RemoteProjectPath = h.RemoteProjectPath
+	syncOptions.DryRun = h.dryRun
+	fetcher.SetOptions(syncOptions)
 	return fetcher.Fetch(h.File)
 }

@@ -1,16 +1,15 @@
 package rsync
 
-import "runtime"
+import (
+	"runtime"
+	"github.com/continuouspipe/remote-environment-client/sync/options"
+)
 
 //use rsync to fetch all the project files from the pod, or if the filePath is not empty it
 //fetch a specific file
 type RsyncFetcher interface {
 	Fetch(string) error
-	SetKubeConfigKey(string)
-	SetEnvironment(string)
-	SetPod(string)
-	SetRemoteProjectPath(string)
-	SetVerbose(bool)
+	SetOptions(syncOptions options.SyncOptions)
 }
 
 var RfetchRsh RsyncFetcher

@@ -9,7 +9,10 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
+	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/spf13/cobra"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -35,6 +38,7 @@ func NewPushCmd() *cobra.Command {
 	settings := config.C
 	handler := &PushHandle{}
 	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
+	handler.writer = os.Stdout
 
 	command := &cobra.Command{
 		Use:     "push",
@@ -80,6 +84,7 @@ Note that this will delete any files/folders in the remote container that are no
 	command.PersistentFlags().StringVarP(&handler.File, "file", "f", "", "Allows to specify a file that needs to be pushed to the pod")
 	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
 	command.PersistentFlags().BoolVar(&handler.rsyncVerbose, "rsync-verbose", false, "Allows to use rsync in verbose mode and debug issues with exclusions")
+	command.PersistentFlags().BoolVar(&handler.dryRun, "dry-run", false, "Show what would have been transferred")
 	return command
 }
 
@@ -91,6 +96,8 @@ type PushHandle struct {
 	RemoteProjectPath string
 	kubeCtlInit       kubectlapi.KubeCtlInitializer
 	rsyncVerbose      bool
+	dryRun            bool
+	writer            io.Writer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -143,14 +150,20 @@ func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 		return err
 	}
 
-	//set individual file threshold to 1 as for now we only allow the user to specify 1 file to be pushed
-	syncer.SetIndividualFileSyncThreshold(1)
+	if h.dryRun {
+		fmt.Fprintln(h.writer, "Dry run mode enabled")
+	}
 
-	syncer.SetVerbose(h.rsyncVerbose)
-	syncer.SetEnvironment(h.Environment)
-	syncer.SetKubeConfigKey(h.Environment)
-	syncer.SetPod(pod.GetName())
-	syncer.SetRemoteProjectPath(h.RemoteProjectPath)
+	syncOptions := options.SyncOptions{}
+	//set individual file threshold to 1 as for now we only allow the user to specify 1 file to be pushed
+	syncOptions.IndividualFileSyncThreshold = 1
+	syncOptions.Verbose = h.rsyncVerbose
+	syncOptions.Environment = h.Environment
+	syncOptions.KubeConfigKey = h.Environment
+	syncOptions.Pod = pod.GetName()
+	syncOptions.RemoteProjectPath = h.RemoteProjectPath
+	syncOptions.DryRun = h.dryRun
+	syncer.SetOptions(syncOptions)
 
 	var paths []string
 	if h.File != "" {

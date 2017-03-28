@@ -8,6 +8,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
+	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -21,6 +22,8 @@ func NewWatchCmd() *cobra.Command {
 	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 	handler.api = cpapi.NewCpApi()
 	handler.config = settings
+	handler.writer = os.Stdout
+
 	command := &cobra.Command{
 		Use:     "watch",
 		Aliases: []string{"wa"},
@@ -61,6 +64,7 @@ setup but you can specify another container to sync with.`,
 	command.PersistentFlags().IntVarP(&handler.IndividualFileSyncThreshold, "individual-file-sync-threshold", "t", 10, "Above this threshold the watch command will sync any file or folder that is different compared to the local one")
 	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
 	command.PersistentFlags().BoolVar(&handler.rsyncVerbose, "rsync-verbose", false, "Allows to use rsync in verbose mode and debug issues with exclusions")
+	command.PersistentFlags().BoolVar(&handler.dryRun, "dry-run", false, "Show what would have been transferred")
 	return command
 }
 
@@ -77,6 +81,8 @@ type WatchHandle struct {
 	api                         cpapi.CpApiProvider
 	config                      config.ConfigProvider
 	rsyncVerbose                bool
+	dryRun                      bool
+	writer                      io.Writer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -152,12 +158,20 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 	}
 	cpapi.PrintPublicEndpoints(h.Stdout, remoteEnv.PublicEndpoints)
 
-	h.syncer.SetVerbose(h.rsyncVerbose)
-	h.syncer.SetKubeConfigKey(h.Environment)
-	h.syncer.SetEnvironment(h.Environment)
-	h.syncer.SetPod(pod.GetName())
-	h.syncer.SetIndividualFileSyncThreshold(h.IndividualFileSyncThreshold)
-	h.syncer.SetRemoteProjectPath(h.RemoteProjectPath)
+	if h.dryRun {
+		fmt.Fprintln(h.writer, "Dry run mode enabled")
+	}
+
+	syncOptions := options.SyncOptions{}
+	syncOptions.KubeConfigKey = h.Environment
+	syncOptions.Environment = h.Environment
+	syncOptions.Pod = pod.GetName()
+	syncOptions.IndividualFileSyncThreshold = h.IndividualFileSyncThreshold
+	syncOptions.RemoteProjectPath = h.RemoteProjectPath
+	syncOptions.DryRun = h.dryRun
+	syncOptions.Verbose = h.rsyncVerbose
+	h.syncer.SetOptions(syncOptions)
+
 	dirMonitor.SetLatency(time.Duration(h.Latency))
 
 	fmt.Fprintf(h.Stdout, "\nDestination Pod: %s\n", pod.GetName())

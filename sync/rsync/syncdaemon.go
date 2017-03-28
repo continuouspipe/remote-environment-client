@@ -6,6 +6,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/osapi"
+	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/continuouspipe/remote-environment-client/util/slice"
 	"io"
 	"io/ioutil"
@@ -19,12 +20,10 @@ func init() {
 }
 
 type RSyncDaemon struct {
-	kubeConfigKey, environment  string
-	pod                         string
-	individualFileSyncThreshold int
-	remoteProjectPath           string
-	remoteRsync                 *RemoteRsyncDeamon
-	verbose                     bool
+	kubeConfigKey, environment, pod, remoteProjectPath string
+	individualFileSyncThreshold                        int
+	remoteRsync                                        *RemoteRsyncDeamon
+	verbose, dryRun                                    bool
 }
 
 func NewRSyncDaemon() *RSyncDaemon {
@@ -33,28 +32,14 @@ func NewRSyncDaemon() *RSyncDaemon {
 	return d
 }
 
-func (r *RSyncDaemon) SetKubeConfigKey(kubeConfigKey string) {
-	r.kubeConfigKey = kubeConfigKey
-}
-
-func (r *RSyncDaemon) SetEnvironment(environment string) {
-	r.environment = environment
-}
-
-func (r *RSyncDaemon) SetPod(pod string) {
-	r.pod = pod
-}
-
-func (r *RSyncDaemon) SetIndividualFileSyncThreshold(individualFileSyncThreshold int) {
-	r.individualFileSyncThreshold = individualFileSyncThreshold
-}
-
-func (r *RSyncDaemon) SetRemoteProjectPath(remoteProjectPath string) {
-	r.remoteProjectPath = remoteProjectPath
-}
-
-func (r *RSyncDaemon) SetVerbose(verbose bool) {
-	r.verbose = verbose
+func (r *RSyncDaemon) SetOptions(syncOptions options.SyncOptions) {
+	r.kubeConfigKey = syncOptions.KubeConfigKey
+	r.environment = syncOptions.Environment
+	r.pod = syncOptions.Pod
+	r.individualFileSyncThreshold = syncOptions.IndividualFileSyncThreshold
+	r.remoteProjectPath = syncOptions.RemoteProjectPath
+	r.verbose = syncOptions.Verbose
+	r.dryRun = syncOptions.DryRun
 }
 
 func (r *RSyncDaemon) Sync(paths []string) error {
@@ -88,6 +73,9 @@ func (r *RSyncDaemon) Sync(paths []string) error {
 
 	if r.verbose {
 		args = append(args, "--verbose")
+	}
+	if r.dryRun {
+		args = append(args, "--dry-run")
 	}
 
 	cwd, err := os.Getwd()
