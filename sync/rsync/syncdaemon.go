@@ -24,6 +24,7 @@ type RSyncDaemon struct {
 	individualFileSyncThreshold int
 	remoteProjectPath           string
 	remoteRsync                 *RemoteRsyncDeamon
+	verbose                     bool
 }
 
 func NewRSyncDaemon() *RSyncDaemon {
@@ -50,6 +51,10 @@ func (r *RSyncDaemon) SetIndividualFileSyncThreshold(individualFileSyncThreshold
 
 func (r *RSyncDaemon) SetRemoteProjectPath(remoteProjectPath string) {
 	r.remoteProjectPath = remoteProjectPath
+}
+
+func (r *RSyncDaemon) SetVerbose(verbose bool) {
+	r.verbose = verbose
 }
 
 func (r *RSyncDaemon) Sync(paths []string) error {
@@ -81,12 +86,16 @@ func (r *RSyncDaemon) Sync(paths []string) error {
 		"--checksum",
 		`--exclude=.git`}
 
+	if r.verbose {
+		args = append(args, "--verbose")
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(SyncExcluded); err == nil {
-		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncExcluded))
+	if _, err := os.Stat(SyncFetchExcluded); err == nil {
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncFetchExcluded))
 	}
 
 	paths = slice.RemoveDuplicateString(paths)

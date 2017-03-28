@@ -9,6 +9,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/osapi"
+	"path/filepath"
 )
 
 func init() {
@@ -19,6 +20,7 @@ type RsyncRshFetch struct {
 	kubeConfigKey, environment string
 	pod                        string
 	remoteProjectPath          string
+	verbose bool
 }
 
 func NewRsyncRshFetch() *RsyncRshFetch {
@@ -41,6 +43,10 @@ func (r *RsyncRshFetch) SetRemoteProjectPath(remoteProjectPath string) {
 	r.remoteProjectPath = remoteProjectPath
 }
 
+func (r *RsyncRshFetch) SetVerbose(verbose bool) {
+	r.verbose = verbose
+}
+
 func (r RsyncRshFetch) Fetch(filePath string) error {
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -57,9 +63,24 @@ func (r RsyncRshFetch) Fetch(filePath string) error {
 		"--blocking-io",
 		"--force",
 		`--exclude=.git`,
-		fmt.Sprintf(`--exclude-from=%s`, SyncExcluded),
-		"--",
 	}
+
+	if r.verbose {
+		args = append(args, "--verbose")
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(FetchExcluded); err == nil {
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+string(filepath.Separator)+FetchExcluded))
+	}
+	if _, err := os.Stat(SyncFetchExcluded); err == nil {
+		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+string(filepath.Separator)+SyncFetchExcluded))
+	}
+
+	args = append(args, "--")
 
 	if filePath == "" {
 		cplogs.V(5).Infoln("fetching all files")

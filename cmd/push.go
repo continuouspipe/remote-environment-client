@@ -79,6 +79,7 @@ Note that this will delete any files/folders in the remote container that are no
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 	command.PersistentFlags().StringVarP(&handler.File, "file", "f", "", "Allows to specify a file that needs to be pushed to the pod")
 	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
+	command.PersistentFlags().BoolVar(&handler.rsyncVerbose, "rsync-verbose", false, "Allows to use rsync in verbose mode and debug issues with exclusions")
 	return command
 }
 
@@ -89,6 +90,7 @@ type PushHandle struct {
 	File              string
 	RemoteProjectPath string
 	kubeCtlInit       kubectlapi.KubeCtlInitializer
+	rsyncVerbose      bool
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -144,6 +146,7 @@ func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 	//set individual file threshold to 1 as for now we only allow the user to specify 1 file to be pushed
 	syncer.SetIndividualFileSyncThreshold(1)
 
+	syncer.SetVerbose(h.rsyncVerbose)
 	syncer.SetEnvironment(h.Environment)
 	syncer.SetKubeConfigKey(h.Environment)
 	syncer.SetPod(pod.GetName())
