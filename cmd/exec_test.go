@@ -112,7 +112,7 @@ func TestExecHandle_Handle_InteractiveMode(t *testing.T) {
 	})
 
 	spyApi := spies.NewSpyApiProvider()
-	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, *errors.ErrorList) {
+	spyApi.MockGetApiEnvironments(func(flowId string) ([]cpapi.ApiEnvironment, errors.ErrorListProvider) {
 		return []cpapi.ApiEnvironment{
 			{
 				"my-cluster",

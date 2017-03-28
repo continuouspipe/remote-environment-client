@@ -23,6 +23,7 @@ type CpApiProvider interface {
 	GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, errors.ErrorListProvider)
 	RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error
 	CancelRunningTide(flowId string, remoteEnvironmentId string) error
+	RemoteEnvironmentRunningAndExists(flowId string, environmentId string) (bool, errors.ErrorListProvider)
 	RemoteEnvironmentDestroy(flowId string, environment string, cluster string) error
 	RemoteDevelopmentEnvironmentDestroy(flowId string, remoteEnvironmentId string) error
 	CancelTide(tideId string) error
@@ -438,6 +439,28 @@ func (c CpApi) RemoteEnvironmentDestroy(flowId string, environment string, clust
 	return nil
 }
 
+func (c CpApi) RemoteEnvironmentRunningAndExists(flowId string, environmentId string) (bool, errors.ErrorListProvider) {
+	el := errors.NewErrorList()
+
+	remoteEnv, elr := c.GetRemoteEnvironmentStatus(flowId, environmentId)
+	if elr != nil {
+		el.Add(elr.Items()...)
+		return false, el
+	}
+
+	environments, err := c.GetApiEnvironments(flowId)
+	if err != nil {
+		el.Add(elr.Items()...)
+		return false, el
+	}
+	for _, environment := range environments {
+		if environment.Identifier == remoteEnv.KubeEnvironmentName {
+			return true, nil
+		}
+	}
+	return true, nil
+}
+
 func (c CpApi) RemoteDevelopmentEnvironmentDestroy(flowId string, remoteEnvironmentId string) error {
 	if c.apiKey == "" {
 		return fmt.Errorf("api key not provided")
@@ -469,11 +492,11 @@ func (c CpApi) RemoteDevelopmentEnvironmentDestroy(flowId string, remoteEnvironm
 func (c CpApi) getResponseBody(client *http.Client, req *http.Request) ([]byte, errors.ErrorListProvider) {
 	el := errors.NewErrorList()
 	res, err := client.Do(req)
-	defer res.Body.Close()
 	if err != nil {
 		el.Add(err)
 		return nil, el
 	}
+	defer res.Body.Close()
 	if res.StatusCode < 200 && res.StatusCode > 202 {
 		el.Add(fmt.Errorf("error getting response body, status: %d, url: %s", res.StatusCode, req.URL.String()))
 		return nil, el

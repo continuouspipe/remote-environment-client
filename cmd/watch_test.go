@@ -49,7 +49,7 @@ func TestWatch(t *testing.T) {
 		return "", "", "", nil
 	})
 	spyApiProvider := spies.NewSpyApiProvider()
-	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, *errors.ErrorList) {
+	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, errors.ErrorListProvider) {
 		r := &cpapi.ApiRemoteEnvironmentStatus{}
 		r.PublicEndpoints = []cpapi.ApiPublicEndpoint{
 			{
