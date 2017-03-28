@@ -13,6 +13,7 @@ type Syncer interface {
 	SetPod(string)
 	SetIndividualFileSyncThreshold(int)
 	SetRemoteProjectPath(string)
+	SetVerbose(bool)
 }
 
 func GetSyncer() Syncer {

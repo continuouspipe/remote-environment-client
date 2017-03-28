@@ -60,6 +60,7 @@ setup but you can specify another container to sync with.`,
 	command.PersistentFlags().Int64VarP(&handler.Latency, "latency", "l", 500, "Sync latency / speed in milli-seconds")
 	command.PersistentFlags().IntVarP(&handler.IndividualFileSyncThreshold, "individual-file-sync-threshold", "t", 10, "Above this threshold the watch command will sync any file or folder that is different compared to the local one")
 	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
+	command.PersistentFlags().BoolVar(&handler.rsyncVerbose, "rsync-verbose", false, "Allows to use rsync in verbose mode and debug issues with exclusions")
 	return command
 }
 
@@ -75,6 +76,7 @@ type WatchHandle struct {
 	kubeCtlInit                 kubectlapi.KubeCtlInitializer
 	api                         cpapi.CpApiProvider
 	config                      config.ConfigProvider
+	rsyncVerbose                bool
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -150,6 +152,7 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 	}
 	cpapi.PrintPublicEndpoints(h.Stdout, remoteEnv.PublicEndpoints)
 
+	h.syncer.SetVerbose(h.rsyncVerbose)
 	h.syncer.SetKubeConfigKey(h.Environment)
 	h.syncer.SetEnvironment(h.Environment)
 	h.syncer.SetPod(pod.GetName())

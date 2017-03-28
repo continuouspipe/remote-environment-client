@@ -12,6 +12,7 @@ type Fetcher interface {
 	SetEnvironment(string)
 	SetPod(string)
 	SetRemoteProjectPath(string)
+	SetVerbose(bool)
 }
 
 func GetFetcher() Fetcher {

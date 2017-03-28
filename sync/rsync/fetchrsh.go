@@ -20,6 +20,7 @@ type RsyncRshFetch struct {
 	kubeConfigKey, environment string
 	pod                        string
 	remoteProjectPath          string
+	verbose bool
 }
 
 func NewRsyncRshFetch() *RsyncRshFetch {
@@ -42,6 +43,10 @@ func (r *RsyncRshFetch) SetRemoteProjectPath(remoteProjectPath string) {
 	r.remoteProjectPath = remoteProjectPath
 }
 
+func (r *RsyncRshFetch) SetVerbose(verbose bool) {
+	r.verbose = verbose
+}
+
 func (r RsyncRshFetch) Fetch(filePath string) error {
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -58,6 +63,10 @@ func (r RsyncRshFetch) Fetch(filePath string) error {
 		"--blocking-io",
 		"--force",
 		`--exclude=.git`,
+	}
+
+	if r.verbose {
+		args = append(args, "--verbose")
 	}
 
 	cwd, err := os.Getwd()

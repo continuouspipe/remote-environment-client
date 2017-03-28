@@ -23,6 +23,7 @@ type RSyncRsh struct {
 	pod                         string
 	individualFileSyncThreshold int
 	remoteProjectPath           string
+	verbose bool
 }
 
 func NewRSyncRsh() *RSyncRsh {
@@ -49,6 +50,10 @@ func (o *RSyncRsh) SetRemoteProjectPath(remoteProjectPath string) {
 	o.remoteProjectPath = remoteProjectPath
 }
 
+func (o *RSyncRsh) SetVerbose(verbose bool) {
+	o.verbose = verbose
+}
+
 func (o RSyncRsh) Sync(paths []string) error {
 	rsh := fmt.Sprintf(`%s %s --context=%s --namespace=%s exec -i %s`, config.AppName, config.KubeCtlName, o.kubeConfigKey, o.environment, o.pod)
 	cplogs.V(5).Infof("setting RSYNC_RSH to %s\n", rsh)
@@ -61,6 +66,10 @@ func (o RSyncRsh) Sync(paths []string) error {
 		"--blocking-io",
 		"--checksum",
 		`--exclude=.git`}
+
+	if o.verbose {
+		args = append(args, "--verbose")
+	}
 
 	cwd, err := os.Getwd()
 	if err != nil {

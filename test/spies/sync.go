@@ -67,3 +67,11 @@ func (s *SpySyncer) SetIndividualFileSyncThreshold(threshold int) {
 	function := &Function{Name: "SetIndividualFileSyncThreshold", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
 }
+
+func (s *SpySyncer) SetVerbose(verbose bool) {
+	args := make(Arguments)
+	args["verbose"] = verbose
+
+	function := &Function{Name: "SetVerbose", Arguments: args}
+	s.calledFunctions = append(s.calledFunctions, *function)
+}

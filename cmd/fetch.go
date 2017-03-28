@@ -69,6 +69,7 @@ with the default container specified during setup but you can specify another co
 	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 	command.PersistentFlags().StringVarP(&handler.File, "file", "f", "", "Allows to specify a file that needs to be fetch from the pod")
 	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
+	command.PersistentFlags().BoolVar(&handler.rsyncVerbose, "rsync-verbose", false, "Allows to use rsync in verbose mode and debug issues with exclusions")
 	return command
 }
 
@@ -79,6 +80,7 @@ type FetchHandle struct {
 	File              string
 	RemoteProjectPath string
 	kubeCtlInit       kubectlapi.KubeCtlInitializer
+	rsyncVerbose      bool
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -131,6 +133,7 @@ func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter p
 		return err
 	}
 
+	fetcher.SetVerbose(h.rsyncVerbose)
 	fetcher.SetEnvironment(h.Environment)
 	fetcher.SetKubeConfigKey(h.Environment)
 	fetcher.SetPod(pod.GetName())

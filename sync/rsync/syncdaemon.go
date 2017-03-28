@@ -24,6 +24,7 @@ type RSyncDaemon struct {
 	individualFileSyncThreshold int
 	remoteProjectPath           string
 	remoteRsync                 *RemoteRsyncDeamon
+	verbose                     bool
 }
 
 func NewRSyncDaemon() *RSyncDaemon {
@@ -50,6 +51,10 @@ func (r *RSyncDaemon) SetIndividualFileSyncThreshold(individualFileSyncThreshold
 
 func (r *RSyncDaemon) SetRemoteProjectPath(remoteProjectPath string) {
 	r.remoteProjectPath = remoteProjectPath
+}
+
+func (r *RSyncDaemon) SetVerbose(verbose bool) {
+	r.verbose = verbose
 }
 
 func (r *RSyncDaemon) Sync(paths []string) error {
@@ -80,6 +85,10 @@ func (r *RSyncDaemon) Sync(paths []string) error {
 		"--blocking-io",
 		"--checksum",
 		`--exclude=.git`}
+
+	if r.verbose {
+		args = append(args, "--verbose")
+	}
 
 	cwd, err := os.Getwd()
 	if err != nil {

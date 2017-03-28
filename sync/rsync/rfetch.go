@@ -10,6 +10,7 @@ type RsyncFetcher interface {
 	SetEnvironment(string)
 	SetPod(string)
 	SetRemoteProjectPath(string)
+	SetVerbose(bool)
 }
 
 var RfetchRsh RsyncFetcher
