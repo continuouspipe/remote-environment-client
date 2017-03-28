@@ -56,7 +56,7 @@
 
 
 BINARY=cp-remote
-VERSION=0.1.1
+VERSION=0.1.2-beta.1
 
 GOROOT_FINAL=/usr/local/Cellar/go/1.7.4_2/libexec
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config
@@ -68,8 +68,7 @@ BUILDARCH=amd64
 
 build:
 	mkdir bin 2>/dev/null; true
-	export GOROOT_FINAL=${GOROOT_FINAL}
-	env GOOS=${BUILDOS} GOARCH=${BUILDARCH} go build ${LDFLAGS} -o bin/${BUILDOS}-${BUILDARCH}
+	env GOROOT_FINAL=${GOROOT_FINAL} GOOS=${BUILDOS} GOARCH=${BUILDARCH} go build ${LDFLAGS} -o bin/${BUILDOS}-${BUILDARCH}
 
 clean:
 	rm -f ${BINARY}

@@ -108,6 +108,10 @@ func initConfig() {
 	initGlobalConfig()
 	checkLegacyApplicationFile()
 	addApplicationFilesToGitIgnore()
+
+	//write app version in log file
+	cplogs.V(5).Infof("Application Name: %s, Version: %s", config.AppName, config.CurrentVersion)
+	cplogs.Flush()
 }
 
 func initLocalConfig() {
