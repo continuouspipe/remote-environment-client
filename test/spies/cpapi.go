@@ -8,7 +8,6 @@ import (
 type SpyApiProvider struct {
 	Spy
 	getApiTeams                         func() ([]cpapi.ApiTeam, error)
-	getApiBucketClusters                func(bucketUuid string) ([]cpapi.ApiCluster, error)
 	getApiUser                          func(user string) (*cpapi.ApiUser, error)
 	getApiEnvironments                  func(flowId string) ([]cpapi.ApiEnvironment, errors.ErrorListProvider)
 	getRemoteEnvironmentStatus          func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, errors.ErrorListProvider)
@@ -38,15 +37,6 @@ func (s *SpyApiProvider) GetApiTeams() ([]cpapi.ApiTeam, error) {
 	function := &Function{Name: "GetApiTeams", Arguments: args}
 	s.calledFunctions = append(s.calledFunctions, *function)
 	return s.getApiTeams()
-}
-
-func (s *SpyApiProvider) GetApiBucketClusters(bucketUuid string) ([]cpapi.ApiCluster, error) {
-	args := make(Arguments)
-	args["bucketUuid"] = bucketUuid
-
-	function := &Function{Name: "GetApiBucketClusters", Arguments: args}
-	s.calledFunctions = append(s.calledFunctions, *function)
-	return s.getApiBucketClusters(bucketUuid)
 }
 
 func (s *SpyApiProvider) GetApiUser(user string) (*cpapi.ApiUser, error) {
@@ -143,10 +133,6 @@ func (s *SpyApiProvider) CancelTide(tideId string) error {
 
 func (s *SpyApiProvider) MockGetApiTeams(mocked func() ([]cpapi.ApiTeam, error)) {
 	s.getApiTeams = mocked
-}
-
-func (s *SpyApiProvider) MockGetApiBucketClusters(mocked func(bucketUuid string) ([]cpapi.ApiCluster, error)) {
-	s.getApiBucketClusters = mocked
 }
 
 func (s *SpyApiProvider) MockGetApiUser(mocked func(user string) (*cpapi.ApiUser, error)) {

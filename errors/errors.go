@@ -62,6 +62,11 @@ func (el *ErrorList) Add(elems ...error) {
 	el.errors = append(el.errors, elems...)
 }
 
+func (el *ErrorList) AddErrorf(format string, a ...interface{}) {
+	err := fmt.Errorf(format, a...)
+	el.errors = append(el.errors, err)
+}
+
 func (el ErrorList) Items() []error {
 	return el.errors
 }
