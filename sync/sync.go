@@ -2,18 +2,14 @@ package sync
 
 import (
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
+	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/continuouspipe/remote-environment-client/sync/rsync"
 )
 
 //syncs the files specified in filePaths. When filePaths is an empty slice, it syncs all project files
 type Syncer interface {
 	Sync(filePaths []string) error
-	SetKubeConfigKey(string)
-	SetEnvironment(string)
-	SetPod(string)
-	SetIndividualFileSyncThreshold(int)
-	SetRemoteProjectPath(string)
-	SetVerbose(bool)
+	SetOptions(syncOptions options.SyncOptions)
 }
 
 func GetSyncer() Syncer {

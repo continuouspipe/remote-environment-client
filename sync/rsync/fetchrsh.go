@@ -9,6 +9,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/osapi"
+	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"path/filepath"
 )
 
@@ -17,34 +18,21 @@ func init() {
 }
 
 type RsyncRshFetch struct {
-	kubeConfigKey, environment string
-	pod                        string
-	remoteProjectPath          string
-	verbose bool
+	kubeConfigKey, environment, pod, remoteProjectPath string
+	verbose, dryRun                                    bool
 }
 
 func NewRsyncRshFetch() *RsyncRshFetch {
 	return &RsyncRshFetch{}
 }
 
-func (r *RsyncRshFetch) SetKubeConfigKey(kubeConfigKey string) {
-	r.kubeConfigKey = kubeConfigKey
-}
-
-func (r *RsyncRshFetch) SetEnvironment(environment string) {
-	r.environment = environment
-}
-
-func (r *RsyncRshFetch) SetPod(pod string) {
-	r.pod = pod
-}
-
-func (r *RsyncRshFetch) SetRemoteProjectPath(remoteProjectPath string) {
-	r.remoteProjectPath = remoteProjectPath
-}
-
-func (r *RsyncRshFetch) SetVerbose(verbose bool) {
-	r.verbose = verbose
+func (r *RsyncRshFetch) SetOptions(syncOptions options.SyncOptions) {
+	r.kubeConfigKey = syncOptions.KubeConfigKey
+	r.environment = syncOptions.Environment
+	r.pod = syncOptions.Pod
+	r.remoteProjectPath = syncOptions.RemoteProjectPath
+	r.verbose = syncOptions.Verbose
+	r.dryRun = syncOptions.DryRun
 }
 
 func (r RsyncRshFetch) Fetch(filePath string) error {
@@ -67,6 +55,9 @@ func (r RsyncRshFetch) Fetch(filePath string) error {
 
 	if r.verbose {
 		args = append(args, "--verbose")
+	}
+	if r.dryRun {
+		args = append(args, "--dry-run")
 	}
 
 	cwd, err := os.Getwd()

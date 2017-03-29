@@ -18,6 +18,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/osapi"
+	"github.com/continuouspipe/remote-environment-client/sync/options"
 )
 
 func init() {
@@ -59,31 +60,18 @@ ls ${PID}
 `
 
 type RsyncDaemonFetch struct {
-	remoteRsync                *RemoteRsyncDeamon
-	kubeConfigKey, environment string
-	pod                        string
-	remoteProjectPath          string
-	verbose bool
+	remoteRsync                                        *RemoteRsyncDeamon
+	kubeConfigKey, environment, pod, remoteProjectPath string
+	verbose, dryRun                                    bool
 }
 
-func (r *RsyncDaemonFetch) SetKubeConfigKey(kubeConfigKey string) {
-	r.kubeConfigKey = kubeConfigKey
-}
-
-func (r *RsyncDaemonFetch) SetEnvironment(environment string) {
-	r.environment = environment
-}
-
-func (r *RsyncDaemonFetch) SetPod(pod string) {
-	r.pod = pod
-}
-
-func (r *RsyncDaemonFetch) SetRemoteProjectPath(remoteProjectPath string) {
-	r.remoteProjectPath = remoteProjectPath
-}
-
-func (r *RsyncDaemonFetch) SetVerbose(verbose bool) {
-	r.verbose = verbose
+func (r *RsyncDaemonFetch) SetOptions(syncOptions options.SyncOptions) {
+	r.kubeConfigKey = syncOptions.KubeConfigKey
+	r.environment = syncOptions.Environment
+	r.pod = syncOptions.Pod
+	r.remoteProjectPath = syncOptions.RemoteProjectPath
+	r.verbose = syncOptions.Verbose
+	r.dryRun = syncOptions.DryRun
 }
 
 func (r RsyncDaemonFetch) Fetch(filePath string) error {
@@ -117,6 +105,9 @@ func (r RsyncDaemonFetch) Fetch(filePath string) error {
 
 	if r.verbose {
 		args = append(args, "--verbose")
+	}
+	if r.dryRun {
+		args = append(args, "--dry-run")
 	}
 
 	cwd, err := os.Getwd()

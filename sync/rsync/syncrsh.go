@@ -4,14 +4,14 @@ package rsync
 
 import (
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/osapi"
+	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/continuouspipe/remote-environment-client/util/slice"
+	"io"
+	"os"
+	"path/filepath"
 )
 
 func init() {
@@ -19,39 +19,24 @@ func init() {
 }
 
 type RSyncRsh struct {
-	kubeConfigKey, environment  string
-	pod                         string
-	individualFileSyncThreshold int
-	remoteProjectPath           string
-	verbose bool
+	kubeConfigKey, environment, pod, remoteProjectPath string
+	individualFileSyncThreshold                        int
+	verbose, dryRun, delete                            bool
 }
 
 func NewRSyncRsh() *RSyncRsh {
 	return &RSyncRsh{}
 }
 
-func (o *RSyncRsh) SetKubeConfigKey(kubeConfigKey string) {
-	o.kubeConfigKey = kubeConfigKey
-}
-
-func (o *RSyncRsh) SetEnvironment(environment string) {
-	o.environment = environment
-}
-
-func (o *RSyncRsh) SetPod(pod string) {
-	o.pod = pod
-}
-
-func (o *RSyncRsh) SetIndividualFileSyncThreshold(individualFileSyncThreshold int) {
-	o.individualFileSyncThreshold = individualFileSyncThreshold
-}
-
-func (o *RSyncRsh) SetRemoteProjectPath(remoteProjectPath string) {
-	o.remoteProjectPath = remoteProjectPath
-}
-
-func (o *RSyncRsh) SetVerbose(verbose bool) {
-	o.verbose = verbose
+func (o *RSyncRsh) SetOptions(syncOptions options.SyncOptions) {
+	o.kubeConfigKey = syncOptions.KubeConfigKey
+	o.environment = syncOptions.Environment
+	o.pod = syncOptions.Pod
+	o.individualFileSyncThreshold = syncOptions.IndividualFileSyncThreshold
+	o.remoteProjectPath = syncOptions.RemoteProjectPath
+	o.verbose = syncOptions.Verbose
+	o.dryRun = syncOptions.DryRun
+	o.delete = syncOptions.Delete
 }
 
 func (o RSyncRsh) Sync(paths []string) error {
@@ -62,13 +47,18 @@ func (o RSyncRsh) Sync(paths []string) error {
 
 	args := []string{
 		"-rlptDv",
-		"--delete",
 		"--blocking-io",
 		"--checksum",
 		`--exclude=.git`}
 
+	if o.delete {
+		args = append(args, "--delete")
+	}
 	if o.verbose {
 		args = append(args, "--verbose")
+	}
+	if o.dryRun {
+		args = append(args, "--dry-run")
 	}
 
 	cwd, err := os.Getwd()
