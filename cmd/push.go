@@ -79,25 +79,27 @@ Note that this will delete any files/folders in the remote container that are no
 	service, err := settings.GetString(config.Service)
 	checkErr(err)
 
-	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
-	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
-	command.PersistentFlags().StringVarP(&handler.File, "file", "f", "", "Allows to specify a file that needs to be pushed to the pod")
-	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
-	command.PersistentFlags().BoolVar(&handler.rsyncVerbose, "rsync-verbose", false, "Allows to use rsync in verbose mode and debug issues with exclusions")
-	command.PersistentFlags().BoolVar(&handler.dryRun, "dry-run", false, "Show what would have been transferred")
+	command.PersistentFlags().StringVarP(&handler.options.environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
+	command.PersistentFlags().StringVarP(&handler.options.service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
+	command.PersistentFlags().StringVarP(&handler.options.file, "file", "f", "", "Allows to specify a file that needs to be pushed to the pod")
+	command.PersistentFlags().StringVarP(&handler.options.remoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
+	command.PersistentFlags().BoolVar(&handler.options.rsyncVerbose, "rsync-verbose", false, "Allows to use rsync in verbose mode and debug issues with exclusions")
+	command.PersistentFlags().BoolVar(&handler.options.dryRun, "dry-run", false, "Show what would have been transferred")
+	command.PersistentFlags().BoolVar(&handler.options.delete, "delete", false, "Delete extraneous files from destination directories")
+
 	return command
 }
 
 type PushHandle struct {
-	Command           *cobra.Command
-	Environment       string
-	Service           string
-	File              string
-	RemoteProjectPath string
-	kubeCtlInit       kubectlapi.KubeCtlInitializer
-	rsyncVerbose      bool
-	dryRun            bool
-	writer            io.Writer
+	Command     *cobra.Command
+	kubeCtlInit kubectlapi.KubeCtlInitializer
+	writer      io.Writer
+	options     pushCmdOptions
+}
+
+type pushCmdOptions struct {
+	environment, service, remoteProjectPath, file string
+	rsyncVerbose, dryRun, delete                  bool
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -105,29 +107,29 @@ func (h *PushHandle) Complete(cmd *cobra.Command, argsIn []string, settings *con
 	h.Command = cmd
 
 	var err error
-	if h.Environment == "" {
-		h.Environment, err = settings.GetString(config.KubeEnvironmentName)
+	if h.options.environment == "" {
+		h.options.environment, err = settings.GetString(config.KubeEnvironmentName)
 		checkErr(err)
 	}
-	if h.Service == "" {
-		h.Service, err = settings.GetString(config.Service)
+	if h.options.service == "" {
+		h.options.service, err = settings.GetString(config.Service)
 		checkErr(err)
 	}
-	if strings.HasSuffix(h.RemoteProjectPath, "/") == false {
-		h.RemoteProjectPath = h.RemoteProjectPath + "/"
+	if strings.HasSuffix(h.options.remoteProjectPath, "/") == false {
+		h.options.remoteProjectPath = h.options.remoteProjectPath + "/"
 	}
 	return nil
 }
 
 // Validate checks that the provided push options are specified.
 func (h *PushHandle) Validate() error {
-	if len(strings.Trim(h.Environment, " ")) == 0 {
+	if len(strings.Trim(h.options.environment, " ")) == 0 {
 		return fmt.Errorf("the environment specified is invalid")
 	}
-	if len(strings.Trim(h.Service, " ")) == 0 {
+	if len(strings.Trim(h.options.service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
 	}
-	if strings.HasPrefix(h.RemoteProjectPath, "/") == false {
+	if strings.HasPrefix(h.options.remoteProjectPath, "/") == false {
 		return fmt.Errorf("please specify an absolute path for your --remote-project-path")
 	}
 	return nil
@@ -140,34 +142,35 @@ func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 		return nil
 	}
 
-	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.Environment)
+	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.options.environment)
 	if err != nil {
 		return err
 	}
 
-	pod, err := podsFilter.ByService(allPods, h.Service)
+	pod, err := podsFilter.ByService(allPods, h.options.service)
 	if err != nil {
 		return err
 	}
 
-	if h.dryRun {
+	if h.options.dryRun {
 		fmt.Fprintln(h.writer, "Dry run mode enabled")
 	}
 
 	syncOptions := options.SyncOptions{}
 	//set individual file threshold to 1 as for now we only allow the user to specify 1 file to be pushed
 	syncOptions.IndividualFileSyncThreshold = 1
-	syncOptions.Verbose = h.rsyncVerbose
-	syncOptions.Environment = h.Environment
-	syncOptions.KubeConfigKey = h.Environment
+	syncOptions.Verbose = h.options.rsyncVerbose
+	syncOptions.Environment = h.options.environment
+	syncOptions.KubeConfigKey = h.options.environment
 	syncOptions.Pod = pod.GetName()
-	syncOptions.RemoteProjectPath = h.RemoteProjectPath
-	syncOptions.DryRun = h.dryRun
+	syncOptions.RemoteProjectPath = h.options.remoteProjectPath
+	syncOptions.DryRun = h.options.dryRun
+	syncOptions.Delete = h.options.delete
 	syncer.SetOptions(syncOptions)
 
 	var paths []string
-	if h.File != "" {
-		absFilePath, err := filepath.Abs(h.File)
+	if h.options.file != "" {
+		absFilePath, err := filepath.Abs(h.options.file)
 		if err != nil {
 			return err
 		}

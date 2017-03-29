@@ -58,31 +58,33 @@ setup but you can specify another container to sync with.`,
 	service, err := settings.GetString(config.Service)
 	checkErr(err)
 
-	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
-	command.PersistentFlags().StringVarP(&handler.Service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
-	command.PersistentFlags().Int64VarP(&handler.Latency, "latency", "l", 500, "Sync latency / speed in milli-seconds")
-	command.PersistentFlags().IntVarP(&handler.IndividualFileSyncThreshold, "individual-file-sync-threshold", "t", 10, "Above this threshold the watch command will sync any file or folder that is different compared to the local one")
-	command.PersistentFlags().StringVarP(&handler.RemoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
-	command.PersistentFlags().BoolVar(&handler.rsyncVerbose, "rsync-verbose", false, "Allows to use rsync in verbose mode and debug issues with exclusions")
-	command.PersistentFlags().BoolVar(&handler.dryRun, "dry-run", false, "Show what would have been transferred")
+	command.PersistentFlags().StringVarP(&handler.options.environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
+	command.PersistentFlags().StringVarP(&handler.options.service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
+	command.PersistentFlags().Int64VarP(&handler.options.latency, "latency", "l", 500, "Sync latency / speed in milli-seconds")
+	command.PersistentFlags().IntVarP(&handler.options.individualFileSyncThreshold, "individual-file-sync-threshold", "t", 10, "Above this threshold the watch command will sync any file or folder that is different compared to the local one")
+	command.PersistentFlags().StringVarP(&handler.options.remoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")
+	command.PersistentFlags().BoolVar(&handler.options.dryRun, "dry-run", false, "Show what would have been transferred")
+	command.PersistentFlags().BoolVar(&handler.options.rsyncVerbose, "rsync-verbose", false, "Allows to use rsync in verbose mode and debug issues with exclusions")
+	command.PersistentFlags().BoolVar(&handler.options.delete, "delete", false, "Delete extraneous files from destination directories")
 	return command
 }
 
 type WatchHandle struct {
-	Command                     *cobra.Command
-	Environment                 string
-	Service                     string
-	Latency                     int64
-	Stdout                      io.Writer
-	IndividualFileSyncThreshold int
-	RemoteProjectPath           string
-	syncer                      sync.Syncer
-	kubeCtlInit                 kubectlapi.KubeCtlInitializer
-	api                         cpapi.CpApiProvider
-	config                      config.ConfigProvider
-	rsyncVerbose                bool
-	dryRun                      bool
-	writer                      io.Writer
+	Command     *cobra.Command
+	Stdout      io.Writer
+	syncer      sync.Syncer
+	kubeCtlInit kubectlapi.KubeCtlInitializer
+	api         cpapi.CpApiProvider
+	config      config.ConfigProvider
+	writer      io.Writer
+	options     watchCmdOptions
+}
+
+type watchCmdOptions struct {
+	environment, service, remoteProjectPath string
+	latency                                 int64
+	individualFileSyncThreshold             int
+	rsyncVerbose, dryRun, delete            bool
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -90,32 +92,32 @@ func (h *WatchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *co
 	h.Command = cmd
 
 	var err error
-	if h.Environment == "" {
-		h.Environment, err = settings.GetString(config.KubeEnvironmentName)
+	if h.options.environment == "" {
+		h.options.environment, err = settings.GetString(config.KubeEnvironmentName)
 		checkErr(err)
 	}
-	if h.Service == "" {
-		h.Service, err = settings.GetString(config.Service)
+	if h.options.service == "" {
+		h.options.service, err = settings.GetString(config.Service)
 		checkErr(err)
 	}
-	if strings.HasSuffix(h.RemoteProjectPath, "/") == false {
-		h.RemoteProjectPath = h.RemoteProjectPath + "/"
+	if strings.HasSuffix(h.options.remoteProjectPath, "/") == false {
+		h.options.remoteProjectPath = h.options.remoteProjectPath + "/"
 	}
 	return nil
 }
 
 // Validate checks that the provided watch options are specified.
 func (h *WatchHandle) Validate() error {
-	if len(strings.Trim(h.Environment, " ")) == 0 {
+	if len(strings.Trim(h.options.environment, " ")) == 0 {
 		return fmt.Errorf("the environment specified is invalid")
 	}
-	if len(strings.Trim(h.Service, " ")) == 0 {
+	if len(strings.Trim(h.options.service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
 	}
-	if h.Latency <= 100 {
+	if h.options.latency <= 100 {
 		return fmt.Errorf("please specify a latency of at least 100 milli-seconds")
 	}
-	if strings.HasPrefix(h.RemoteProjectPath, "/") == false {
+	if strings.HasPrefix(h.options.remoteProjectPath, "/") == false {
 		return fmt.Errorf("please specify an absolute path for your --remote-project-path")
 	}
 	return nil
@@ -127,12 +129,12 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 		return nil
 	}
 
-	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.Environment)
+	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.options.environment)
 	if err != nil {
 		return err
 	}
 
-	pod, err := podsFilter.ByService(allPods, h.Service)
+	pod, err := podsFilter.ByService(allPods, h.options.service)
 	if err != nil {
 		return err
 	}
@@ -158,21 +160,22 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 	}
 	cpapi.PrintPublicEndpoints(h.Stdout, remoteEnv.PublicEndpoints)
 
-	if h.dryRun {
+	if h.options.dryRun {
 		fmt.Fprintln(h.writer, "Dry run mode enabled")
 	}
 
 	syncOptions := options.SyncOptions{}
-	syncOptions.KubeConfigKey = h.Environment
-	syncOptions.Environment = h.Environment
+	syncOptions.KubeConfigKey = h.options.environment
+	syncOptions.Environment = h.options.environment
 	syncOptions.Pod = pod.GetName()
-	syncOptions.IndividualFileSyncThreshold = h.IndividualFileSyncThreshold
-	syncOptions.RemoteProjectPath = h.RemoteProjectPath
-	syncOptions.DryRun = h.dryRun
-	syncOptions.Verbose = h.rsyncVerbose
+	syncOptions.IndividualFileSyncThreshold = h.options.individualFileSyncThreshold
+	syncOptions.RemoteProjectPath = h.options.remoteProjectPath
+	syncOptions.DryRun = h.options.dryRun
+	syncOptions.Verbose = h.options.rsyncVerbose
+	syncOptions.Delete = h.options.delete
 	h.syncer.SetOptions(syncOptions)
 
-	dirMonitor.SetLatency(time.Duration(h.Latency))
+	dirMonitor.SetLatency(time.Duration(h.options.latency))
 
 	fmt.Fprintf(h.Stdout, "\nDestination Pod: %s\n", pod.GetName())
 

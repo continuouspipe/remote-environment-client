@@ -21,7 +21,7 @@ func init() {
 type RSyncRsh struct {
 	kubeConfigKey, environment, pod, remoteProjectPath string
 	individualFileSyncThreshold                        int
-	verbose, dryRun                                    bool
+	verbose, dryRun, delete                            bool
 }
 
 func NewRSyncRsh() *RSyncRsh {
@@ -36,6 +36,7 @@ func (o *RSyncRsh) SetOptions(syncOptions options.SyncOptions) {
 	o.remoteProjectPath = syncOptions.RemoteProjectPath
 	o.verbose = syncOptions.Verbose
 	o.dryRun = syncOptions.DryRun
+	o.delete = syncOptions.Delete
 }
 
 func (o RSyncRsh) Sync(paths []string) error {
@@ -46,11 +47,13 @@ func (o RSyncRsh) Sync(paths []string) error {
 
 	args := []string{
 		"-rlptDv",
-		"--delete",
 		"--blocking-io",
 		"--checksum",
 		`--exclude=.git`}
 
+	if o.delete {
+		args = append(args, "--delete")
+	}
 	if o.verbose {
 		args = append(args, "--verbose")
 	}

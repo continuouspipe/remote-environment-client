@@ -23,7 +23,7 @@ type RSyncDaemon struct {
 	kubeConfigKey, environment, pod, remoteProjectPath string
 	individualFileSyncThreshold                        int
 	remoteRsync                                        *RemoteRsyncDeamon
-	verbose, dryRun                                    bool
+	verbose, dryRun, delete                            bool
 }
 
 func NewRSyncDaemon() *RSyncDaemon {
@@ -40,6 +40,7 @@ func (r *RSyncDaemon) SetOptions(syncOptions options.SyncOptions) {
 	r.remoteProjectPath = syncOptions.RemoteProjectPath
 	r.verbose = syncOptions.Verbose
 	r.dryRun = syncOptions.DryRun
+	r.delete = syncOptions.Delete
 }
 
 func (r *RSyncDaemon) Sync(paths []string) error {
@@ -66,11 +67,13 @@ func (r *RSyncDaemon) Sync(paths []string) error {
 	args := []string{
 		"-zrlDv",
 		"--omit-dir-times",
-		"--delete",
 		"--blocking-io",
 		"--checksum",
 		`--exclude=.git`}
 
+	if r.delete {
+		args = append(args, "--delete")
+	}
 	if r.verbose {
 		args = append(args, "--verbose")
 	}
