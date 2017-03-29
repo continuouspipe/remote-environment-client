@@ -142,7 +142,7 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 		fmt.Fprintln(h.writer, "Dry run mode enabled")
 	}
 
-	fmt.Fprintf(h.writer, "\nWatching for changes. Quit anytime with Ctrl-C.")
+	fmt.Fprintf(h.writer, "\nWatching for changes. Quit anytime with Ctrl-C.\n")
 
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
