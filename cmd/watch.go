@@ -9,6 +9,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
+	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -19,6 +20,7 @@ import (
 func NewWatchCmd() *cobra.Command {
 	settings := config.C
 	handler := &WatchHandle{}
+	handler.qp = util.NewQuestionPrompt()
 	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 	handler.api = cpapi.NewCpApi()
 	handler.config = settings
@@ -32,8 +34,6 @@ func NewWatchCmd() *cobra.Command {
 of the remote environment. This will use the default container specified during
 setup but you can specify another container to sync with.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Watching for changes. Quit anytime with Ctrl-C.")
-
 			dirMonitor := monitor.GetOsDirectoryMonitor()
 			validateConfig()
 
@@ -66,6 +66,7 @@ setup but you can specify another container to sync with.`,
 	command.PersistentFlags().BoolVar(&handler.options.dryRun, "dry-run", false, "Show what would have been transferred")
 	command.PersistentFlags().BoolVar(&handler.options.rsyncVerbose, "rsync-verbose", false, "Allows to use rsync in verbose mode and debug issues with exclusions")
 	command.PersistentFlags().BoolVar(&handler.options.delete, "delete", false, "Delete extraneous files from destination directories")
+	command.PersistentFlags().BoolVarP(&handler.options.yall, "yes", "y", false, "Skip warning")
 	return command
 }
 
@@ -77,6 +78,7 @@ type WatchHandle struct {
 	api         cpapi.CpApiProvider
 	config      config.ConfigProvider
 	writer      io.Writer
+	qp          util.QuestionPrompter
 	options     watchCmdOptions
 }
 
@@ -84,7 +86,7 @@ type watchCmdOptions struct {
 	environment, service, remoteProjectPath string
 	latency                                 int64
 	individualFileSyncThreshold             int
-	rsyncVerbose, dryRun, delete            bool
+	rsyncVerbose, dryRun, delete, yall      bool
 }
 
 // Complete verifies command line arguments and loads data from the command environment
@@ -124,6 +126,36 @@ func (h *WatchHandle) Validate() error {
 }
 
 func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
+	if h.options.delete {
+		if h.options.yall == false {
+			answer := h.qp.RepeatUntilValid(
+				"Using the --delete flag will delete any files or folders from the remote pod that are not found locally.\n"+
+					"If you wish to preserve any remote files or folders that are not found locally you can include them in the .cp-remote-ignore file.\n"+
+					fmt.Sprintf("If you are unsure about what files will potentially be deleted you can run `%s push --delete -y --dry-run | grep \"deleting\"` to find out.\n", config.AppName)+
+					"\nDo you want to proceed (yes/no): ",
+				func(answer string) (bool, error) {
+					switch answer {
+					case "yes", "no":
+						return true, nil
+					default:
+						return false, fmt.Errorf("Your answer needs to be either yes or no. Your answer was %s", answer)
+					}
+				})
+			if answer == "no" {
+				return nil
+			}
+		}
+		fmt.Fprintln(h.writer, "Delete mode enabled.")
+	} else {
+		fmt.Fprintln(h.writer, "Delete mode disabled. If you need to enable it use the --delete flag")
+	}
+
+	if h.options.dryRun {
+		fmt.Fprintln(h.writer, "Dry run mode enabled")
+	}
+
+	fmt.Fprintf(h.writer, "\nWatching for changes. Quit anytime with Ctrl-C.")
+
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
 		return nil
@@ -159,10 +191,6 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 		return el
 	}
 	cpapi.PrintPublicEndpoints(h.Stdout, remoteEnv.PublicEndpoints)
-
-	if h.options.dryRun {
-		fmt.Fprintln(h.writer, "Dry run mode enabled")
-	}
 
 	syncOptions := options.SyncOptions{}
 	syncOptions.KubeConfigKey = h.options.environment

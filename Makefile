@@ -56,7 +56,7 @@
 
 
 BINARY=cp-remote
-VERSION=0.1.2-beta.1
+VERSION=0.1.2-rc.1
 
 GOROOT_FINAL=/usr/local/Cellar/go/1.7.4_2/libexec
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config
