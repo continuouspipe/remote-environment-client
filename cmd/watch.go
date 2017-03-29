@@ -128,19 +128,7 @@ func (h *WatchHandle) Validate() error {
 func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
 	if h.options.delete {
 		if h.options.yall == false {
-			answer := h.qp.RepeatUntilValid(
-				"Using the --delete flag will delete any files or folders from the remote pod that are not found locally.\n"+
-					"If you wish to preserve any remote files or folders that are not found locally you can include them in the .cp-remote-ignore file.\n"+
-					fmt.Sprintf("If you are unsure about what files will potentially be deleted you can run `%s push --delete -y --dry-run | grep \"deleting\"` to find out.\n", config.AppName)+
-					"\nDo you want to proceed (yes/no): ",
-				func(answer string) (bool, error) {
-					switch answer {
-					case "yes", "no":
-						return true, nil
-					default:
-						return false, fmt.Errorf("Your answer needs to be either yes or no. Your answer was %s", answer)
-					}
-				})
+			answer := deleteFlagWarning(h.qp)
 			if answer == "no" {
 				return nil
 			}

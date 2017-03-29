@@ -11,6 +11,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/continuouspipe/remote-environment-client/util"
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -142,19 +143,7 @@ func (h *PushHandle) Validate() error {
 func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, syncer sync.Syncer) error {
 	if h.options.delete {
 		if h.options.yall == false {
-			answer := h.qp.RepeatUntilValid(
-				"Using the --delete flag will delete any files or folders from the remote pod that are not found locally.\n"+
-					"If you wish to preserve any remote files or folders that are not found locally you can include them in the .cp-remote-ignore file.\n"+
-					fmt.Sprintf("If you are unsure about what files will potentially be deleted you can run `%s push --delete -y --dry-run | grep \"deleting\"` to find out.\n", config.AppName)+
-					"\nDo you want to proceed (yes/no): ",
-				func(answer string) (bool, error) {
-					switch answer {
-					case "yes", "no":
-						return true, nil
-					default:
-						return false, fmt.Errorf("Your answer needs to be either yes or no. Your answer was %s", answer)
-					}
-				})
+			answer := deleteFlagWarning(h.qp)
 			if answer == "no" {
 				return nil
 			}
@@ -207,4 +196,21 @@ func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 	err = syncer.Sync(paths)
 	fmt.Fprintf(h.writer, "Push complete, the files and folders that has been sent can be found in the logs %s\n", cplogs.GetLogInfoFile())
 	return err
+}
+
+func deleteFlagWarning(qp util.QuestionPrompter) string {
+	suggestedCmd := color.GreenString(`%s push --delete -y --dry-run | grep "deleting"`, config.AppName)
+	return qp.RepeatUntilValid(
+		"Using the --delete flag will delete any files or folders from the remote pod that are not found locally.\n"+
+			"If you wish to preserve any remote files or folders that are not found locally you can include them in the .cp-remote-ignore file.\n"+
+			fmt.Sprintf("If you are unsure about what files will potentially be deleted you can run %s to find out.\n", suggestedCmd)+
+			"\nDo you want to proceed (yes/no): ",
+		func(answer string) (bool, error) {
+			switch answer {
+			case "yes", "no":
+				return true, nil
+			default:
+				return false, fmt.Errorf("Your answer needs to be either yes or no. Your answer was %s", answer)
+			}
+		})
 }
