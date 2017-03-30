@@ -194,7 +194,7 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 
 	dirMonitor.SetLatency(time.Duration(h.options.latency))
 
-	fmt.Fprintf(h.Stdout, "\nDestination Pod: %s\n", pod.GetName())
+	fmt.Fprintln(h.Stdout, "Destination Pod: %s", pod.GetName())
 
 	observer := sync.GetSyncOnEventObserver(h.syncer)
 
