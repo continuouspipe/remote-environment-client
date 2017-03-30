@@ -40,7 +40,7 @@ It can be used with the environment option to check another environment`,
 
 	environment, err := settings.GetString(config.KubeEnvironmentName)
 	checkErr(err)
-	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
+	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name")
 
 	return command
 }

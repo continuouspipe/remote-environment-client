@@ -58,7 +58,7 @@ setup but you can specify another container to sync with.`,
 	service, err := settings.GetString(config.Service)
 	checkErr(err)
 
-	command.PersistentFlags().StringVarP(&handler.options.environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
+	command.PersistentFlags().StringVarP(&handler.options.environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name")
 	command.PersistentFlags().StringVarP(&handler.options.service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 	command.PersistentFlags().Int64VarP(&handler.options.latency, "latency", "l", 500, "Sync latency / speed in milli-seconds")
 	command.PersistentFlags().IntVarP(&handler.options.individualFileSyncThreshold, "individual-file-sync-threshold", "t", 10, "Above this threshold the watch command will sync any file or folder that is different compared to the local one")

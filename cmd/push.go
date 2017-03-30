@@ -81,7 +81,7 @@ Note that this will delete any files/folders in the remote container that are no
 	service, err := settings.GetString(config.Service)
 	checkErr(err)
 
-	command.PersistentFlags().StringVarP(&handler.options.environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
+	command.PersistentFlags().StringVarP(&handler.options.environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name")
 	command.PersistentFlags().StringVarP(&handler.options.service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 	command.PersistentFlags().StringVarP(&handler.options.file, "file", "f", "", "Allows to specify a file that needs to be pushed to the pod")
 	command.PersistentFlags().StringVarP(&handler.options.remoteProjectPath, "remote-project-path", "a", "/app/", "Specify the absolute path to your project folder, by default set to /app/")

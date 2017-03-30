@@ -52,7 +52,7 @@ the exec command. The command and its arguments need to follow --`,
 	flowId, err := settings.GetString(config.FlowId)
 	checkErr(err)
 
-	bashcmd.PersistentFlags().StringVarP(&handler.environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
+	bashcmd.PersistentFlags().StringVarP(&handler.environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name")
 	bashcmd.PersistentFlags().StringVarP(&handler.service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 	bashcmd.PersistentFlags().BoolVarP(&handler.interactive, "interactive", "i", false, "Interactive mode requires the flags: --environment --service --flow to be specified")
 	bashcmd.PersistentFlags().StringVarP(&handler.flowId, config.FlowId, "f", flowId, "The flow to use")

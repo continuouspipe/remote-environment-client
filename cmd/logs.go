@@ -62,7 +62,7 @@ func NewLogsCmd() *cobra.Command {
 	checkErr(err)
 
 	//used to find the targed pod
-	command.PersistentFlags().StringVarP(&handler.environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name: project-key-git-branch")
+	command.PersistentFlags().StringVarP(&handler.environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name")
 	command.PersistentFlags().StringVarP(&handler.service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
 
 	command.PersistentFlags().DurationVar(&handler.since, "since", 0, "Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to all logs. Only one of since-time / since may be used.")
