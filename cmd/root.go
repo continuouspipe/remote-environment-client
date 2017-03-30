@@ -130,9 +130,9 @@ func initLocalConfig() {
 }
 
 func initGlobalConfig() {
-	homedir, err := homedir.Dir()
+	homedirPath, err := homedir.Dir()
 	checkErr(err)
-	globalConfigPath := homedir + string(os.PathSeparator) + ".cp-remote" + string(os.PathSeparator)
+	globalConfigPath := homedirPath + string(os.PathSeparator) + ".cp-remote" + string(os.PathSeparator)
 	globalConfigName := "config.yml"
 
 	//create the directory
