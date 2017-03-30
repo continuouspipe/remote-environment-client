@@ -1,5 +1,4 @@
 public/
-vendor/
 bin/
 .cp-remote-settings.yml
 .cp-remote-env-settings.yml
