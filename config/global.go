@@ -8,20 +8,22 @@ type globalConfig struct {
 	viperWrapper
 }
 
-//Username on continuous pipe
-const Username = "username"
+const (
+	//Username on continuous pipe
+	Username = "username"
 
-//ApiKey of the user
-const ApiKey = "api-key"
+	//ApiKey of the user
+	ApiKey = "api-key"
 
-//CpAuthenticatorApiAddr target address for cp api calls in the format protocol://host:port
-const CpAuthenticatorApiAddr = "cp-authenticator-api-addr"
+	//CpAuthenticatorApiAddr target address for cp api calls in the format protocol://host:port
+	CpAuthenticatorApiAddr = "cp-authenticator-api-addr"
 
-//CpRiverApiAddr target address for cp api calls in the format protocol://host:port
-const CpRiverApiAddr = "cp-river-api-addr"
+	//CpRiverApiAddr target address for cp api calls in the format protocol://host:port
+	CpRiverApiAddr = "cp-river-api-addr"
 
-//CpKubeProxyAddr target address for cp proxy in the format protocol://host:port
-const CpKubeProxyAddr = "cp-kube-proxy-addr"
+	//CpKubeProxyAddr target address for cp proxy in the format protocol://host:port
+	CpKubeProxyAddr = "cp-kube-proxy-addr"
+)
 
 func newGlobalConfig() *globalConfig {
 	global := &globalConfig{}

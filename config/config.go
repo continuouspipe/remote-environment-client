@@ -12,9 +12,11 @@ var C *Config
 
 type ConfigType string
 
-const LocalConfigType ConfigType = "local"
-const GlobalConfigType ConfigType = "global"
-const AllConfigTypes ConfigType = "all"
+const (
+	LocalConfigType  ConfigType = "local"
+	GlobalConfigType ConfigType = "global"
+	AllConfigTypes   ConfigType = "all"
+)
 
 type Setting struct {
 	Name         string
@@ -169,8 +171,7 @@ func (v *viperWrapper) SetConfigPath(in string) {
 
 //reads from the viper config, then if the value is missing sets it from the specified default
 func (v *viperWrapper) ReadInConfig() error {
-	err := v.viper.ReadInConfig()
-	if err != nil {
+	if err := v.viper.ReadInConfig(); err != nil {
 		return err
 	}
 	for _, setting := range v.settings {
