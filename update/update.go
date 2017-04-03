@@ -12,21 +12,24 @@ import (
 	"github.com/sanbornm/go-selfupdate/selfupdate"
 )
 
+const s3BucketName = "inviqa-assets-remote-environment-client"
+
 var selfUpdater = &selfupdate.Updater{
 	// Manually update the const, or set it using `go build -ldflags="-X main.VERSION=<newver>" -o cp-remote remote-environment-client/main.go`
 	CurrentVersion: envconfig.CurrentVersion,
 	// The server hosting `$CmdName/$GOOS-$ARCH.json` which contains the checksum for the binary
-	ApiURL: "https://continuouspipe.github.io/",
+	ApiURL: fmt.Sprintf("https://%s.s3.amazonaws.com/", s3BucketName),
 	// The server hosting the zip file containing the binary application which is a fallback for the patch method
-	BinURL: "https://continuouspipe.github.io/",
+	BinURL: fmt.Sprintf("https://%s.s3.amazonaws.com/", s3BucketName),
 	// The server hosting the binary patch diff for incremental updates
-	DiffURL: "https://continuouspipe.github.io/",
+	DiffURL: fmt.Sprintf("https://%s.s3.amazonaws.com/", s3BucketName),
 	// Check for update regardless of cktime timestamp
 	ForceCheck: true,
 	// The app name which is appended to the ApiURL to look for an update
-	CmdName: "remote-environment-client",
+	CmdName: "downloads",
 }
 
+// CheckForLatestVersion looks is there is a new version available, if there is one it will ask the user if he would like to upgrade
 func CheckForLatestVersion() error {
 	err := fetchInfo(selfUpdater)
 	if err != nil {
