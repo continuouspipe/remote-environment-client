@@ -17,7 +17,7 @@
 # After this is done run "make package" which will put the new binaries into public/ along with the binary diffs
 # in order to have a quicker upgrade from the previous recent version
 #
-# after make package completes, copy all content of public/* into the github pages repository
+# after make package completes, copy and sync all content of public/* into the aws s3 bucket inviqa-assets-remote-environment-client
 # ----------------------------------
 #
 # User-Friendly Latest Release Downloads Links:
@@ -27,6 +27,9 @@
 # cp 0.1.2/linux-386.gz latest/linux-386/;
 # cp 0.1.2/windows-amd64.gz latest/windows-amd64/;
 # cp 0.1.2/windows-386.gz latest/windows-386/;
+#
+#
+# rm -fr 0.1.2; upgrade binaries are kept only on the s3 bucket
 #
 # cd latest/darwin-amd64/; gzip -d darwin-amd64.gz; chmod +x darwin-amd64; mv darwin-amd64 cp-remote;
 # tar -czvf cp-remote.tar.gz cp-remote;
