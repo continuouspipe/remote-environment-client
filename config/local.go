@@ -8,24 +8,26 @@ type localConfig struct {
 	viperWrapper
 }
 
-const FlowId = "flow-id"
-const ClusterIdentifier = "cluster-identifier"
-const KubeEnvironmentName = "kube-environment-name"
-const RemoteName = "remote-name"
-const RemoteBranch = "remote-branch"
-const Service = "service"
-const AnybarPort = "anybar-port"
-const KeenWriteKey = "keen-write-key"
-const KeenProjectId = "keen-project-id"
-const KeenEventCollection = "keen-event-collection"
-const RemoteEnvironmentId = "remote-environment-id"
-const InitStatus = "init-status"
+const (
+	FlowId              = "flow-id"
+	ClusterIdentifier   = "cluster-identifier"
+	KubeEnvironmentName = "kube-environment-name"
+	RemoteName          = "remote-name"
+	RemoteBranch        = "remote-branch"
+	Service             = "service"
+	AnybarPort          = "anybar-port"
+	KeenWriteKey        = "keen-write-key"
+	KeenProjectId       = "keen-project-id"
+	KeenEventCollection = "keen-event-collection"
+	RemoteEnvironmentId = "remote-environment-id"
+	InitStatus          = "init-status"
 
-//settings to disable the kube proxy if required
-const CpKubeProxyEnabled = "kube-proxy-enabled"
-const KubeDirectClusterAddr = "kube-direct-cluster-addr"
-const KubeDirectClusterUser = "kube-direct-cluster-user"
-const KubeDirectClusterPassword = "kube-direct-cluster-password"
+	//settings to disable the kube proxy if required
+	CpKubeProxyEnabled        = "kube-proxy-enabled"
+	KubeDirectClusterAddr     = "kube-direct-cluster-addr"
+	KubeDirectClusterUser     = "kube-direct-cluster-user"
+	KubeDirectClusterPassword = "kube-direct-cluster-password"
+)
 
 func newLocalConfig() *localConfig {
 	local := &localConfig{}

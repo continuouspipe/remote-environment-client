@@ -30,8 +30,7 @@ func (i *Ignore) LoadFromIgnoreFile() error {
 }
 
 func (i *Ignore) AddToIgnore(fileNames ...string) (bool, error) {
-	err := i.LoadFromIgnoreFile()
-	if err != nil {
+	if err := i.LoadFromIgnoreFile(); err != nil {
 		return false, err
 	}
 
@@ -42,12 +41,10 @@ func (i *Ignore) AddToIgnore(fileNames ...string) (bool, error) {
 	}
 	for _, f := range fileNames {
 		if !i.AlreadyIgnored(f) {
-			_, err := file.WriteString(f)
-			if err != nil {
+			if _, err := file.WriteString(f); err != nil {
 				return false, err
 			}
-			_, err = file.WriteString("\n")
-			if err != nil {
+			if _, err = file.WriteString("\n"); err != nil {
 				return false, err
 			}
 		}
