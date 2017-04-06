@@ -117,7 +117,7 @@ func initLocalConfig() {
 		os.Exit(1)
 	}
 
-	config.C.SetConfigFile(config.LocalConfigType, pwd+string(os.PathSeparator)+localConfigFile)
+	config.C.SetConfigFile(config.LocalConfigType, filepath.Join(pwd, localConfigFile))
 
 	//create the config file if it does not exist
 	configFileUsed, err := config.C.ConfigFileUsed(config.LocalConfigType)
@@ -132,18 +132,18 @@ func initLocalConfig() {
 func initGlobalConfig() {
 	homedirPath, err := homedir.Dir()
 	checkErr(err)
-	globalConfigPath := homedirPath + string(os.PathSeparator) + ".cp-remote" + string(os.PathSeparator)
-	globalConfigName := "config.yml"
+	globalConfigPath := filepath.Join(homedirPath, ".cp-remote")
+	globalConfigFilePath := filepath.Join(globalConfigPath, "config.yml")
 
 	//create the directory
 	_ = os.Mkdir(globalConfigPath, 0755)
 
 	//create the global config file
-	_, err = os.OpenFile(globalConfigPath+globalConfigName, os.O_RDWR|os.O_CREATE, 0664)
+	_, err = os.OpenFile(globalConfigFilePath, os.O_RDWR|os.O_CREATE, 0664)
 	checkErr(err)
 
 	//set directory and file path in config
-	config.C.SetConfigFile(config.GlobalConfigType, globalConfigPath+globalConfigName)
+	config.C.SetConfigFile(config.GlobalConfigType, globalConfigFilePath)
 
 	//load config file
 	checkErr(config.C.ReadInConfig(config.GlobalConfigType))
