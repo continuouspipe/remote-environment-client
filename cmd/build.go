@@ -60,6 +60,9 @@ func (h *BuildHandle) Handle() error {
 		return err
 	}
 
+	h.config.Set(config.InitStatus, initStateCompleted)
+	h.config.Save(config.AllConfigTypes)
+
 	apiKey, err := h.config.GetString(config.ApiKey)
 	if err != nil {
 		return err
