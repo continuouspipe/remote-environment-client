@@ -1,5 +1,15 @@
 #!/bin/bash
-CALLING_DIR=$(pwd)
+
+which realpath >/dev/null
+REALPATH_EMULATE=$?
+
+if [ "$REALPATH_EMULATE" -gt 0 ]; then
+  function realpath {
+    perl -MCwd=realpath -e "print realpath '$1'"
+  }
+fi
+
+CALLING_DIR="$(realpath "$(pwd)")"
 
 function help {
 	echo "Remote Environment client."
