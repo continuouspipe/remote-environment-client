@@ -135,8 +135,8 @@ function keen_event_collection {
 }
 
 function pod {
-    CONTAINER=$1
-    kubectl --context="$(context)" --namespace="$(namespace)" get pods | grep "^$CONTAINER" | awk '{print $1}'
+    SERVICE=$1
+    kubectl --context="$(context)" --namespace="$(namespace)" get pods | grep "^$SERVICE" | awk '{print $1}'
 }
 
 function pod_found {
@@ -146,6 +146,20 @@ function pod_found {
         echo
         exit;
     fi
+}
+
+function exec_tty_cmd {
+    local -r SERVICE="$(service "$1")"
+    local -r POD="$(pod "$SERVICE")"
+    pod_found "$POD"
+    echo "kubectl --context=\"$(context)\" --namespace=\"$(namespace)\" exec -it $POD --"
+}
+
+function exec_notty_cmd {
+    local -r SERVICE="$(service "$1")"
+    local -r POD="$(pod "$SERVICE")"
+    pod_found "$POD"
+    echo "kubectl --context=\"$(context)\" --namespace=\"$(namespace)\" exec -i $POD --"
 }
 
 function local_branch {
@@ -299,9 +313,8 @@ function sh {
 }
 
 function bash {
-    POD="$(pod "$1")"
-    pod_found "$POD"
-    cmd="kubectl --context=\"$(context)\" --namespace=\"$(namespace)\" exec -it $POD -- /bin/bash"
+    SERVICE="$1"
+    cmd="$(exec_tty_cmd "$SERVICE") /bin/bash"
     echo "Running: '${cmd}'."
     eval "${cmd}"
 }
@@ -311,8 +324,7 @@ function watch {
     # Sync latency / speed in seconds
     LATENCY="1"
     PROJECT_DIR_WITH_DOT="$(dir)/."
-    POD="$(pod "$1")"
-    pod_found "$POD"
+    SERVICE="$1"
 
     echo "The watch command will need to be restarted after rebuilding the remote environment"
     # Watch for changes and sync (exclude hidden files)
@@ -326,7 +338,7 @@ function watch {
         file="${event/$(dir)/$PROJECT_DIR_WITH_DOT}"
         echo
 
-        rsync --relative -rlptDv --exclude-from="$(excludes_file)" -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$file" --:/app
+        rsync --relative -rlptDv --exclude-from="$(excludes_file)" -e "$(exec_notty_cmd "$SERVICE")" "$file" env:/app
         echo "done."
         anybar green
       done
@@ -335,8 +347,7 @@ function watch {
 function resync {
     open_anybar
     START_TIME="$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")"
-    POD=$(pod "$1")
-    pod_found "$POD"
+    SERVICE="$1"
 
     git stash save -q --keep-index
 
@@ -346,12 +357,12 @@ function resync {
     fi
     anybar red
     rsync -zrlptDv --blocking-io  --force --exclude=".*" --exclude-from="$(excludes_file)"  \
-        -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- --:/app/ "$(dir)"
+        -e "$(exec_notty_cmd "$SERVICE")" env:/app/ "$(dir)"
 
     git reset --hard -q && git stash apply --index -q && git stash drop -q
 
     rsync -zrlptDv --blocking-io  --force --exclude=".*" --exclude-from="$(excludes_file)" \
-        -e 'kubectl  --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- "$(dir)/." --:/app
+        -e "$(exec_notty_cmd "$SERVICE")" "$(dir)/." env:/app
 
     anybar green
     log "resync" "$START_TIME"
@@ -360,11 +371,10 @@ function resync {
 function fetch {
     open_anybar
     START_TIME="$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")"
-    POD=$(pod "$1")
-    pod_found "$POD"
+    SERVICE="$1"
 
     rsync -zrlptDv --blocking-io  --force --exclude=".*" --exclude-from="$(excludes_file)" \
-        -e 'kubectl --context='"$(context)"' --namespace='"$(namespace)"' exec -i '"$POD" -- --:/app/ "$(dir)"
+        -e "$(exec_notty_cmd "$SERVICE")" env:/app/ "$(dir)"
 
     anybar green
     log "fetch" "$START_TIME"
@@ -441,17 +451,16 @@ function exec {
     fi
 
     if [[ $1 == "--" ]]; then
-        CONTAINER=$(container "")
+        SERVICE=$(container "")
     fi
 
     if [[ $2 == "--" ]]; then
-        CONTAINER=$(container "$1")
+        SERVICE=$(container "$1")
         shift
     fi
+    shift
 
-    POD="$(pod "$CONTAINER")"
-    pod_found "$POD"
-    cmd="kubectl --context=\"$(context)\" --namespace=\"$(namespace)\" exec -it $POD $*"
+    cmd="$(exec_tty_cmd "$SERVICE") $@"
     echo "Running: '${cmd}'."
     eval "${cmd}"
 }
