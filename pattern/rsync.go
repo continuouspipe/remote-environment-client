@@ -52,69 +52,82 @@ func (m *RsyncMatcherPath) SetPatterns(patterns []string) {
 // + /file-is-included
 // - *
 func (m RsyncMatcherPath) Match(targetPath string) (matched bool, err error) {
-
-	//TODO: Refactor this
-
 	for _, pattern := range m.patterns {
-
-		if strings.HasPrefix(targetPath, "/") {
-			if targetPath == pattern {
-				return true, nil
-			} else {
-
-				targetElems := strings.Split(targetPath, "/")
-				patternElems := strings.Split(pattern, "/")
-
-				matches := 0
-
-				for key, patternElem := range patternElems {
-					if patternElem == targetElems[key] {
-						matches++
-					} else if patternElem == "*" {
-						matches++
-					}
-				}
-
-				if matches == len(patternElems) {
-					return true, nil
-				}
-
-			}
+		if strings.HasPrefix(pattern, "/") {
+			return m.matchedAnchoredPattern(targetPath, pattern)
 		}
+		return m.matchedRelativePattern(targetPath, pattern)
+	}
+	return false, nil
+}
 
-		targetElems := strings.Split(targetPath, "/")
-
-		for _, targetPathElem := range targetElems {
-			if targetPathElem == pattern {
-				return true, nil
-			} else {
-
-				targetElems := strings.Split(targetPath, "/")
-				patternElems := strings.Split(pattern, "/")
-
-				matches := 0
-
-				offset := 0
-				for key, targetElem := range targetElems {
-					if targetElem == patternElems[0] {
-						offset = key
-					}
-				}
-
-				for key, patternElem := range patternElems {
-					if patternElem == targetElems[offset+key] {
-						matches++
-					} else if patternElem == "*" {
-						matches++
-					}
-				}
-
-				if matches == len(patternElems) {
-					return true, nil
-				}
-
-			}
+func (m RsyncMatcherPath) matchedAnchoredPattern(targetPath string, pattern string) (matched bool, err error) {
+	if targetPath == pattern {
+		return true, nil
+	} else {
+		if matches := m.sequentialPartMatches(targetPath, pattern, 0); matches == len(strings.Split(pattern, "/")) {
+			return true, nil
 		}
 	}
 	return false, nil
 }
+
+func (m RsyncMatcherPath) matchedRelativePattern(targetPath string, pattern string) (matched bool, err error) {
+	targetElems := strings.Split(targetPath, "/")
+	patternElems := strings.Split(pattern, "/")
+
+	offset := 0
+	for key, targetElem := range targetElems {
+		if targetElem == patternElems[0] {
+			offset = key
+		}
+	}
+
+	for _, targetPathElem := range targetElems {
+		if targetPathElem == pattern {
+			return true, nil
+		} else {
+
+			if matches := m.sequentialPartMatches(targetPath, pattern, offset); matches == len(strings.Split(pattern, "/")) {
+				return true, nil
+			}
+
+		}
+	}
+	return false, nil
+}
+
+func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, offset int) (matches int) {
+	targetElems := strings.Split(target, "/")
+	patternElems := strings.Split(pattern, "/")
+
+	matches = 0
+
+	for key, patternElem := range patternElems {
+		if patternElem == targetElems[key+offset] {
+			matches++
+		} else if patternElem == "*" {
+			matches++
+		}
+	}
+	return matches
+}
+
+/**
+targetElems := strings.Split(targetPath, "/")
+patternElems := strings.Split(pattern, "/")
+
+matches := 0
+
+for key, patternElem := range patternElems {
+	if patternElem == targetElems[key] {
+		matches++
+	} else if patternElem == "*" {
+		matches++
+	}
+}
+
+if matches == len(patternElems) {
+	return true, nil
+}
+*/
