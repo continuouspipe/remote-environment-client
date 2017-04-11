@@ -64,18 +64,26 @@ func (m RsyncMatcherPath) Match(targetPath string) (matched bool, err error) {
 func (m RsyncMatcherPath) matchedAnchoredPattern(targetPath string, pattern string) (matched bool, err error) {
 	if targetPath == pattern {
 		return true, nil
-	} else {
-		if matches := m.sequentialPartMatches(targetPath, pattern, 0); matches == len(strings.Split(pattern, "/")) {
-			return true, nil
-		}
+	}
+	if matches := m.sequentialPartMatches(targetPath, pattern, 0); matches {
+		return true, nil
 	}
 	return false, nil
 }
 
 func (m RsyncMatcherPath) matchedRelativePattern(targetPath string, pattern string) (matched bool, err error) {
+
+	//Iterate recursively through all the target path elements and return true if one of them matches the given pattern
 	targetElems := strings.Split(targetPath, "/")
+	for _, targetPathElem := range targetElems {
+		if targetPathElem == pattern {
+			return true, nil
+		}
+	}
+
 	patternElems := strings.Split(pattern, "/")
 
+	//Find the first matching pattern element and store is key in the offset
 	offset := 0
 	for key, targetElem := range targetElems {
 		if targetElem == patternElems[0] {
@@ -83,51 +91,55 @@ func (m RsyncMatcherPath) matchedRelativePattern(targetPath string, pattern stri
 		}
 	}
 
-	for _, targetPathElem := range targetElems {
-		if targetPathElem == pattern {
-			return true, nil
-		} else {
-
-			if matches := m.sequentialPartMatches(targetPath, pattern, offset); matches == len(strings.Split(pattern, "/")) {
-				return true, nil
-			}
-
-		}
+	//Find how many parts match the given pattern taking in consideration the calcualted offset
+	if matches := m.sequentialPartMatches(targetPath, pattern, offset); matches {
+		return true, nil
 	}
+
 	return false, nil
 }
 
-func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, offset int) (matches int) {
+func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, offset int) (matches bool) {
 	targetElems := strings.Split(target, "/")
 	patternElems := strings.Split(pattern, "/")
 
-	matches = 0
+	patternKey := 0
+	targetKey := 0 + offset
 
-	for key, patternElem := range patternElems {
-		if patternElem == targetElems[key+offset] {
-			matches++
-		} else if patternElem == "*" {
-			matches++
+	for patternKey < len(patternElems) && targetKey < len(targetElems) {
+		patternElem := patternElems[patternKey]
+		targetElem := targetElems[targetKey]
+
+		if patternElem != targetElem && patternElem != "*" && patternElem != "**" {
+			return false
 		}
+
+		if patternElem == "**" {
+			//iterate to the next pattern part only if the next patternElem is not "*" or "**" and it matches the targetElem
+			nextValidPatternElemKey := 0
+
+			for i := patternKey; i < len(patternElems); i++ {
+				if patternElems[i] != "*" && patternElems[i] != "**" {
+					nextValidPatternElemKey = i
+					break
+				}
+			}
+
+			//if the target path element is the same as the next valid pattern element increment
+			//ex.:
+			// given path /a/b/c/d/e/f/g/h/i
+			// and patternElems /a/b/**/**/h/i
+			// when patternKey reaches 2, the value would be ** and the next valid pattern key is 'h'
+			if patternElems[nextValidPatternElemKey] == targetElem {
+				patternKey = nextValidPatternElemKey + 1
+			}
+
+		} else {
+			patternKey++
+		}
+
+		targetKey++
 	}
-	return matches
+
+	return true
 }
-
-/**
-targetElems := strings.Split(targetPath, "/")
-patternElems := strings.Split(pattern, "/")
-
-matches := 0
-
-for key, patternElem := range patternElems {
-	if patternElem == targetElems[key] {
-		matches++
-	} else if patternElem == "*" {
-		matches++
-	}
-}
-
-if matches == len(patternElems) {
-	return true, nil
-}
-*/

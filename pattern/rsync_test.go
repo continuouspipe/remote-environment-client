@@ -13,6 +13,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 		matched     bool
 		err         error
 	}{
+		//This scenarios should match
 		{
 			"/Users/bob/dev/proj/path/to/file/a",
 			[]string{"/Users/bob/dev/proj/path/to/file/a"},
@@ -80,6 +81,63 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			true,
 			nil,
 		}, {
+			"/Users/bob/dev/proj/path/to/file/file-2137",
+			[]string{"/Users/*/dev/*/path/*/file/*"},
+			"multiple single star symbols in the pattern",
+			true,
+			nil,
+		}, {
+			"/Users/bob/dev/proj/path/to/file/file-7144",
+			[]string{"**"},
+			"double star pattern",
+			true,
+			nil,
+		}, {
+			"/Users/bob/dev/proj/path/to/file/file-7144",
+			[]string{"/Users/bob/dev/**/to/file/file-7144"},
+			"double star pattern in the middle of the pattern",
+			true,
+			nil,
+		}, {
+			"/Users/bob/dev/proj/path/to/file/file-7144",
+			[]string{"/Users/bob/**/**/to/file/file-7144"},
+			"multiple double star pattern in the middle of the pattern",
+			true,
+			nil,
+		}, {
+			"/Users/bob/dev/proj/path/to/file/file-7144",
+			[]string{"/Users/bob/**/file/file-7144"},
+			"double star pattern in the middle of the pattern",
+			true,
+			nil,
+		}, {
+			"/Users/bob/dev/proj/path/to/file/file-7144",
+			[]string{"/Users/**/file-7144"},
+			"double star pattern in the middle of the pattern",
+			true,
+			nil,
+		}, {
+			"/Users/bob/dev/proj/path/to/file/file-7144",
+			[]string{"**/file/file-7144"},
+			"double star pattern in the beginning of the pattern",
+			true,
+			nil,
+		}, {
+			"/Users/bob/dev/proj/path/to/file/file-7144",
+			[]string{"/Users/bob/**"},
+			"double star pattern in the end of the pattern",
+			true,
+			nil,
+		}, {
+			"/Users/bob/dev/proj/path/to/file/file-7144",
+			[]string{"/Users/**/proj/path/**/file-7144"},
+			"multiple double stars in pattern",
+			true,
+			nil,
+		},
+
+		//This scenarios should not match
+		{
 			"/Users/bob/dev/proj/path/to/file/b",
 			[]string{"/Users/bob/dev/proj/path/to/file/a"},
 			"file path does not match",
@@ -119,6 +177,39 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-2137",
 			[]string{"/Users/DIFFERENT/dev/*"},
 			"star in the middle of the partial pattern does not match",
+			false,
+			nil,
+		}, {
+			"/Users/bob/dev/proj/path/to/file/abc",
+			[]string{"/Users/bob/**/to/file/xyz"},
+			"double star pattern in the middle of the pattern should not match",
+			false,
+			nil,
+		}, {
+			"/Users/bob/dev/proj/path/to/file/abc",
+			[]string{"**/dev/proj/path/to/file/xyz"},
+			"double star pattern in the beginning of the pattern should not match",
+			false,
+			nil,
+		},
+
+		//Edge cases
+		{
+			"",
+			[]string{"*"},
+			"edge case: empty path and star pattern",
+			true,
+			nil,
+		}, {
+			"",
+			[]string{""},
+			"edge case: empty path and empty pattern",
+			true,
+			nil,
+		}, {
+			"abc",
+			[]string{""},
+			"edge case: random path and empty pattern",
 			false,
 			nil,
 		},
