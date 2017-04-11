@@ -21,12 +21,12 @@ function help {
 	echo "   setup             Setup the remote environment client and settings"
 	echo "   build             Create/Update the remote environment"
 	echo "   watch             Watch local changes and synchronize with the remote environment"
-	echo "   bash              Open a bash session in the remote environment container"
+	echo "   bash              Open a bash session in the remote environment service"
 	echo "   fetch             Sync remote changes to the local filesystem"
 	echo "   resync            Sync remote changes to and from the local filesystem"
-	echo "   forward           Forward a port to a container"
+	echo "   forward           Forward a port to a service container"
 	echo "   destroy           Destroy the remote environment"
-	echo "   exec              Execute a command on a container"
+	echo "   exec              Execute a command on a service container"
 	echo "   checkconnection   Check the connection to the remote environment"
 	echo "   checkversion      Check for updates to this tool"
 }
@@ -49,20 +49,20 @@ function anybar {
 }
 
 
-function container_specified {
-   if [ -z "$1" ] && [ -z "$(default_container)" ]; then
-       echo "You need to specify the container to use with this command"
+function service_specified {
+   if [ -z "$1" ] && [ -z "$(default_service)" ]; then
+       echo "You need to specify the service to use with this command"
        exit;
    fi
 }
 
-function container {
+function service {
    if [ -n "$1" ]; then
         echo "$1"
         exit
    fi
 
-   default_container
+   default_service
 }
 
 command_exists () {
@@ -118,8 +118,8 @@ function context {
     fi
 }
 
-function default_container {
-    echo "$DEFAULT_CONTAINER"
+function default_service {
+    echo "${DEFAULT_SERVICE:-$DEFAULT_CONTAINER}"
 }
 
 function keen_write_key {
@@ -142,7 +142,7 @@ function pod {
 function pod_found {
     if [ -z "$1" ]; then
         echo
-        echo "The pod could not be found, is your configuration correct and is the specified container name correct?"
+        echo "The pod could not be found, is your configuration correct and is the specified service name correct?"
         echo
         exit;
     fi
@@ -208,7 +208,7 @@ function setup {
     read -r -p "What is your Continuous Pipe project key? " PROJECT_KEY
     read -r -p "What is the name of the Git branch you are using for your remote environment? " REMOTE_BRANCH
     read -r -p "What is your github remote name? (defaults to: origin) " REMOTE_NAME
-    read -r -p "What is the default container for the watch, bash, fetch and resync commands? (Optional) " DEFAULT_CONTAINER
+    read -r -p "What is the default service for the watch, bash, fetch and resync commands? (Optional) " DEFAULT_SERVICE
     read -r -p "What is the IP of the cluster? " CLUSTER_IP
     read -r -p "What is the cluster username? " USERNAME
     read -r -p "What is the cluster password? " PASSWORD
@@ -224,7 +224,7 @@ function setup {
         echo "PROJECT_KEY=$PROJECT_KEY";
         echo "REMOTE_BRANCH=$REMOTE_BRANCH";
         echo "REMOTE_NAME=$REMOTE_NAME";
-        echo "DEFAULT_CONTAINER=$DEFAULT_CONTAINER";
+        echo "DEFAULT_SERVICE=$DEFAULT_SERVICE";
         echo "ANYBAR_PORT=$ANYBAR_PORT"
         echo "KEEN_WRITE_KEY=$KEEN_WRITE_KEY"
         echo "KEEN_PROJECT_ID=$KEEN_PROJECT_ID"
@@ -446,16 +446,16 @@ function check_connection {
 function exec {
     if [ "$1" != "--" ] && [ "$2" != "--" ]; then
         echo "The command to run should be specified after --"
-        echo "The only argument before the -- should be the container name (which can be left off to use the default container)"
+        echo "The only argument before the -- should be the service name (which can be left off to use the default service)"
         exit
     fi
 
     if [[ $1 == "--" ]]; then
-        SERVICE=$(container "")
+        SERVICE=$(service "")
     fi
 
     if [[ $2 == "--" ]]; then
-        SERVICE=$(container "$1")
+        SERVICE=$(service "$1")
         shift
     fi
     shift
@@ -502,8 +502,8 @@ case $COMMAND in
 		;;
     watch)
         validate_settings
-        container_specified "$2"
-        watch "$(container "$2")"
+        service_specified "$2"
+        watch "$(service "$2")"
         ;;
     build)
         validate_settings
@@ -511,13 +511,13 @@ case $COMMAND in
         ;;
     bash)
         validate_settings
-        container_specified "$2"
-        bash "$(container "$2")"
+        service_specified "$2"
+        bash "$(service "$2")"
         ;;
     ssh)
         validate_settings
-        container_specified "$2"
-        ssh "$(container "$2")"
+        service_specified "$2"
+        ssh "$(service "$2")"
         ;;
     destroy)
         validate_settings
@@ -525,16 +525,16 @@ case $COMMAND in
         ;;
     resync)
         validate_settings
-        container_specified "$2"
-        resync "$(container "$2")"
+        service_specified "$2"
+        resync "$(service "$2")"
         ;;
     fetch)
         validate_settings
-        container_specified "$2"
-        fetch "$(container "$2")"
+        service_specified "$2"
+        fetch "$(service "$2")"
         ;;
     forward)
-        container_specified "$2"
+        service_specified "$2"
         validate_settings
         port_forward "$2" "$3" "$4"
         ;;
