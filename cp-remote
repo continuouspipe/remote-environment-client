@@ -12,23 +12,23 @@ fi
 CALLING_DIR="$(realpath "$(pwd)")"
 
 function help {
-	echo "Remote Environment client."
-	echo
-	echo "Usage:"
-	echo "  ${0} command"
-	echo 
-	echo "Available commands:"
-	echo "   setup             Setup the remote environment client and settings"
-	echo "   build             Create/Update the remote environment"
-	echo "   watch             Watch local changes and synchronize with the remote environment"
-	echo "   bash              Open a bash session in the remote environment service"
-	echo "   fetch             Sync remote changes to the local filesystem"
-	echo "   push              Sync local changes to the remote filesystem"
-	echo "   forward           Forward a port to a service container"
-	echo "   destroy           Destroy the remote environment"
-	echo "   exec              Execute a command on a service container"
-	echo "   checkconnection   Check the connection to the remote environment"
-	echo "   checkversion      Check for updates to this tool"
+    echo "Remote Environment client."
+    echo
+    echo "Usage:"
+    echo "  ${0} command"
+    echo 
+    echo "Available commands:"
+    echo "   setup             Setup the remote environment client and settings"
+    echo "   build             Create/Update the remote environment"
+    echo "   watch             Watch local changes and synchronize with the remote environment"
+    echo "   bash              Open a bash session in the remote environment service"
+    echo "   fetch             Sync remote changes to the local filesystem"
+    echo "   push              Sync local changes to the remote filesystem"
+    echo "   forward           Forward a port to a service container"
+    echo "   destroy           Destroy the remote environment"
+    echo "   exec              Execute a command on a service container"
+    echo "   checkconnection   Check the connection to the remote environment"
+    echo "   checkversion      Check for updates to this tool"
 }
 
 function open_anybar {
@@ -47,7 +47,6 @@ function anybar {
         echo -n "$1" | nc -4u -w0 localhost "$ANYBAR_PORT"
     fi
 }
-
 
 function service_specified {
    if [ -z "$1" ] && [ -z "$(default_service)" ]; then
@@ -179,31 +178,31 @@ function validate_settings {
     REQUIRED_SETTINGS=( REMOTE_BRANCH REMOTE_NAME PROJECT_KEY)
     for i in "${REQUIRED_SETTINGS[@]}"
     do
-    	if [ -z "${!i}" ]; then
-    	    echo "Required setting $i missing, please run the setup command"
-    	    exit
-    	fi
+        if [ -z "${!i}" ]; then
+            echo "Required setting $i missing, please run the setup command"
+            exit
+        fi
     done
 }
 
 function setup {
-	if ! command_exists kubectl ; then
-		echo "[INSTALL] kubectl is being installed"
+    if ! command_exists kubectl ; then
+        echo "[INSTALL] kubectl is being installed"
 
-		if [[ "$OSTYPE" == "darwin"* ]]; then
-			curl -O https://storage.googleapis.com/kubernetes-release/release/v1.4.3/bin/darwin/amd64/kubectl
-			chmod +x kubectl
-			sudo mv kubectl /usr/local/bin/kubectl
-		else
-			curl -O https://storage.googleapis.com/kubernetes-release/release/v1.4.3/bin/linux/amd64/kubectl
-			chmod +x kubectl
-			sudo mv kubectl /usr/bin/kubectl
-		fi
-	else
-		echo "[OK] kubectl found"
-	fi
-	
-	REMOTE_DIR="$(settings_file)"
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            curl -O https://storage.googleapis.com/kubernetes-release/release/v1.4.3/bin/darwin/amd64/kubectl
+            chmod +x kubectl
+            sudo mv kubectl /usr/local/bin/kubectl
+        else
+            curl -O https://storage.googleapis.com/kubernetes-release/release/v1.4.3/bin/linux/amd64/kubectl
+            chmod +x kubectl
+            sudo mv kubectl /usr/bin/kubectl
+        fi
+    else
+        echo "[OK] kubectl found"
+    fi
+    
+    REMOTE_DIR="$(settings_file)"
     
     read -r -p "What is your Continuous Pipe project key? " PROJECT_KEY
     read -r -p "What is the name of the Git branch you are using for your remote environment? " REMOTE_BRANCH
@@ -251,10 +250,10 @@ function log {
     EVENT_COLLECTION="$(keen_event_collection)"
 
     if [ -z "$PROJECT_ID" ] || [ -z "$WRITE_KEY" ] || [ -z "$EVENT_COLLECTION" ]; then
-    	echo "Not logging usage stats as keen.io details not set"
-    	exit 0
+        echo "Not logging usage stats as keen.io details not set"
+        exit 0
     else
-    	echo "Logging usage stats to keen.io"
+        echo "Logging usage stats to keen.io"
     fi
 
     END_TIME="$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")"
@@ -469,8 +468,8 @@ case $1 in
 esac
 
 if [ -z "${COMMAND+x}" ]; then
-	help
-	exit 0
+    help
+    exit 0
 fi
 
 for i in "$@"
@@ -487,9 +486,9 @@ do
 done
 
 case $COMMAND in
-	setup)
-		setup
-		;;
+    setup)
+        setup
+        ;;
     watch)
         validate_settings
         service_specified "$2"
@@ -540,10 +539,10 @@ case $COMMAND in
     checkversion)
         check_version
         ;;
-	*)
-		echo "Command not found: $COMMAND"
-		echo
-		help
-		exit 1
-		;;
+    *)
+        echo "Command not found: $COMMAND"
+        echo
+        help
+        exit 1
+        ;;
 esac
