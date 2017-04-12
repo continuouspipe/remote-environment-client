@@ -2,19 +2,30 @@
 package pattern
 
 import (
+	"errors"
 	"strings"
 )
 
+const (
+	filterRuleInclude = iota
+	filterRuleExclude
+)
+
+type pathPatternItem struct {
+	prefix     rune
+	pattern    string
+	rawPattern string
+}
+
 // PathPatternMatcher match a path against a list of patterns.
 type PathPatternMatcher interface {
-	SetPatterns(patterns []string)
+	AddPattern(pattern ...string)
 	IncludeToTransfer(path string) (include bool)
-	match(path string) (pattern string)
 }
 
 // RsyncMatcherPath allows to match a path using some of the rsync filter rules and include/exclude pattern rules
 type RsyncMatcherPath struct {
-	patterns []string
+	patternItems []pathPatternItem
 }
 
 // NewRsyncMatcherPath ctor returns a pointer to RsyncMatcherPath
@@ -22,9 +33,29 @@ func NewRsyncMatcherPath() *RsyncMatcherPath {
 	return &RsyncMatcherPath{}
 }
 
-// SetPatterns store the list of patterns
-func (m *RsyncMatcherPath) SetPatterns(patterns []string) {
-	m.patterns = patterns
+// AddPattern convert a pattern string into a pathPatternItem struct and stores it in an array
+func (m *RsyncMatcherPath) AddPattern(pattern ...string) {
+	var patternItems []pathPatternItem
+	for _, p := range pattern {
+
+		if len(p) == 0 {
+			continue
+		}
+
+		patternItem := pathPatternItem{}
+		patternItem.pattern = p
+
+		if p[0] == '+' && p[1] == ' ' {
+			patternItem.prefix = filterRuleInclude
+			patternItem.pattern = p[2:]
+		}
+		if p[0] == '-' && p[1] == ' ' {
+			patternItem.prefix = filterRuleExclude
+			patternItem.pattern = p[2:]
+		}
+		patternItems = append(patternItems, patternItem)
+	}
+	m.patternItems = patternItems
 }
 
 // IncludeToTransfer determins if a
@@ -53,23 +84,51 @@ func (m *RsyncMatcherPath) SetPatterns(patterns []string) {
 // + /file-is-included
 // - *
 func (m *RsyncMatcherPath) IncludeToTransfer(path string) (include bool, err error) {
+	if len(path) == 0 {
+		return false, errors.New("empty path given")
+	}
+
+	//check if any of the parent folder is excluded
+	parts := strings.Split(path, "/")
+	current := ""
+	for i := 1; i < len(parts)-1; i++ {
+		current = current + "/" + parts[i]
+
+		inc, found := m.filteredMatch(current)
+
+		if inc == false && found != nil {
+			return false, nil
+		}
+	}
+
+	inc, _ := m.filteredMatch(path)
+	return inc, nil
+}
+
+func (m RsyncMatcherPath) filteredMatch(path string) (include bool, found *pathPatternItem) {
 	matchedPatterns := m.match(path)
 	if len(matchedPatterns) > 0 {
-		return true, nil
+
+		switch matchedPatterns[0].prefix {
+		case filterRuleExclude:
+			return false, &matchedPatterns[0]
+		case filterRuleInclude:
+			return true, &matchedPatterns[0]
+		}
+
 	}
 	return false, nil
 }
 
 // Match matches a path against a list of patterns.
-func (m RsyncMatcherPath) match(targetPath string) (matchedPatterns []string) {
-	for _, p := range m.patterns {
-		if strings.HasPrefix(p, "/") {
-			if res := m.matchedAnchoredPattern(targetPath, p); res == true {
-				matchedPatterns = append(matchedPatterns, p)
+func (m RsyncMatcherPath) match(targetPath string) (matchedPatterns []pathPatternItem) {
+	for _, patternItem := range m.patternItems {
+		if strings.HasPrefix(patternItem.pattern, "/") {
+			if res := m.matchedAnchoredPattern(targetPath, patternItem.pattern); res == true {
+				matchedPatterns = append(matchedPatterns, patternItem)
 			}
-		}
-		if res := m.matchedRelativePattern(targetPath, p); res == true {
-			matchedPatterns = append(matchedPatterns, p)
+		} else if res := m.matchedRelativePattern(targetPath, patternItem.pattern); res == true {
+			matchedPatterns = append(matchedPatterns, patternItem)
 		}
 	}
 	return matchedPatterns
@@ -120,8 +179,26 @@ func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, o
 	patternKey := 0
 	targetKey := 0 + offset
 
-	for patternKey < len(patternElems) && targetKey < len(targetElems) {
+	for {
+		//break the loop once we have fully scanned the pattern string
+		if patternKey == len(patternElems) {
+			break
+		}
 		patternElem := patternElems[patternKey]
+
+		//break the loop once we have fully scanned the target string
+		if targetKey == len(targetElems) {
+			//if the current pattern element is a double star symbol
+			//break as it would match anything after
+			if patternElem == "**" {
+				break
+			}
+
+			//else it means that we had other parts of the pattern that had to be matched
+			//but the target string doesn't contain enough parts
+			return false
+		}
+
 		targetElem := targetElems[targetKey]
 
 		if patternElem != targetElem && patternElem != "*" && patternElem != "**" {
