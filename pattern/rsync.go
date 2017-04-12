@@ -116,7 +116,7 @@ func (m RsyncMatcherPath) filteredMatch(path string) (include bool, found *pathP
 	if len(matchedPatterns) > 0 {
 		switch matchedPatterns[0].prefix {
 		case filterRuleExclude:
-			cplogs.V(5).Infof("hiding directory %s because of the first pattern found: %s. List of all matches: %#v", path, matchedPatterns[0].prefix, matchedPatterns)
+			cplogs.V(5).Infof("hiding directory %s because of the first pattern found: %s. List of all matches: %#v", path, matchedPatterns[0].rawPattern, matchedPatterns)
 			cplogs.Flush()
 			return false, &matchedPatterns[0]
 		case filterRuleInclude:
