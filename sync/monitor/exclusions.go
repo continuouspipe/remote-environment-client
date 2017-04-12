@@ -72,5 +72,12 @@ func (m Exclusion) MatchExclusionList(target string) (bool, error) {
 		cplogs.V(4).Infof("error when matching path to the exclusion list, details %s", err.Error())
 		cplogs.Flush()
 	}
+
+	if matchIncluded {
+		cplogs.V(5).Infof("the path %s is included in the transfer", target)
+	} else {
+		cplogs.V(5).Infof("the path %s is excluded from the transfer", target)
+	}
+	cplogs.Flush()
 	return !matchIncluded, nil
 }

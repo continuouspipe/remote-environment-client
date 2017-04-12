@@ -14,12 +14,11 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 		toTransfer  bool
 		err         error
 	}{
-		//This scenarios should match
 		{
 			"/Users/bob/dev/proj/path/to/file/a",
 			[]string{"/Users/bob/dev/proj/path/to/file/a"},
 			"file path exactly matches",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -33,7 +32,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-9643",
 			[]string{"proj"},
 			"parent folder proj matches entry",
-			true,
+			false,
 			nil,
 		},
 
@@ -48,7 +47,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-2137",
 			[]string{"/Users/bob/dev/proj/path/to/file/*"},
 			"star at the end of the partial matches",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -62,7 +61,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-2137",
 			[]string{"/Users/bob/dev/proj/path/to/*/file-2137"},
 			"star on the parent folder of the partial matches",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -76,7 +75,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-2137",
 			[]string{"/Users/bob/dev/*/path/to/file/file-2137"},
 			"star in the middle of the partial matches",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -90,7 +89,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-2137",
 			[]string{"/Users/bob/dev/*"},
 			"star in the middle of the partial pattern",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -104,7 +103,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-1348",
 			[]string{"bob/dev/proj/path/to/file/file-1348"},
 			"not anchored long pattern",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -118,7 +117,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-1348",
 			[]string{"bob/dev/proj/path/*"},
 			"not anchored short pattern with star",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -132,7 +131,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-1348",
 			[]string{"bob/dev/*/path/to/file/file-1348"},
 			"not anchored short pattern with star in the middle",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -146,7 +145,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-2137",
 			[]string{"*"},
 			"star pattern",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -160,7 +159,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-2137",
 			[]string{"/Users/*/dev/*/path/*/file/*"},
 			"multiple single star symbols in the pattern",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -174,7 +173,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-7144",
 			[]string{"**"},
 			"double star pattern",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -188,7 +187,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-7144",
 			[]string{"/Users/bob/dev/**/to/file/file-7144"},
 			"double star pattern in the middle of the pattern",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -202,7 +201,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-7144",
 			[]string{"/Users/bob/**/**/to/file/file-7144"},
 			"multiple double star pattern in the middle of the pattern",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -216,7 +215,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-7144",
 			[]string{"/Users/bob/**/file/file-7144"},
 			"double star pattern in the middle of the pattern",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -230,7 +229,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-7144",
 			[]string{"/Users/**/file-7144"},
 			"double star pattern in the middle of the pattern",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -244,7 +243,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-7144",
 			[]string{"**/file/file-7144"},
 			"double star pattern in the beginning of the pattern",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -258,7 +257,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-7144",
 			[]string{"/Users/bob/**"},
 			"double star pattern in the end of the pattern",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -272,7 +271,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"/Users/bob/dev/proj/path/to/file/file-7144",
 			[]string{"/Users/**/proj/path/**/file-7144"},
 			"multiple double stars in pattern",
-			true,
+			false,
 			nil,
 		},
 		{
@@ -282,8 +281,6 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			true,
 			nil,
 		},
-
-		//This scenarios should not match
 		{
 			"/Users/bob/dev/proj/path/to/file/b",
 			[]string{"/Users/bob/dev/proj/path/to/file/a"},
@@ -382,8 +379,6 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			false,
 			nil,
 		},
-
-		//Multiple patterns
 		{
 			"/Users/bob/dev/proj/path/to/file/abc",
 			[]string{
@@ -563,7 +558,25 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			true,
 			nil,
 		},
-
+		{
+			"Users/dev/php-example/.git/index.lock",
+			[]string{
+				".*",
+				".idea",
+				".git",
+				"___jb_old___",
+				"___jb_tmp___",
+				".cp-remote-settings.yml",
+				"cp-remote-logs",
+				"cpr*",
+				"vendor/",
+				".cp-remote-env-settings.yml",
+				".cp-remote-ignore",
+			},
+			"lock file",
+			false,
+			nil,
+		},
 		//Edge cases
 		{
 			"",

@@ -44,14 +44,16 @@ func (m *RsyncMatcherPath) AddPattern(pattern ...string) {
 		}
 
 		patternItem := pathPatternItem{}
+		patternItem.rawPattern = p
 		patternItem.pattern = p
+		//default prefix exclude
+		patternItem.prefix = filterRuleExclude
 
 		if p[0] == '+' && p[1] == ' ' {
 			patternItem.prefix = filterRuleInclude
 			patternItem.pattern = p[2:]
 		}
 		if p[0] == '-' && p[1] == ' ' {
-			patternItem.prefix = filterRuleExclude
 			patternItem.pattern = p[2:]
 		}
 		patternItems = append(patternItems, patternItem)
