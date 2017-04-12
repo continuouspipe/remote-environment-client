@@ -8,7 +8,8 @@ import (
 // PathPatternMatcher match a path against a list of patterns.
 type PathPatternMatcher interface {
 	SetPatterns(patterns []string)
-	Match(path string) (matched bool, err error)
+	IncludeToTransfer(path string) (include bool)
+	match(path string) (pattern string)
 }
 
 // RsyncMatcherPath allows to match a path using some of the rsync filter rules and include/exclude pattern rules
@@ -26,7 +27,7 @@ func (m *RsyncMatcherPath) SetPatterns(patterns []string) {
 	m.patterns = patterns
 }
 
-// Match matches a path against a list of patterns.
+// IncludeToTransfer determins if a
 //
 // FILTER RULES (sub-set of the all supported rsync filter rules)
 //
@@ -51,33 +52,46 @@ func (m *RsyncMatcherPath) SetPatterns(patterns []string) {
 // + /some/path/this-file-will-not-be-found
 // + /file-is-included
 // - *
-func (m RsyncMatcherPath) Match(targetPath string) (matched bool, err error) {
-	for _, pattern := range m.patterns {
-		if strings.HasPrefix(pattern, "/") {
-			return m.matchedAnchoredPattern(targetPath, pattern)
-		}
-		return m.matchedRelativePattern(targetPath, pattern)
+func (m *RsyncMatcherPath) IncludeToTransfer(path string) (include bool, err error) {
+	matchedPatterns := m.match(path)
+	if len(matchedPatterns) > 0 {
+		return true, nil
 	}
 	return false, nil
 }
 
-func (m RsyncMatcherPath) matchedAnchoredPattern(targetPath string, pattern string) (matched bool, err error) {
+// Match matches a path against a list of patterns.
+func (m RsyncMatcherPath) match(targetPath string) (matchedPatterns []string) {
+	for _, p := range m.patterns {
+		if strings.HasPrefix(p, "/") {
+			if res := m.matchedAnchoredPattern(targetPath, p); res == true {
+				matchedPatterns = append(matchedPatterns, p)
+			}
+		}
+		if res := m.matchedRelativePattern(targetPath, p); res == true {
+			matchedPatterns = append(matchedPatterns, p)
+		}
+	}
+	return matchedPatterns
+}
+
+func (m RsyncMatcherPath) matchedAnchoredPattern(targetPath string, pattern string) (matched bool) {
 	if targetPath == pattern {
-		return true, nil
+		return true
 	}
 	if matches := m.sequentialPartMatches(targetPath, pattern, 0); matches {
-		return true, nil
+		return true
 	}
-	return false, nil
+	return false
 }
 
-func (m RsyncMatcherPath) matchedRelativePattern(targetPath string, pattern string) (matched bool, err error) {
+func (m RsyncMatcherPath) matchedRelativePattern(targetPath string, pattern string) (matched bool) {
 
 	//Iterate recursively through all the target path elements and return true if one of them matches the given pattern
 	targetElems := strings.Split(targetPath, "/")
 	for _, targetPathElem := range targetElems {
 		if targetPathElem == pattern {
-			return true, nil
+			return true
 		}
 	}
 
@@ -93,10 +107,10 @@ func (m RsyncMatcherPath) matchedRelativePattern(targetPath string, pattern stri
 
 	//Find how many parts match the given pattern taking in consideration the calcualted offset
 	if matches := m.sequentialPartMatches(targetPath, pattern, offset); matches {
-		return true, nil
+		return true
 	}
 
-	return false, nil
+	return false
 }
 
 func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, offset int) (matches bool) {

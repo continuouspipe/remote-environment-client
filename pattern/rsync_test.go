@@ -193,6 +193,47 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			nil,
 		},
 
+		//Multiple patterns
+		//{
+		//	"/Users/bob/dev/proj/path/to/file/abc",
+		//	[]string{
+		//		"+ /Admin/something/else",
+		//		"random-file",
+		//		"random-folder/",
+		//		"- /an-anchored/sub-folder/with/file/abc",
+		//		"+ */bob/dev/proj/path/to/file/abc",
+		//		"- /Users/*/dev/proj/path/to/file/abc",
+		//		"+ /Users/bob/*/proj/path/to/file/abc",
+		//		"- /Users/bob/dev/*/path/to/file/abc",
+		//		"+ /Users/bob/dev/proj/*/to/file/abc",
+		//		"- /Users/bob/dev/proj/path/*/file/abc",
+		//		"+ /Users/bob/dev/proj/path/to/*/abc",
+		//		"- /Users/bob/dev/proj/path/to/file/*",
+		//	},
+		//	"double star pattern in the beginning of the pattern should not match",
+		//	true,
+		//	nil,
+		//},
+		//{
+		//	"/Users/bob/dev/proj/path/to/file/abc",
+		//	[]string{
+		//		"+ /Admin/something/else",
+		//		"random-file",
+		//		"random-folder/",
+		//		"- /an-anchored/sub-folder/with/file/abc",
+		//		"- /Users/*/dev/proj/path/to/file/abc",
+		//		"+ /Users/bob/*/proj/path/to/file/abc",
+		//		"- /Users/bob/dev/*/path/to/file/abc",
+		//		"+ /Users/bob/dev/proj/*/to/file/abc",
+		//		"- /Users/bob/dev/proj/path/*/file/abc",
+		//		"+ /Users/bob/dev/proj/path/to/*/abc",
+		//		"- /Users/bob/dev/proj/path/to/file/*",
+		//	},
+		//	"double star pattern in the beginning of the pattern should not match",
+		//	false,
+		//	nil,
+		//},
+
 		//Edge cases
 		{
 			"",
@@ -219,7 +260,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 
 	for _, scenario := range scenarios {
 		subject.SetPatterns(scenario.patterns)
-		match, err := subject.Match(scenario.path)
+		match, err := subject.IncludeToTransfer(scenario.path)
 		assert.Equal(t, scenario.matched, match, scenario.description)
 		assert.Equal(t, scenario.err, err, scenario.description)
 	}
