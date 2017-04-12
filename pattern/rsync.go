@@ -94,22 +94,31 @@ func (m *RsyncMatcherPath) HasMatchAndIsIncluded(path string) (include bool, err
 		return true, nil
 	}
 
-	//check if any of the parent folder is excluded
-	parts := strings.Split(path, "/")
-	current := ""
-	for i := 1; i < len(parts)-1; i++ {
-		current = current + "/" + parts[i]
-
-		inc, found := m.filteredMatch(current)
-
-		if inc == false && found != nil {
-			cplogs.V(5).Infof("hiding directory %s because of pattern %s", path, found.pattern)
-			cplogs.Flush()
-			return false, nil
-		}
+	inc, found := m.filteredMatch(path)
+	if inc == false && found != nil {
+		cplogs.V(5).Infof("not transferring %s because of pattern %s", path, found.pattern)
+		cplogs.Flush()
+		return false, nil
 	}
 
-	inc, _ := m.filteredMatch(path)
+	//before saying that we can safely include a path we need to check that none of is parent
+	//has been excluded
+	if inc == true && found != nil {
+		//check if any of the parent folder is excluded
+		parts := strings.Split(path, "/")
+		current := ""
+		for i := 1; i < len(parts)-1; i++ {
+			current = current + "/" + parts[i]
+
+			inc, found := m.filteredMatch(current)
+
+			if inc == false && found != nil {
+				cplogs.V(5).Infof("not transferring %s because of pattern %s", path, found.pattern)
+				cplogs.Flush()
+				return false, nil
+			}
+		}
+	}
 	return inc, nil
 }
 
@@ -118,14 +127,14 @@ func (m RsyncMatcherPath) filteredMatch(path string) (include bool, found *pathP
 	if len(matchedPatterns) > 0 {
 		switch matchedPatterns[0].prefix {
 		case filterRuleExclude:
-			cplogs.V(5).Infof("hiding directory %s because of the first pattern found: %s. List of all matches: %#v", path, matchedPatterns[0].rawPattern, matchedPatterns)
+			cplogs.V(5).Infof("not transferring %s because of the first pattern found: %s. List of all matches: %#v", path, matchedPatterns[0].rawPattern, matchedPatterns)
 			cplogs.Flush()
 			return false, &matchedPatterns[0]
 		case filterRuleInclude:
 			return true, &matchedPatterns[0]
 		}
 	}
-	return false, nil
+	return true, nil
 }
 
 // Match matches a path against a list of patterns.
@@ -227,7 +236,8 @@ func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, o
 			//if the target path element is the same as the next valid pattern element increment
 			//ex.:
 			// given path /a/b/c/d/e/f/g/h/i
-			// and patternElems /a/b/**/**/h/i
+			// and patternElems /a/b/**/**/h
+			// /i
 			// when patternKey reaches 2, the value would be ** and the next valid pattern key is 'h'
 			if patternElems[nextValidPatternElemKey] == targetElem {
 				patternKey = nextValidPatternElemKey + 1

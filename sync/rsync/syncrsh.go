@@ -40,6 +40,7 @@ func (o *RSyncRsh) SetOptions(syncOptions options.SyncOptions) {
 }
 
 func (o RSyncRsh) Sync(paths []string) error {
+	cplogs.V(5).Infof("sync triggered for paths %s", paths)
 	rsh := fmt.Sprintf(`%s %s --context=%s --namespace=%s exec -i %s`, config.AppName, config.KubeCtlName, o.kubeConfigKey, o.environment, o.pod)
 	cplogs.V(5).Infof("setting RSYNC_RSH to %s\n", rsh)
 	os.Setenv("RSYNC_RSH", rsh)

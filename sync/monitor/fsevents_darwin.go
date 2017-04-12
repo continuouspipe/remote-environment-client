@@ -80,6 +80,9 @@ func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error 
 					cplogs.V(5).Infof("skipping %s %s as is in the exclusion list", desc, e.Path)
 					cplogs.Flush()
 					continue
+				} else {
+					cplogs.V(5).Infof("not skipping %s %s as was not in the exclusion list", desc, e.Path)
+					cplogs.Flush()
 				}
 
 				changeLock.Lock()

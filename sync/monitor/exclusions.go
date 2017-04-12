@@ -35,11 +35,11 @@ func NewExclusion() *Exclusion {
 	m.DefaultExclusions = []string{
 		`.idea`,
 		`.git`,
-		`___jb_old___`,
-		`___jb_tmp___`,
-		`cp-remote-logs`,
-		`.cp-remote-settings.yml`,
-		`.cp-remote-env-settings.yml`}
+		`*___jb_old___`,
+		`*___jb_tmp___`,
+		`/cp-remote-logs**`,
+		`/.cp-remote-settings.yml`,
+		`/.cp-remote-env-settings.yml`}
 	m.FirstCreationExclusions = []string{
 		`.*`,
 	}
@@ -66,7 +66,7 @@ func (m Exclusion) MatchExclusionList(target string) (bool, error) {
 		return false, err
 	}
 
-	m.rsyncMatcherPath.AddPattern(m.DefaultExclusions...)
+	m.rsyncMatcherPath.AddPattern(m.ignore.List...)
 	matchIncluded, err := m.rsyncMatcherPath.HasMatchAndIsIncluded(target)
 	if err != nil {
 		cplogs.V(4).Infof("error when matching path to the exclusion list, details %s", err.Error())
