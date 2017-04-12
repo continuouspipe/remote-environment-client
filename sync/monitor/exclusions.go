@@ -1,28 +1,37 @@
-//contains any logic that deals with what files should be excluded from the monitoring
+//Package monitor - exclusions contains any logic that deals with what files should be excluded from the monitoring
 package monitor
 
 import (
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/continuouspipe/remote-environment-client/pattern"
 	"os"
 )
 
+//CustomExclusionsFile is the default ignore file for rsync exclusions
 const CustomExclusionsFile = ".cp-remote-ignore"
 
+//ExclusionProvider allows to write an exclusion list to files and match a target against the exclusions
 type ExclusionProvider interface {
 	WriteDefaultExclusionsToFile() (bool, error)
 	MatchExclusionList(target string) (bool, error)
 }
 
+//Exclusion contains elements that allow to store two list of path to exclude, a config.Ignore to load, save the
+//exclusions and a pattern.PathPatternMatcher that allows to match a path to the exclusion list
 type Exclusion struct {
 	DefaultExclusions       []string
 	FirstCreationExclusions []string
 	ignore                  *config.Ignore
+	rsyncMatcherPath        pattern.PathPatternMatcher
 }
 
+//NewExclusion default constructor for Exclusion
 func NewExclusion() *Exclusion {
 	m := &Exclusion{}
 	m.ignore = config.NewIgnore()
 	m.ignore.File = CustomExclusionsFile
+	m.rsyncMatcherPath = pattern.NewRsyncMatcherPath()
 	m.DefaultExclusions = []string{
 		`.idea`,
 		`.git`,
@@ -37,6 +46,9 @@ func NewExclusion() *Exclusion {
 	return m
 }
 
+// WriteDefaultExclusionsToFile check if the exclusion file exists
+// if the exclusion file does not already exist in the system it will add the values contained on FirstCreationExclusions
+// if the exclusion file already exists it simply add the missing DefaultExclusions using the config.Ignore struct
 func (m *Exclusion) WriteDefaultExclusionsToFile() (bool, error) {
 	exclusions := []string{}
 	if _, err := os.Stat(m.ignore.File); os.IsNotExist(err) {
@@ -46,17 +58,19 @@ func (m *Exclusion) WriteDefaultExclusionsToFile() (bool, error) {
 	return m.ignore.AddToIgnore(exclusions...)
 }
 
+//MatchExclusionList loads the list of exclusions from the ignore file and
+//feeds them to the NewRsyncMatcherPath
 func (m Exclusion) MatchExclusionList(target string) (bool, error) {
 	err := m.ignore.LoadFromIgnoreFile()
 	if err != nil {
 		return false, err
 	}
 
-	for _, elem := range m.ignore.List {
-		//if is an exact match return true
-		if elem == target {
-			return true, nil
-		}
+	m.rsyncMatcherPath.AddPattern(m.DefaultExclusions...)
+	matchIncluded, err := m.rsyncMatcherPath.HasMatchAndIsIncluded(target)
+	if err != nil {
+		cplogs.V(4).Infof("error when matching path to the exclusion list, details %s", err.Error())
+		cplogs.Flush()
 	}
-	return false, nil
+	return !matchIncluded, nil
 }

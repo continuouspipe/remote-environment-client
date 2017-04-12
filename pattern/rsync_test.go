@@ -580,10 +580,17 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			errors.New("empty path given"),
 		},
 		{
-			"abc",
+			"/Users/bob/dev/proj/path/to/file/abc",
 			[]string{""},
 			"edge case: random path and empty pattern",
-			false,
+			true,
+			nil,
+		},
+		{
+			"/Users/bob/dev/proj/path/to/file/abc",
+			[]string{"", "", "", "", "", "", "", "", ""},
+			"edge case: random path and empty patterns",
+			true,
 			nil,
 		},
 	}
@@ -592,7 +599,7 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 
 	for _, scenario := range scenarios {
 		subject.AddPattern(scenario.patterns...)
-		match, err := subject.IncludeToTransfer(scenario.path)
+		match, err := subject.HasMatchAndIsIncluded(scenario.path)
 		assert.Equal(t, scenario.toTransfer, match, scenario.description)
 		if scenario.err != nil {
 			assert.Equal(t, scenario.err.Error(), err.Error(), scenario.description)

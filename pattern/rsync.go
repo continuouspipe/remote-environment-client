@@ -3,6 +3,7 @@ package pattern
 
 import (
 	"errors"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"strings"
 )
 
@@ -20,7 +21,7 @@ type pathPatternItem struct {
 // PathPatternMatcher match a path against a list of patterns.
 type PathPatternMatcher interface {
 	AddPattern(pattern ...string)
-	IncludeToTransfer(path string) (include bool)
+	HasMatchAndIsIncluded(path string) (include bool, err error)
 }
 
 // RsyncMatcherPath allows to match a path using some of the rsync filter rules and include/exclude pattern rules
@@ -58,7 +59,7 @@ func (m *RsyncMatcherPath) AddPattern(pattern ...string) {
 	m.patternItems = patternItems
 }
 
-// IncludeToTransfer determins if a
+// HasMatchAndIsIncluded determins if a
 //
 // FILTER RULES (sub-set of the all supported rsync filter rules)
 //
@@ -83,9 +84,12 @@ func (m *RsyncMatcherPath) AddPattern(pattern ...string) {
 // + /some/path/this-file-will-not-be-found
 // + /file-is-included
 // - *
-func (m *RsyncMatcherPath) IncludeToTransfer(path string) (include bool, err error) {
+func (m *RsyncMatcherPath) HasMatchAndIsIncluded(path string) (include bool, err error) {
 	if len(path) == 0 {
 		return false, errors.New("empty path given")
+	}
+	if len(m.patternItems) == 0 {
+		return true, nil
 	}
 
 	//check if any of the parent folder is excluded
@@ -97,6 +101,8 @@ func (m *RsyncMatcherPath) IncludeToTransfer(path string) (include bool, err err
 		inc, found := m.filteredMatch(current)
 
 		if inc == false && found != nil {
+			cplogs.V(5).Infof("hiding directory %s because of pattern %s", path, found.pattern)
+			cplogs.Flush()
 			return false, nil
 		}
 	}
@@ -108,14 +114,14 @@ func (m *RsyncMatcherPath) IncludeToTransfer(path string) (include bool, err err
 func (m RsyncMatcherPath) filteredMatch(path string) (include bool, found *pathPatternItem) {
 	matchedPatterns := m.match(path)
 	if len(matchedPatterns) > 0 {
-
 		switch matchedPatterns[0].prefix {
 		case filterRuleExclude:
+			cplogs.V(5).Infof("hiding directory %s because of the first pattern found: %s. List of all matches: %#v", path, matchedPatterns[0].prefix, matchedPatterns)
+			cplogs.Flush()
 			return false, &matchedPatterns[0]
 		case filterRuleInclude:
 			return true, &matchedPatterns[0]
 		}
-
 	}
 	return false, nil
 }
