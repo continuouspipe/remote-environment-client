@@ -601,7 +601,7 @@ WAIT_LOOP:
 			break
 
 		case cpapi.RemoteEnvironmentTideFailed:
-			err = fmt.Errorf("remote environment id %s cretion has failed. To see more information about the error go to https://ui.continuouspipe.io/", remoteEnvId)
+			err = fmt.Errorf("remote environment id %s creation has failed. To see more information about the error go to https://ui.continuouspipe.io/", remoteEnvId)
 			break WAIT_LOOP
 
 		case cpapi.RemoteEnvironmentRunning:
