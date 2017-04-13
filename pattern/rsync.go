@@ -178,9 +178,16 @@ func (m RsyncMatcherPath) matchedRelativePattern(targetPath string, pattern stri
 	}
 
 	patternElems := strings.Split(pattern, "/")
+
 	//remove first empty element
 	if len(patternElems) > 0 && patternElems[0] == "" {
 		patternElems = patternElems[1:]
+	}
+
+	//when there is only 1 pattern element and is not anchored
+	//we need to match it against all patternElems and only return a failure if all of them don't match
+	if len(patternElems) == 1 {
+		return m.singlePartMatches(targetElems, patternElems[0])
 	}
 
 	//Find the first matching pattern element and store is key in the offset
@@ -196,6 +203,18 @@ func (m RsyncMatcherPath) matchedRelativePattern(targetPath string, pattern stri
 		return true
 	}
 
+	return false
+}
+
+//singlePartMatches matches a single pattern against a list of targets
+func (m RsyncMatcherPath) singlePartMatches(target []string, pattern string) (matches bool) {
+	if pattern == "*" || pattern == "**" {
+		return true
+	}
+
+	if strings.ContainsRune(pattern, '*') {
+		return matchAny(pattern, target)
+	}
 	return false
 }
 
@@ -218,92 +237,77 @@ func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, o
 	//by default we return that the target matches the pattern
 	matches = true
 
-	isAnchored := strings.HasPrefix(pattern, "/")
-	//when there is only 1 pattern element and is not anchored
-	//we need to match it against all patternElems and only return a failure if all of them don't match
-	if isAnchored == false && len(patternElems) == 1 {
-		patternElem := patternElems[0]
+	for patternKey < len(patternElems) && targetKey < len(targetElems) {
+		patternElem := patternElems[patternKey]
+		targetElem := targetElems[targetKey]
 
-		if patternElem == "*" || patternElem == "**" {
-			return true
+		//check if the patternElem doesn't match the targetElem
+		//e.g. target: /user/a, targetElem: a,
+		//     pattern: /user/b, patternEle: b
+		if patternElem != targetElem && !strings.ContainsRune(patternElem, '*') && patternElem != "**" {
+			matches = false
+			break
 		}
 
-		if strings.ContainsRune(patternElem, '*') {
-			return matchAny(pattern, targetElems)
-		}
-		return false
-	} else {
-		for patternKey < len(patternElems) && targetKey < len(targetElems) {
-			patternElem := patternElems[patternKey]
-			targetElem := targetElems[targetKey]
+		//if patternElem is ** we need to skip to the next targetElement
+		//e.g. target:              /user/a/b/c/d/d/e/f
+		//     targetKey:    -------------^
+		//     pattern:             /user/**/d/e/e/f
+		//     patternKey:   -------------^
+		// targetKey will point to b, c until 'd' is reached which is the next element after **
+		if patternElem == "**" {
+			//iterate to the next pattern part only if the next patternElem is not "*" or "**" and it matches the targetElem
+			nextValidPatternElemKey := 0
 
-			//check if the patternElem doesn't match the targetElem
-			//e.g. target: /user/a, targetElem: a,
-			//     pattern: /user/b, patternEle: b
-			if patternElem != targetElem && !strings.ContainsRune(patternElem, '*') && patternElem != "**" {
-				matches = false
-				break
+			for i := patternKey; i < len(patternElems); i++ {
+				if patternElems[i] != "*" && patternElems[i] != "**" {
+					nextValidPatternElemKey = i
+					break
+				}
 			}
 
-			//if patternElem is ** we need to skip to the next targetElement
-			//e.g. target:              /user/a/b/c/d/d/e/f
-			//     targetKey:    -------------^
-			//     pattern:             /user/**/d/e/e/f
-			//     patternKey:   -------------^
-			// targetKey will point to b, c until 'd' is reached which is the next element after **
-			if patternElem == "**" {
-				//iterate to the next pattern part only if the next patternElem is not "*" or "**" and it matches the targetElem
-				nextValidPatternElemKey := 0
-
-				for i := patternKey; i < len(patternElems); i++ {
-					if patternElems[i] != "*" && patternElems[i] != "**" {
-						nextValidPatternElemKey = i
-						break
-					}
-				}
-
-				//if the target path element is the same as the next valid pattern element increment
-				//ex.:
-				// given path /a/b/c/d/e/f/g/h/i
-				// and patternElems /a/b/**/**/h/i
-				//
-				// when patternKey reaches 2, the value would be ** and the next valid pattern key is 'h'
-				if patternElems[nextValidPatternElemKey] == targetElem {
-					patternKey = nextValidPatternElemKey + 1
-				}
-
-			} else {
-				patternKey++
+			//if the target path element is the same as the next valid pattern element increment
+			//ex.:
+			// given path /a/b/c/d/e/f/g/h/i
+			// and patternElems /a/b/**/**/h/i
+			//
+			// when patternKey reaches 2, the value would be ** and the next valid pattern key is 'h'
+			if patternElems[nextValidPatternElemKey] == targetElem {
+				patternKey = nextValidPatternElemKey + 1
 			}
 
-			targetKey++
+		} else {
+			patternKey++
 		}
 
-		//we reached the end of the target string, and there are still other pattern elements to match
-		//e.g. target: /user/a/b, pattern: /user/a/b/**
-		//or   target: /user/a/b, pattern: /user/a/b/c/d/e/*/g
-		if patternKey < len(patternElems) && targetKey == len(targetElems) {
-			patternElem := patternElems[patternKey]
-
-			//if the current pattern element is a double star symbol
-			//break as it would match anything after
-			if patternElem == "**" {
-				//there are other pattern after '**'
-				if patternKey+1 == len(patternElems) {
-					//no other patterns, return true
-					matches = true
-				} else {
-					//there are other patterns
-					matches = false
-				}
-			} else {
-				//else it means that we had other parts of the pattern that had to be matched
-				//but the target string doesn't contain enough parts
-				matches = false
-			}
-
-		}
+		targetKey++
 	}
+
+	//we reached the end of the target string, and there are still other pattern elements to match
+	//e.g. target: /user/a/b, pattern: /user/a/b/**
+	//or   target: /user/a/b, pattern: /user/a/b/c/d/e/*/g
+	if patternKey < len(patternElems) && targetKey == len(targetElems) {
+		patternElem := patternElems[patternKey]
+
+		//if the current pattern element is a double star symbol
+		//break as it would match anything after
+		if patternElem == "**" {
+			//there are other pattern after '**'
+			if patternKey+1 == len(patternElems) {
+				//no other patterns, return true
+				matches = true
+			} else {
+				//there are other patterns
+				matches = false
+			}
+		} else {
+			//else it means that we had other parts of the pattern that had to be matched
+			//but the target string doesn't contain enough parts
+			matches = false
+		}
+
+	}
+
 	return
 }
 
