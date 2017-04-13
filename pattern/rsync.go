@@ -142,6 +142,7 @@ func (m RsyncMatcherPath) filteredMatch(path string) (include bool, found *pathP
 // Match matches a path against a list of patterns.
 func (m RsyncMatcherPath) match(targetPath string) (matchedPatterns []pathPatternItem) {
 	for _, patternItem := range m.patternItems {
+
 		if strings.HasPrefix(patternItem.pattern, "/") {
 			if res := m.matchedAnchoredPattern(targetPath, patternItem.pattern); res == true {
 				matchedPatterns = append(matchedPatterns, patternItem)
@@ -149,6 +150,7 @@ func (m RsyncMatcherPath) match(targetPath string) (matchedPatterns []pathPatter
 		} else if res := m.matchedRelativePattern(targetPath, patternItem.pattern); res == true {
 			matchedPatterns = append(matchedPatterns, patternItem)
 		}
+
 	}
 	return matchedPatterns
 }
@@ -245,7 +247,7 @@ func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, o
 		//check if the patternElem doesn't match the targetElem
 		//e.g. target: /user/a, targetElem: a,
 		//     pattern: /user/b, patternEle: b
-		if patternElem != targetElem && !strings.ContainsRune(patternElem, '*') && patternElem != "**" {
+		if patternElem != targetElem && patternElem != "*" && patternElem != "**" {
 			matches = false
 			break
 		}
