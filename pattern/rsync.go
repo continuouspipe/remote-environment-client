@@ -4,6 +4,7 @@ package pattern
 import (
 	"errors"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"path"
 	"strings"
 )
 
@@ -217,76 +218,103 @@ func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, o
 	//by default we return that the target matches the pattern
 	matches = true
 
-	for patternKey < len(patternElems) && targetKey < len(targetElems) {
-		patternElem := patternElems[patternKey]
-		targetElem := targetElems[targetKey]
+	isAnchored := strings.HasPrefix(pattern, "/")
+	//when there is only 1 pattern element and is not anchored
+	//we need to match it against all patternElems and only return a failure if all of them don't match
+	if isAnchored == false && len(patternElems) == 1 {
+		patternElem := patternElems[0]
 
-		//check if the patternElem doesn't match the targetElem
-		//e.g. target: /user/a, targetElem: a,
-		//     pattern: /user/b, patternEle: b
-		if patternElem != targetElem && !strings.ContainsRune(patternElem, '*') && patternElem != "**" {
-			matches = false
-			break
+		if patternElem == "*" || patternElem == "**" {
+			return true
 		}
 
-		//if patternElem is ** we need to skip to the next targetElement
-		//e.g. target:              /user/a/b/c/d/d/e/f
-		//     targetKey:    -------------^
-		//     pattern:             /user/**/d/e/e/f
-		//     patternKey:   -------------^
-		// targetKey will point to b, c until 'd' is reached which is the next element after **
-		if patternElem == "**" {
-			//iterate to the next pattern part only if the next patternElem is not "*" or "**" and it matches the targetElem
-			nextValidPatternElemKey := 0
+		if strings.ContainsRune(patternElem, '*') {
+			return matchAny(pattern, targetElems)
+		}
+		return false
+	} else {
+		for patternKey < len(patternElems) && targetKey < len(targetElems) {
+			patternElem := patternElems[patternKey]
+			targetElem := targetElems[targetKey]
 
-			for i := patternKey; i < len(patternElems); i++ {
-				if patternElems[i] != "*" && patternElems[i] != "**" {
-					nextValidPatternElemKey = i
-					break
+			//check if the patternElem doesn't match the targetElem
+			//e.g. target: /user/a, targetElem: a,
+			//     pattern: /user/b, patternEle: b
+			if patternElem != targetElem && !strings.ContainsRune(patternElem, '*') && patternElem != "**" {
+				matches = false
+				break
+			}
+
+			//if patternElem is ** we need to skip to the next targetElement
+			//e.g. target:              /user/a/b/c/d/d/e/f
+			//     targetKey:    -------------^
+			//     pattern:             /user/**/d/e/e/f
+			//     patternKey:   -------------^
+			// targetKey will point to b, c until 'd' is reached which is the next element after **
+			if patternElem == "**" {
+				//iterate to the next pattern part only if the next patternElem is not "*" or "**" and it matches the targetElem
+				nextValidPatternElemKey := 0
+
+				for i := patternKey; i < len(patternElems); i++ {
+					if patternElems[i] != "*" && patternElems[i] != "**" {
+						nextValidPatternElemKey = i
+						break
+					}
 				}
+
+				//if the target path element is the same as the next valid pattern element increment
+				//ex.:
+				// given path /a/b/c/d/e/f/g/h/i
+				// and patternElems /a/b/**/**/h/i
+				//
+				// when patternKey reaches 2, the value would be ** and the next valid pattern key is 'h'
+				if patternElems[nextValidPatternElemKey] == targetElem {
+					patternKey = nextValidPatternElemKey + 1
+				}
+
+			} else {
+				patternKey++
 			}
 
-			//if the target path element is the same as the next valid pattern element increment
-			//ex.:
-			// given path /a/b/c/d/e/f/g/h/i
-			// and patternElems /a/b/**/**/h/i
-			//
-			// when patternKey reaches 2, the value would be ** and the next valid pattern key is 'h'
-			if patternElems[nextValidPatternElemKey] == targetElem {
-				patternKey = nextValidPatternElemKey + 1
-			}
-
-		} else {
-			patternKey++
+			targetKey++
 		}
 
-		targetKey++
-	}
+		//we reached the end of the target string, and there are still other pattern elements to match
+		//e.g. target: /user/a/b, pattern: /user/a/b/**
+		//or   target: /user/a/b, pattern: /user/a/b/c/d/e/*/g
+		if patternKey < len(patternElems) && targetKey == len(targetElems) {
+			patternElem := patternElems[patternKey]
 
-	//we reached the end of the target string, and there are still other pattern elements to match
-	//e.g. target: /user/a/b, pattern: /user/a/b/**
-	//or   target: /user/a/b, pattern: /user/a/b/c/d/e/*/g
-	if patternKey < len(patternElems) && targetKey == len(targetElems) {
-		patternElem := patternElems[patternKey]
-
-		//if the current pattern element is a double star symbol
-		//break as it would match anything after
-		if patternElem == "**" {
-			//there are other pattern after '**'
-			if patternKey+1 == len(patternElems) {
-				//no other patterns, return true
-				matches = true
+			//if the current pattern element is a double star symbol
+			//break as it would match anything after
+			if patternElem == "**" {
+				//there are other pattern after '**'
+				if patternKey+1 == len(patternElems) {
+					//no other patterns, return true
+					matches = true
+				} else {
+					//there are other patterns
+					matches = false
+				}
 			} else {
-				//there are other patterns
+				//else it means that we had other parts of the pattern that had to be matched
+				//but the target string doesn't contain enough parts
 				matches = false
 			}
-		} else {
-			//else it means that we had other parts of the pattern that had to be matched
-			//but the target string doesn't contain enough parts
-			matches = false
+
 		}
-
 	}
-
 	return
+}
+
+func matchAny(pattern string, items []string) (matched bool) {
+	for _, item := range items {
+		matches, _ := path.Match(pattern, item)
+
+		if matches == false {
+			continue
+		}
+		return true
+	}
+	return false
 }
