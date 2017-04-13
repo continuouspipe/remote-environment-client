@@ -165,6 +165,11 @@ func (m RsyncMatcherPath) matchedRelativePattern(targetPath string, pattern stri
 
 	//Iterate recursively through all the target path elements and return true if one of them matches the given pattern
 	targetElems := strings.Split(targetPath, "/")
+	//remove first empty element
+	if len(targetElems) > 0 && targetElems[0] == "" {
+		targetElems = targetElems[1:]
+	}
+
 	for _, targetPathElem := range targetElems {
 		if targetPathElem == pattern {
 			return true
@@ -172,6 +177,10 @@ func (m RsyncMatcherPath) matchedRelativePattern(targetPath string, pattern stri
 	}
 
 	patternElems := strings.Split(pattern, "/")
+	//remove first empty element
+	if len(patternElems) > 0 && patternElems[0] == "" {
+		patternElems = patternElems[1:]
+	}
 
 	//Find the first matching pattern element and store is key in the offset
 	offset := 0
@@ -193,6 +202,14 @@ func (m RsyncMatcherPath) matchedRelativePattern(targetPath string, pattern stri
 func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, offset int) (matches bool) {
 	targetElems := strings.Split(target, "/")
 	patternElems := strings.Split(pattern, "/")
+
+	//remove first empty element
+	if len(targetElems) > 0 && targetElems[0] == "" {
+		targetElems = targetElems[1:]
+	}
+	if len(patternElems) > 0 && patternElems[0] == "" {
+		patternElems = patternElems[1:]
+	}
 
 	patternKey := 0
 	targetKey := 0 + offset
