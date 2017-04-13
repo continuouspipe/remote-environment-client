@@ -43,7 +43,8 @@ func NewExclusion() *Exclusion {
 		`*___jb_tmp___`,
 		`/cp-remote-logs**`,
 		`/.cp-remote-settings.yml`,
-		`/.cp-remote-env-settings.yml`}
+		`/.cp-remote-env-settings.yml`,
+		`/.cp-remote-ignore`}
 	m.FirstCreationExclusions = []string{
 		`.*`,
 	}
