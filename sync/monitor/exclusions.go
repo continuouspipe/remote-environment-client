@@ -2,9 +2,11 @@
 package monitor
 
 import (
+	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/pattern"
+	"io"
 	"os"
 )
 
@@ -24,6 +26,7 @@ type Exclusion struct {
 	FirstCreationExclusions []string
 	ignore                  *config.Ignore
 	rsyncMatcherPath        pattern.PathPatternMatcher
+	writer                  io.Writer
 }
 
 //NewExclusion default constructor for Exclusion
@@ -32,6 +35,7 @@ func NewExclusion() *Exclusion {
 	m.ignore = config.NewIgnore()
 	m.ignore.File = CustomExclusionsFile
 	m.rsyncMatcherPath = pattern.NewRsyncMatcherPath()
+	m.writer = os.Stdout
 	m.DefaultExclusions = []string{
 		`.idea`,
 		`.git`,
@@ -67,7 +71,10 @@ func (m Exclusion) MatchExclusionList(target string) (bool, error) {
 	}
 
 	m.rsyncMatcherPath.AddPattern(m.ignore.List...)
-	matchIncluded, err := m.rsyncMatcherPath.HasMatchAndIsIncluded(target)
+	matchIncluded, msg, err := m.rsyncMatcherPath.HasMatchAndIsIncluded(target)
+	if msg != "" {
+		fmt.Fprintln(m.writer, msg)
+	}
 	if err != nil {
 		cplogs.V(4).Infof("error when matching path to the exclusion list, details %s", err.Error())
 		cplogs.Flush()

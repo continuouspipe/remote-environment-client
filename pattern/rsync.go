@@ -3,6 +3,7 @@ package pattern
 
 import (
 	"errors"
+	"fmt"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"path"
 	"strings"
@@ -22,7 +23,7 @@ type pathPatternItem struct {
 // PathPatternMatcher match a path against a list of patterns.
 type PathPatternMatcher interface {
 	AddPattern(pattern ...string)
-	HasMatchAndIsIncluded(path string) (include bool, err error)
+	HasMatchAndIsIncluded(path string) (include bool, message string, err error)
 }
 
 // RsyncMatcherPath allows to match a path using some of the rsync filter rules and include/exclude pattern rules
@@ -87,19 +88,20 @@ func (m *RsyncMatcherPath) AddPattern(pattern ...string) {
 // + /some/path/this-file-will-not-be-found
 // + /file-is-included
 // - *
-func (m *RsyncMatcherPath) HasMatchAndIsIncluded(path string) (include bool, err error) {
+func (m *RsyncMatcherPath) HasMatchAndIsIncluded(path string) (include bool, details string, err error) {
 	if len(path) == 0 {
-		return false, errors.New("empty path given")
+		err := errors.New("empty path given")
+		msg := fmt.Sprintf("error: %s", err.Error())
+		return false, msg, err
 	}
 	if len(m.patternItems) == 0 {
-		return true, nil
+		return true, "", nil
 	}
 
 	inc, found := m.filteredMatch(path)
 	if inc == false && found != nil {
-		cplogs.V(5).Infof("not transferring %s because of pattern %s", path, found.pattern)
-		cplogs.Flush()
-		return false, nil
+		msg := fmt.Sprintf("Not transferring %s because of pattern %s", path, found.rawPattern)
+		return false, msg, nil
 	}
 
 	//before saying that we can safely include a path we need to check that none of is parent
@@ -114,13 +116,12 @@ func (m *RsyncMatcherPath) HasMatchAndIsIncluded(path string) (include bool, err
 			inc, found := m.filteredMatch(current)
 
 			if inc == false && found != nil {
-				cplogs.V(5).Infof("not transferring %s because of pattern %s", path, found.pattern)
-				cplogs.Flush()
-				return false, nil
+				msg := fmt.Sprintf("Not transferring %s because of pattern %s", path, found.rawPattern)
+				return false, msg, nil
 			}
 		}
 	}
-	return inc, nil
+	return true, "", nil
 }
 
 func (m RsyncMatcherPath) filteredMatch(path string) (include bool, found *pathPatternItem) {
