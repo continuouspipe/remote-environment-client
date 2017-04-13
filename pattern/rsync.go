@@ -189,6 +189,7 @@ func (m RsyncMatcherPath) matchedRelativePattern(targetPath string, pattern stri
 	return false
 }
 
+//sequentialPartMatches iterates until we either reach the end of the pattern or we reach the end of the target string
 func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, offset int) (matches bool) {
 	targetElems := strings.Split(target, "/")
 	patternElems := strings.Split(pattern, "/")
@@ -196,32 +197,27 @@ func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, o
 	patternKey := 0
 	targetKey := 0 + offset
 
-	for {
-		//break the loop once we have fully scanned the pattern string
-		if patternKey == len(patternElems) {
-			break
-		}
+	//by default we return that the target matches the pattern
+	matches = true
+
+	for patternKey < len(patternElems) && targetKey < len(targetElems) {
 		patternElem := patternElems[patternKey]
-
-		//break the loop once we have fully scanned the target string
-		if targetKey == len(targetElems) {
-			//if the current pattern element is a double star symbol
-			//break as it would match anything after
-			if patternElem == "**" {
-				break
-			}
-
-			//else it means that we had other parts of the pattern that had to be matched
-			//but the target string doesn't contain enough parts
-			return false
-		}
-
 		targetElem := targetElems[targetKey]
 
+		//check if the patternElem doesn't match the targetElem
+		//e.g. target: /user/a, targetElem: a,
+		//     pattern: /user/b, patternEle: b
 		if patternElem != targetElem && patternElem != "*" && patternElem != "**" {
-			return false
+			matches = false
+			break
 		}
 
+		//if patternElem is ** we need to skip to the next targetElement
+		//e.g. target:              /user/a/b/c/d/d/e/f
+		//     targetKey:    -------------^
+		//     pattern:             /user/**/d/e/e/f
+		//     patternKey:   -------------^
+		// targetKey will point to b, c until 'd' is reached which is the next element after **
 		if patternElem == "**" {
 			//iterate to the next pattern part only if the next patternElem is not "*" or "**" and it matches the targetElem
 			nextValidPatternElemKey := 0
@@ -236,8 +232,8 @@ func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, o
 			//if the target path element is the same as the next valid pattern element increment
 			//ex.:
 			// given path /a/b/c/d/e/f/g/h/i
-			// and patternElems /a/b/**/**/h
-			// /i
+			// and patternElems /a/b/**/**/h/i
+			//
 			// when patternKey reaches 2, the value would be ** and the next valid pattern key is 'h'
 			if patternElems[nextValidPatternElemKey] == targetElem {
 				patternKey = nextValidPatternElemKey + 1
@@ -250,5 +246,23 @@ func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, o
 		targetKey++
 	}
 
-	return true
+	//we reached the end of the target string, and there are still other pattern elements to match
+	//e.g. target: /user/a/b, pattern: /user/a/b/**
+	//or   target: /user/a/b, pattern: /user/a/b/c/d/e/*/g
+	if patternKey < len(patternElems) && targetKey == len(targetElems) {
+		patternElem := patternElems[patternKey]
+
+		//if the current pattern element is a double star symbol
+		//break as it would match anything after
+		if patternElem == "**" {
+			matches = true
+		} else {
+			//else it means that we had other parts of the pattern that had to be matched
+			//but the target string doesn't contain enough parts
+			matches = false
+		}
+
+	}
+
+	return
 }

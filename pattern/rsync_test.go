@@ -262,6 +262,13 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 		},
 		{
 			"/Users/bob/dev/proj/path/to/file/file-7144",
+			[]string{"/Users/bob/**/DIFFERENT"},
+			"double star pattern toward the end of the pattern with an extra string that should not match and transfer the file",
+			true,
+			nil,
+		},
+		{
+			"/Users/bob/dev/proj/path/to/file/file-7144",
 			[]string{"+ /Users/bob/**"},
 			"double star pattern in the end of the pattern with explicit inclusion",
 			true,
