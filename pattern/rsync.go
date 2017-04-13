@@ -255,7 +255,14 @@ func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, o
 		//if the current pattern element is a double star symbol
 		//break as it would match anything after
 		if patternElem == "**" {
-			matches = true
+			//there are other pattern after '**'
+			if patternKey+1 == len(patternElems) {
+				//no other patterns, return true
+				matches = true
+			} else {
+				//there are other patterns
+				matches = false
+			}
 		} else {
 			//else it means that we had other parts of the pattern that had to be matched
 			//but the target string doesn't contain enough parts
