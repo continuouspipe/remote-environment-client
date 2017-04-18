@@ -8,6 +8,9 @@ import (
 	"github.com/continuouspipe/remote-environment-client/pattern"
 	"io"
 	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 //CustomExclusionsFile is the default ignore file for rsync exclusions
@@ -71,6 +74,11 @@ func (m Exclusion) MatchExclusionList(target string) (bool, error) {
 		return false, err
 	}
 
+	target, err = m.getRelativePath(target)
+	if err != nil {
+		return false, err
+	}
+
 	m.rsyncMatcherPath.AddPattern(m.ignore.List...)
 	matchIncluded, msg, err := m.rsyncMatcherPath.HasMatchAndIsIncluded(target)
 	if msg != "" {
@@ -88,4 +96,40 @@ func (m Exclusion) MatchExclusionList(target string) (bool, error) {
 	}
 	cplogs.Flush()
 	return !matchIncluded, nil
+}
+
+// convertWindowsPath converts a windows native path to a path that can be used by rsyncMatcherPath
+func (m Exclusion) convertWindowsPath(path string) string {
+	// If the path starts with a single letter followed by a ":", it needs to
+	// be converted /<drive>/path form
+	parts := strings.SplitN(path, ":", 2)
+	if len(parts) > 1 && len(parts[0]) == 1 {
+		return fmt.Sprintf("%s/%s", strings.ToLower(parts[0]), strings.TrimPrefix(filepath.ToSlash(parts[1]), "/"))
+	}
+	return filepath.ToSlash(path)
+}
+
+// isWindows returns true if the current platform is windows
+func (m Exclusion) isWindows() bool {
+	return runtime.GOOS == "windows"
+}
+
+func (m Exclusion) getRelativePath(path string) (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return path, err
+	}
+
+	relPath, err := filepath.Rel(cwd, path)
+	if err != nil {
+		return path, err
+	}
+
+	if m.isWindows() {
+		relPath = m.convertWindowsPath(relPath)
+	} else {
+		relPath = relPath
+	}
+
+	return relPath, nil
 }

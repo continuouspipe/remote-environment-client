@@ -244,6 +244,16 @@ func (m RsyncMatcherPath) sequentialPartMatches(target string, pattern string, o
 		patternElem := patternElems[patternKey]
 		targetElem := targetElems[targetKey]
 
+		//text combined with a double or a single star
+		if patternElem != "*" && patternElem != "**" && strings.Contains(patternElem, "*") {
+			matches, _ := path.Match(patternElem, targetElem)
+			if matches {
+				matches = false
+				break
+			} else {
+			}
+		}
+
 		//check if the patternElem doesn't match the targetElem
 		//e.g. target: /user/a, targetElem: a,
 		//     pattern: /user/b, patternEle: b

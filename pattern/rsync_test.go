@@ -168,6 +168,15 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			false,
 			nil,
 		},
+
+		{
+			"/Users/bob/dev/proj/path/to/file/file-7144",
+			[]string{"/Users*"},
+			"star pattern at the end of an anchored pattern",
+			"Not transferring /Users/bob/dev/proj/path/to/file/file-7144 because of pattern /Users*",
+			false,
+			nil,
+		},
 		{
 			"/Users/bob/dev/proj/path/to/file/file-2137",
 			[]string{"+ *"},
@@ -214,6 +223,14 @@ func TestRsyncPathPattern_Match(t *testing.T) {
 			"double star pattern at the end of an anchored pattern",
 			"",
 			true,
+			nil,
+		},
+		{
+			"/Users/bob/dev/proj/path/to/file/file-7144",
+			[]string{"/Users**"},
+			"double star pattern at the end of an anchored pattern",
+			"Not transferring /Users/bob/dev/proj/path/to/file/file-7144 because of pattern /Users**",
+			false,
 			nil,
 		},
 		{
