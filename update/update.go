@@ -7,30 +7,35 @@ import (
 	"net/url"
 	"runtime"
 
-	envconfig "github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/sanbornm/go-selfupdate/selfupdate"
 )
 
-const s3BucketName = "inviqa-assets-remote-environment-client"
-
-var selfUpdater = &selfupdate.Updater{
-	// Manually update the const, or set it using `go build -ldflags="-X main.VERSION=<newver>" -o cp-remote remote-environment-client/main.go`
-	CurrentVersion: envconfig.CurrentVersion,
-	// The server hosting `$CmdName/$GOOS-$ARCH.json` which contains the checksum for the binary
-	ApiURL: fmt.Sprintf("https://%s.s3.amazonaws.com/", s3BucketName),
-	// The server hosting the zip file containing the binary application which is a fallback for the patch method
-	BinURL: fmt.Sprintf("https://%s.s3.amazonaws.com/", s3BucketName),
-	// The server hosting the binary patch diff for incremental updates
-	DiffURL: fmt.Sprintf("https://%s.s3.amazonaws.com/", s3BucketName),
-	// Check for update regardless of cktime timestamp
-	ForceCheck: true,
-	// The app name which is appended to the ApiURL to look for an update
-	CmdName: "downloads",
+func NewSelfUpdater() *selfupdate.Updater {
+	cfg := config.NewConfig()
+	awsBucketAddr, _ := cfg.GetString(config.AwsS3BucketAddr)
+	return &selfupdate.Updater{
+		// Manually update the const, or set it using `go build -ldflags="-X main.VERSION=<newver>" -o cp-remote remote-environment-client/main.go`
+		CurrentVersion: config.CurrentVersion,
+		// The server hosting `$CmdName/$GOOS-$ARCH.json` which contains the checksum for the binary
+		ApiURL: awsBucketAddr,
+		// The server hosting the zip file containing the binary application which is a fallback for the patch method
+		BinURL: awsBucketAddr,
+		// The server hosting the binary patch diff for incremental updates
+		DiffURL: awsBucketAddr,
+		// Check for update regardless of cktime timestamp
+		ForceCheck: true,
+		// The app name which is appended to the ApiURL to look for an update
+		CmdName: "downloads",
+	}
 }
 
 // CheckForLatestVersion looks is there is a new version available, if there is one it will ask the user if he would like to upgrade
 func CheckForLatestVersion() error {
+
+	selfUpdater := NewSelfUpdater()
+
 	err := fetchInfo(selfUpdater)
 	if err != nil {
 		return err

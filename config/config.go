@@ -73,9 +73,23 @@ func (c *Config) GetBool(key string) (bool, error) {
 //get the string value on global or local depending who handles it
 func (c *Config) GetString(key string) (string, error) {
 	if c.local.HasSetting(key) {
-		return c.local.GetString(key), nil
+		ret := c.local.GetString(key)
+		if ret == "" {
+			s := c.local.GetSetting(key)
+			if s != nil && s.DefaultValue != "" {
+				return s.DefaultValue, nil
+			}
+		}
+		return ret, nil
 	} else if c.global.HasSetting(key) {
-		return c.global.GetString(key), nil
+		ret := c.global.GetString(key)
+		if ret == "" {
+			s := c.global.GetSetting(key)
+			if s != nil && s.DefaultValue != "" {
+				return s.DefaultValue, nil
+			}
+		}
+		return ret, nil
 	}
 	return "", fmt.Errorf("The key specified %s didn't match any of the handled configs.", key)
 }
@@ -205,6 +219,14 @@ func (v viperWrapper) HasSetting(key string) bool {
 		}
 	}
 	return false
+}
+func (v viperWrapper) GetSetting(key string) *Setting {
+	for _, setting := range v.settings {
+		if setting.Name == key {
+			return &setting
+		}
+	}
+	return nil
 }
 
 //saves the settings on disk
