@@ -78,6 +78,7 @@ func init() {
 
 	RootCmd.AddCommand(NewInitCmd())
 	RootCmd.AddCommand(NewBuildCmd())
+	RootCmd.AddCommand(NewTideStartCmd())
 	RootCmd.AddCommand(NewDestroyCmd())
 	RootCmd.AddCommand(NewListPodsCmd())
 	RootCmd.AddCommand(NewCheckConnectionCmd())
