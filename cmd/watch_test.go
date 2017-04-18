@@ -1,3 +1,4 @@
+//TODO: Refactor test to testify framework https://github.com/stretchr/testify
 package cmd
 
 import (

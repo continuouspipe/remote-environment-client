@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/fsnotify/fsevents"
+	"strings"
 	"sync"
 	"time"
 )
@@ -69,8 +70,14 @@ func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error 
 					cplogs.Flush()
 					continue
 				}
+
+				fullPath := e.Path
+				if !strings.HasPrefix(fullPath, "/") {
+					fullPath = "/" + fullPath
+				}
+
 				//check if the file matches the exclusion list, if so ignore the event
-				match, err := m.Exclusions.MatchExclusionList(e.Path)
+				match, err := m.Exclusions.MatchExclusionList(fullPath)
 				if err != nil {
 					cplogs.V(5).Infof("skipping event %s on path %s, an error occured when matching the file in the exclusions list: %s", desc, e.Path, err.Error())
 					cplogs.Flush()
@@ -80,6 +87,9 @@ func (m FsEvents) AnyEventCall(directory string, observer EventsObserver) error 
 					cplogs.V(5).Infof("skipping %s %s as is in the exclusion list", desc, e.Path)
 					cplogs.Flush()
 					continue
+				} else {
+					cplogs.V(5).Infof("not skipping %s %s as was not in the exclusion list", desc, e.Path)
+					cplogs.Flush()
 				}
 
 				changeLock.Lock()

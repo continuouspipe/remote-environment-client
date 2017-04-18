@@ -1,0 +1,4 @@
+
+For new test use the Testify framework https://github.com/stretchr/testify
+
+Consider refactoring previous test when possible.
