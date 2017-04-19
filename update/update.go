@@ -7,27 +7,35 @@ import (
 	"net/url"
 	"runtime"
 
-	envconfig "github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/sanbornm/go-selfupdate/selfupdate"
 )
 
-var selfUpdater = &selfupdate.Updater{
-	// Manually update the const, or set it using `go build -ldflags="-X main.VERSION=<newver>" -o cp-remote remote-environment-client/main.go`
-	CurrentVersion: envconfig.CurrentVersion,
-	// The server hosting `$CmdName/$GOOS-$ARCH.json` which contains the checksum for the binary
-	ApiURL: "https://continuouspipe.github.io/",
-	// The server hosting the zip file containing the binary application which is a fallback for the patch method
-	BinURL: "https://continuouspipe.github.io/",
-	// The server hosting the binary patch diff for incremental updates
-	DiffURL: "https://continuouspipe.github.io/",
-	// Check for update regardless of cktime timestamp
-	ForceCheck: true,
-	// The app name which is appended to the ApiURL to look for an update
-	CmdName: "remote-environment-client",
+func NewSelfUpdater() *selfupdate.Updater {
+	cfg := config.NewConfig()
+	awsBucketAddr, _ := cfg.GetString(config.AwsS3BucketAddr)
+	return &selfupdate.Updater{
+		// Manually update the const, or set it using `go build -ldflags="-X main.VERSION=<newver>" -o cp-remote remote-environment-client/main.go`
+		CurrentVersion: config.CurrentVersion,
+		// The server hosting `$CmdName/$GOOS-$ARCH.json` which contains the checksum for the binary
+		ApiURL: awsBucketAddr,
+		// The server hosting the zip file containing the binary application which is a fallback for the patch method
+		BinURL: awsBucketAddr,
+		// The server hosting the binary patch diff for incremental updates
+		DiffURL: awsBucketAddr,
+		// Check for update regardless of cktime timestamp
+		ForceCheck: true,
+		// The app name which is appended to the ApiURL to look for an update
+		CmdName: "downloads",
+	}
 }
 
+// CheckForLatestVersion looks is there is a new version available, if there is one it will ask the user if he would like to upgrade
 func CheckForLatestVersion() error {
+
+	selfUpdater := NewSelfUpdater()
+
 	err := fetchInfo(selfUpdater)
 	if err != nil {
 		return err
