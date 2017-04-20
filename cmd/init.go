@@ -189,10 +189,26 @@ func (i *initHandler) SetWriter(writer io.Writer) {
 // Complete verifies command line arguments and loads data from the command environment
 func (i *initHandler) Complete(argsIn []string) error {
 	var err error
+
+	inputToken := ""
 	if len(argsIn) > 0 && argsIn[0] != "" {
-		decodedToken, err := base64.StdEncoding.DecodeString(argsIn[0])
+		inputToken = argsIn[0]
+	}
+
+	if inputToken == "" {
+		//no given token, attempt to use the one saved in the configuration
+		if savedToken, _ := i.config.GetString(config.InitToken); savedToken != "" {
+			inputToken = savedToken
+		}
+	} else {
+		i.config.Set(config.InitToken, inputToken)
+		i.config.Save(config.AllConfigTypes)
+	}
+
+	if inputToken != "" {
+		decodedToken, err := base64.StdEncoding.DecodeString(inputToken)
 		if err != nil {
-			return fmt.Errorf("Malformed token. Please go to continouspipe.io to obtain a valid token")
+			return fmt.Errorf("Malformed token. Please go to https://continuouspipe.io/ to obtain a valid token")
 		}
 		i.token = string(decodedToken)
 		return nil
@@ -204,7 +220,7 @@ func (i *initHandler) Complete(argsIn []string) error {
 		}
 		i.config.Set(config.RemoteName, i.remoteName)
 	}
-	return fmt.Errorf("Invalid token. Please go to continouspipe.io to obtain a valid token")
+	return fmt.Errorf("Invalid token. Please go to https://continuouspipe.io/ to obtain a valid token")
 }
 
 // Validate checks that the token provided has at least 5 values comma separated
