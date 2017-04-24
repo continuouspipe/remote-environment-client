@@ -7,6 +7,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/spf13/cobra"
@@ -137,7 +138,7 @@ func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter p
 
 	pod := podsFilter.List(*allPods).ByService(h.Service).ByStatus("Running").First()
 	if pod == nil {
-		return fmt.Errorf(fmt.Sprintf("No active pods were found but not for the service name (%s) specified", h.Service))
+		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.Service))
 	}
 
 	if h.dryRun {

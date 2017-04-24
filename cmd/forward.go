@@ -8,6 +8,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/spf13/cobra"
 	"strings"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
 )
 
 var (
@@ -131,7 +132,7 @@ func (h *ForwardHandle) Handle() error {
 
 	pod := h.podsFilter.List(*allPods).ByService(h.Service).ByStatus("Running").First()
 	if pod == nil {
-		return fmt.Errorf(fmt.Sprintf("No active pods were found but not for the service name (%s) specified", h.Service))
+		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.Service))
 	}
 
 	cplogs.V(5).Infof("setting up forwarding for target pod %s and ports %s", pod.GetName(), h.ports)
