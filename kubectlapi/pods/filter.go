@@ -1,26 +1,71 @@
 package pods
 
 import (
-	"fmt"
 	"k8s.io/kubernetes/pkg/api"
 	"strings"
 )
 
 type Filter interface {
-	ByService(*api.PodList, string) (*api.Pod, error)
+	List(pods api.PodList) KubePodsFilter
+	ByService(service string) KubePodsFilter
+	ByStatus(status string) KubePodsFilter
+	First() *api.Pod
 }
 
-type KubePodsFilter struct{}
+type KubePodsFilter struct {
+	podList api.PodList
+}
 
 func NewKubePodsFilter() *KubePodsFilter {
 	return &KubePodsFilter{}
 }
 
-func (p KubePodsFilter) ByService(pods *api.PodList, service string) (*api.Pod, error) {
-	for _, pod := range pods.Items {
+func (p *KubePodsFilter) List(podList api.PodList) KubePodsFilter {
+	p.podList = podList
+	return *p
+}
+
+func (p KubePodsFilter) First() *api.Pod {
+	if len(p.podList.Items) > 0 {
+		return &p.podList.Items[0]
+	}
+	return nil
+}
+
+func (p KubePodsFilter) ByService(service string) KubePodsFilter {
+	filteredPodItems := p.podList.Items[:0]
+	for _, pod := range p.podList.Items {
 		if strings.HasPrefix(pod.GetName(), service) {
-			return &pod, nil
+			filteredPodItems = append(filteredPodItems, pod)
 		}
 	}
-	return nil, fmt.Errorf(fmt.Sprintf("Pods were found but not for the service name (%s) specified", service))
+	p.podList.Items = filteredPodItems
+	return p
+}
+
+func (p KubePodsFilter) ByStatus(status string) KubePodsFilter {
+	filteredPodItems := p.podList.Items[:0]
+	for _, pod := range p.podList.Items {
+		if pod.Status.Phase == statusToPodPhase(status) {
+			filteredPodItems = append(filteredPodItems, pod)
+		}
+	}
+	p.podList.Items = filteredPodItems
+	return p
+}
+
+func statusToPodPhase(status string) api.PodPhase {
+	switch status {
+	case "Pending":
+		return api.PodPending
+	case "Running":
+		return api.PodRunning
+	case "Succeeded":
+		return api.PodSucceeded
+	case "Failed":
+		return api.PodFailed
+	case "Unknown":
+		return api.PodUnknown
+	}
+	return ""
 }

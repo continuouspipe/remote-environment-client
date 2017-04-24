@@ -154,9 +154,9 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 		return err
 	}
 
-	pod, err := podsFilter.ByService(allPods, h.options.service)
-	if err != nil {
-		return err
+	pod := podsFilter.List(*allPods).ByService(h.options.service).ByStatus("Running").First()
+	if pod == nil {
+		return fmt.Errorf(fmt.Sprintf("No active pods were found but not for the service name (%s) specified", h.options.service))
 	}
 
 	remoteEnvId, err := h.config.GetString(config.RemoteEnvironmentId)

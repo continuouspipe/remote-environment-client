@@ -135,9 +135,9 @@ func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter p
 		return err
 	}
 
-	pod, err := podsFilter.ByService(allPods, h.Service)
-	if err != nil {
-		return err
+	pod := podsFilter.List(*allPods).ByService(h.Service).ByStatus("Running").First()
+	if pod == nil {
+		return fmt.Errorf(fmt.Sprintf("No active pods were found but not for the service name (%s) specified", h.Service))
 	}
 
 	if h.dryRun {

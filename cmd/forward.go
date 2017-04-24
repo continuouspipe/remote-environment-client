@@ -129,10 +129,9 @@ func (h *ForwardHandle) Handle() error {
 		return err
 	}
 
-	pod, err := h.podsFilter.ByService(allPods, h.Service)
-	if err != nil {
-		cplogs.V(5).Infof("pods not found for service %s", h.Service)
-		return err
+	pod := h.podsFilter.List(*allPods).ByService(h.Service).ByStatus("Running").First()
+	if pod == nil {
+		return fmt.Errorf(fmt.Sprintf("No active pods were found but not for the service name (%s) specified", h.Service))
 	}
 
 	cplogs.V(5).Infof("setting up forwarding for target pod %s and ports %s", pod.GetName(), h.ports)

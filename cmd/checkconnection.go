@@ -7,6 +7,8 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	"k8s.io/kubernetes/pkg/kubectl"
+	"os"
 	"strings"
 )
 
@@ -85,10 +87,14 @@ func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) er
 	}
 
 	if len(podsList.Items) > 0 {
+		printer := kubectl.NewHumanReadablePrinter(kubectl.PrintOptions{
+			ColumnLabels:  []string{},
+			Wide:          true,
+			WithNamespace: true,
+		})
+		printer.EnsurePrintWithKind(podsList.Kind)
 		color.Green("%d pods have been found:", len(podsList.Items))
-		for _, item := range podsList.Items {
-			color.Green("Created at %s, %s", item.CreationTimestamp, item.Name)
-		}
+		printer.PrintObj(podsList, os.Stdout)
 	} else {
 		color.Red("We could not find any pods on this environment")
 	}
