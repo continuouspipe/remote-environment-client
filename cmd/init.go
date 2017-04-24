@@ -200,9 +200,6 @@ func (i *initHandler) Complete(argsIn []string) error {
 		if savedToken, _ := i.config.GetString(config.InitToken); savedToken != "" {
 			inputToken = savedToken
 		}
-	} else {
-		i.config.Set(config.InitToken, inputToken)
-		i.config.Save(config.AllConfigTypes)
 	}
 
 	if inputToken != "" {
@@ -211,16 +208,23 @@ func (i *initHandler) Complete(argsIn []string) error {
 			return fmt.Errorf("Malformed token. Please go to https://continuouspipe.io/ to obtain a valid token")
 		}
 		i.token = string(decodedToken)
-		return nil
+		i.config.Set(config.InitToken, inputToken)
+		i.config.Save(config.AllConfigTypes)
+	} else {
+		return fmt.Errorf("Malformed token. Please go to https://continuouspipe.io/ to obtain a valid token")
 	}
+
 	if i.remoteName == "" {
 		i.remoteName, err = i.config.GetString(config.RemoteName)
 		if err != nil {
 			return err
 		}
-		i.config.Set(config.RemoteName, i.remoteName)
 	}
-	return fmt.Errorf("Invalid token. Please go to https://continuouspipe.io/ to obtain a valid token")
+
+	i.config.Set(config.RemoteName, i.remoteName)
+	i.config.Save(config.AllConfigTypes)
+
+	return nil
 }
 
 // Validate checks that the token provided has at least 5 values comma separated
