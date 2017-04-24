@@ -21,18 +21,23 @@
 #
 # aws s3 sync downloads/x.y.x/ inviqa-cp-remote-client-environment/downloads/x.y.z
 #
+# 0.1.3 is the first version that uses aws s3 bucket to upgrade the version, previous version will still look in the continuouspipe.io site
+# therefore copy all content of public/* folder in the remote-environment-client gh-pages branch
+# make sure that it appears as a single commit, as we want to keep gh-pages branch as light as possible and once the user have all migrated to versions 0.1.3 and above
+# we won't be using gh-pages to store binaries at all!
+#
 # ----------------------------------
 #
 # User-Friendly Latest Release Downloads Links:
 #
-# cp 0.1.2/darwin-amd64.gz latest/darwin-amd64/;
-# cp 0.1.2/linux-amd64.gz latest/linux-amd64/;
-# cp 0.1.2/linux-386.gz latest/linux-386/;
-# cp 0.1.2/windows-amd64.gz latest/windows-amd64/;
-# cp 0.1.2/windows-386.gz latest/windows-386/;
+# cp 0.1.4/darwin-amd64.gz latest/darwin-amd64/;
+# cp 0.1.4/linux-amd64.gz latest/linux-amd64/;
+# cp 0.1.4/linux-386.gz latest/linux-386/;
+# cp 0.1.4/windows-amd64.gz latest/windows-amd64/;
+# cp 0.1.4/windows-386.gz latest/windows-386/;
 #
 #
-# rm -fr 0.1.2; upgrade binaries are kept only on the s3 bucket
+# rm -fr 0.1.4; upgrade binaries are kept only on the s3 bucket
 #
 # cd latest/darwin-amd64/; gzip -d darwin-amd64.gz; chmod +x darwin-amd64; mv darwin-amd64 cp-remote;
 # tar -czvf cp-remote.tar.gz cp-remote;
