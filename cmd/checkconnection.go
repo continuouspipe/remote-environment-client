@@ -88,8 +88,9 @@ func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) er
 
 	if len(podsList.Items) > 0 {
 		printer := kubectl.NewHumanReadablePrinter(kubectl.PrintOptions{
-			ColumnLabels: []string{},
-			Wide:         true,
+			ColumnLabels:  []string{},
+			Wide:          true,
+			WithNamespace: true,
 		})
 		printer.EnsurePrintWithKind(podsList.Kind)
 		color.Green("%d pods have been found:", len(podsList.Items))
