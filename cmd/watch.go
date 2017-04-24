@@ -15,6 +15,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
 )
 
 func NewWatchCmd() *cobra.Command {
@@ -156,7 +157,7 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 
 	pod := podsFilter.List(*allPods).ByService(h.options.service).ByStatus("Running").First()
 	if pod == nil {
-		return fmt.Errorf(fmt.Sprintf("No active pods were found but not for the service name (%s) specified", h.options.service))
+		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.options.service))
 	}
 
 	remoteEnvId, err := h.config.GetString(config.RemoteEnvironmentId)

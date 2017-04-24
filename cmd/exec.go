@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"runtime"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
 )
 
 var execExample = fmt.Sprintf(`
@@ -181,7 +182,7 @@ func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 
 	pod := podsFilter.List(*podsList).ByService(h.service).ByStatus("Running").First()
 	if pod == nil {
-		return fmt.Errorf(fmt.Sprintf("No active pods were found but not for the service name (%s) specified", h.service))
+		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service))
 	}
 
 	//TODO: Change to call directly the KubeCtl NewCmdExec()
