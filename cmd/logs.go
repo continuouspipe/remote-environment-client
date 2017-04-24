@@ -130,9 +130,9 @@ func (h *LogsCmdHandle) Handle(args []string, podsFinder pods.Finder, podsFilter
 		return err
 	}
 
-	pod, err := podsFilter.ByService(allPods, h.service)
-	if err != nil {
-		return err
+	pod := podsFilter.List(*allPods).ByService(h.service).ByStatus("Running").First()
+	if pod == nil {
+		return fmt.Errorf(fmt.Sprintf("No active pods were found but not for the service name (%s) specified", h.service))
 	}
 
 	cplogs.V(5).Infof("getting container logs for environment %s, pod %s", h.environment, pod.GetName())
