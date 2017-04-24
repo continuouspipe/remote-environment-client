@@ -14,6 +14,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/spf13/cobra"
 	"io/ioutil"
+	"runtime"
 )
 
 var execExample = fmt.Sprintf(`
@@ -191,6 +192,19 @@ func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 	kscmd.Stdin = os.Stdin
 	kscmd.Stdout = os.Stdout
 	kscmd.Stderr = os.Stderr
+
+	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+
+		envTerm := os.Getenv("TERM")
+		if envTerm == "" {
+			envTerm = "xterm"
+		}
+
+		//ensure that the TERM environment variable is set
+		//Work-around to be removed when kubernetes and docker fix the issue.
+		//See docker/docker#26461 and kubernetes/kubernetes/issues/28280
+		h.args = append([]string{"env", "TERM=" + envTerm}, h.args...)
+	}
 
 	return executor.StartProcess(kscmd, h.args...)
 }
