@@ -57,10 +57,8 @@ in sync with the local filesystem.
 You will need the following:
 
  * A ContinuousPipe hosted project with the GitHub integration set up
- * The project checked out locally 
- * The IP address, username and password to use for Kubenetes cluster
- * rsync and fswatch installed locally
- * A https://keen.io write token, project id and event collection name if you want to log usage stats 
+ * The project checked out locally
+ * rsync and git installed locally
 
 Note: if the GitHub repository is not the origin of your checked out project then you will
 need to add a remote for that repository.`,
