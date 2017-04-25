@@ -15,8 +15,8 @@ func NewSpySyncer() *SpySyncer {
 }
 
 func (s SpySyncer) Sync(filePaths []string) error {
-	s.Called(filePaths)
-	return nil
+	args := s.Called(filePaths)
+	return args.Error(0)
 }
 
 func (s SpySyncer) SetOptions(syncOptions options.SyncOptions) {
