@@ -1,4 +1,3 @@
-//TODO: Refactor mocks to use testify framework https://github.com/stretchr/testify
 package mocks
 
 import (
@@ -16,39 +15,22 @@ func NewMockPodsFilter() *MockPodsFilter {
 	return &MockPodsFilter{}
 }
 
-func (m MockPodsFilter) List(pods api.PodList) pods.Filter {
-	m.Called(pods)
-	return m
+func (m *MockPodsFilter) List(pods api.PodList) pods.Filter {
+	args := m.Called(pods)
+	return args.Get(0).(*MockPodsFilter)
 }
 
-func (m MockPodsFilter) ByService(service string) pods.Filter {
-	m.Called(service)
-	return m
+func (m *MockPodsFilter) ByService(service string) pods.Filter {
+	args := m.Called(service)
+	return args.Get(0).(*MockPodsFilter)
 }
 
-func (m MockPodsFilter) ByStatus(status string) pods.Filter {
-	m.Called(status)
-	return m
+func (m *MockPodsFilter) ByStatus(status string) pods.Filter {
+	args := m.Called(status)
+	return args.Get(0).(*MockPodsFilter)
 }
 
-func (m MockPodsFilter) First() *api.Pod {
-	return &api.Pod{}
-}
-
-//TODO: Update to use mock.Mock from testify framework https://github.com/stretchr/testify
-//Mock for PodsFinder
-type MockPodsFinder struct {
-	findAll func(user string, apiKey string, address string, environment string) (*api.PodList, error)
-}
-
-func NewMockPodsFinder() *MockPodsFinder {
-	return &MockPodsFinder{}
-}
-
-func (m *MockPodsFinder) FindAll(user string, apiKey string, address string, environment string) (*api.PodList, error) {
-	return m.findAll(user, apiKey, address, environment)
-}
-
-func (m *MockPodsFinder) MockFindAll(mocked func(user string, apiKey string, address string, environment string) (*api.PodList, error)) {
-	m.findAll = mocked
+func (m *MockPodsFilter) First() *api.Pod {
+	args := m.Called()
+	return args.Get(0).(*api.Pod)
 }

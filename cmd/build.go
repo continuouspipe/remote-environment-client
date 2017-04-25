@@ -41,7 +41,6 @@ find its IP address.`,
 }
 
 type BuildHandle struct {
-	command                 *cobra.Command
 	config                  config.ConfigProvider
 	triggerBuild            initialization.InitState
 	waitForEnvironmentReady initialization.InitState

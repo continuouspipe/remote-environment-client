@@ -1,5 +1,4 @@
-//TODO: Refactor spies to use testify framework https://github.com/stretchr/testify
-package spies
+package mocks
 
 import (
 	"github.com/continuouspipe/remote-environment-client/sync/options"
