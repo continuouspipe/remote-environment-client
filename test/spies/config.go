@@ -1,7 +1,12 @@
+//TODO: Refactor spies to use testify framework https://github.com/stretchr/testify
 package spies
 
-import "github.com/continuouspipe/remote-environment-client/config"
+import (
+	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/stretchr/testify/mock"
+)
 
+//TODO: Update to use mock.Mock from testify framework https://github.com/stretchr/testify
 //Spy for Writer
 type SpyWriter struct {
 	Spy
@@ -28,133 +33,48 @@ func (m *SpyWriter) Write(p []byte) (n int, err error) {
 
 //Spy for Config
 type SpyConfig struct {
-	Spy
-	set            func(key string, value interface{}) error
-	getBool        func(key string) (bool, error)
-	getString      func(key string) (string, error)
-	setConfigFile  func(configType config.ConfigType, in string) error
-	setConfigPath  func(configType config.ConfigType, in string) error
-	configFileUsed func(configType config.ConfigType) (string, error)
-	readInConfig   func(configType config.ConfigType) error
-	save           func(configType config.ConfigType) error
+	mock.Mock
 }
 
 func NewSpyConfig() *SpyConfig {
 	return &SpyConfig{}
 }
-
-//callers to mocked functions
-func (m *SpyConfig) Set(key string, value interface{}) error {
-	args := make(Arguments)
-	args["key"] = key
-	args["value"] = value
-
-	function := &Function{Name: "Set", Arguments: args}
-	m.calledFunctions = append(m.calledFunctions, *function)
-
-	return m.set(key, value)
+func (s SpyConfig) Set(key string, value interface{}) error {
+	s.Called(key, value)
+	return nil
 }
 
-func (m *SpyConfig) GetBool(key string) (bool, error) {
-	args := make(Arguments)
-	args["key"] = key
-
-	function := &Function{Name: "GetBool", Arguments: args}
-	m.calledFunctions = append(m.calledFunctions, *function)
-
-	return m.getBool(key)
+func (s SpyConfig) GetBool(key string) (bool, error) {
+	s.Called(key)
+	return true, nil
 }
 
-func (m *SpyConfig) GetString(key string) (string, error) {
-	args := make(Arguments)
-	args["key"] = key
-
-	function := &Function{Name: "GetString", Arguments: args}
-	m.calledFunctions = append(m.calledFunctions, *function)
-
-	return m.getString(key)
+func (s SpyConfig) GetString(key string) (string, error) {
+	s.Called(key)
+	return "", nil
 }
 
-func (m *SpyConfig) SetConfigFile(configType config.ConfigType, in string) error {
-	args := make(Arguments)
-	args["configType"] = configType
-	args["in"] = in
-
-	function := &Function{Name: "SetConfigFile", Arguments: args}
-	m.calledFunctions = append(m.calledFunctions, *function)
-
-	return m.setConfigFile(configType, in)
+func (s SpyConfig) SetConfigFile(configType config.ConfigType, in string) error {
+	s.Called(configType, in)
+	return nil
 }
 
-func (m *SpyConfig) SetConfigPath(configType config.ConfigType, in string) error {
-	args := make(Arguments)
-	args["configType"] = configType
-	args["in"] = in
-
-	function := &Function{Name: "SetConfigPath", Arguments: args}
-	m.calledFunctions = append(m.calledFunctions, *function)
-
-	return m.setConfigPath(configType, in)
+func (s SpyConfig) SetConfigPath(configType config.ConfigType, in string) error {
+	s.Called(configType, in)
+	return nil
 }
 
-func (m *SpyConfig) ConfigFileUsed(configType config.ConfigType) (string, error) {
-	args := make(Arguments)
-	args["configType"] = configType
-
-	function := &Function{Name: "ConfigFileUsed", Arguments: args}
-	m.calledFunctions = append(m.calledFunctions, *function)
-
-	return m.configFileUsed(configType)
+func (s SpyConfig) ConfigFileUsed(configType config.ConfigType) (string, error) {
+	s.Called(configType)
+	return "", nil
 }
 
-func (m *SpyConfig) ReadInConfig(configType config.ConfigType) error {
-	args := make(Arguments)
-	args["configType"] = configType
-
-	function := &Function{Name: "ReadInConfig", Arguments: args}
-	m.calledFunctions = append(m.calledFunctions, *function)
-
-	return m.readInConfig(configType)
+func (s SpyConfig) ReadInConfig(configType config.ConfigType) error {
+	s.Called(configType)
+	return nil
 }
 
-func (m *SpyConfig) Save(configType config.ConfigType) error {
-	args := make(Arguments)
-	args["configType"] = configType
-
-	function := &Function{Name: "Save", Arguments: args}
-	m.calledFunctions = append(m.calledFunctions, *function)
-
-	return m.save(configType)
-}
-
-//setters for mock functions
-func (m *SpyConfig) MockSet(mocked func(key string, value interface{}) error) {
-	m.set = mocked
-}
-
-func (m *SpyConfig) MockGetBool(mocked func(key string) (bool, error)) {
-	m.getBool = mocked
-}
-func (m *SpyConfig) MockGetString(mocked func(key string) (string, error)) {
-	m.getString = mocked
-}
-
-func (m *SpyConfig) MockSetConfigFile(mocked func(configType config.ConfigType, in string) error) {
-	m.setConfigFile = mocked
-}
-
-func (m *SpyConfig) MockSetConfigPath(mocked func(configType config.ConfigType, in string) error) {
-	m.setConfigPath = mocked
-}
-
-func (m *SpyConfig) MockConfigFileUsed(mocked func(configType config.ConfigType) (string, error)) {
-	m.configFileUsed = mocked
-}
-
-func (m *SpyConfig) MockReadInConfig(mocked func(configType config.ConfigType) error) {
-	m.readInConfig = mocked
-}
-
-func (m *SpyConfig) MockSave(mocked func(configType config.ConfigType) error) {
-	m.save = mocked
+func (s SpyConfig) Save(configType config.ConfigType) error {
+	s.Called(configType)
+	return nil
 }

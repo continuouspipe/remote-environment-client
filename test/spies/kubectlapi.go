@@ -1,7 +1,9 @@
+//TODO: Refactor spies to use testify framework https://github.com/stretchr/testify
 package spies
 
 import "k8s.io/kubernetes/pkg/api"
 
+//TODO: Update to use mock.Mock from testify framework https://github.com/stretchr/testify
 type SpyKubeCtlConfigProvider struct {
 	Spy
 	configSetAuthInfo func(environment string, username string, password string) (string, error)
@@ -58,6 +60,7 @@ func (s *SpyKubeCtlConfigProvider) MockConfigSetContext(mocked func(environment 
 	s.configSetContext = mocked
 }
 
+//TODO: Update to use mock.Mock from testify framework https://github.com/stretchr/testify
 type SpyKubeCtlClusterInfoProvider struct {
 	Spy
 	clusterInfo func(kubeConfigKey string) (string, error)
@@ -80,6 +83,7 @@ func (s *SpyKubeCtlClusterInfoProvider) MockClusterInfo(mocked func(kubeConfigKe
 	s.clusterInfo = mocked
 }
 
+//TODO: Update to use mock.Mock from testify framework https://github.com/stretchr/testify
 type SpyServiceFinder struct {
 	Spy
 	findAll func(user string, apiKey string, address string, environment string) (*api.ServiceList, error)
@@ -105,6 +109,7 @@ func (s *SpyServiceFinder) MockFindAll(mocked func(user string, apiKey string, a
 	s.findAll = mocked
 }
 
+//TODO: Update to use mock.Mock from testify framework https://github.com/stretchr/testify
 type SpyKubeCtlInitializer struct {
 	Spy
 	init        func(environment string) error

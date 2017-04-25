@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
+	"github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
+	"github.com/stretchr/testify/mock"
 	"testing"
-	"github.com/continuouspipe/remote-environment-client/errors"
 )
 
 func TestDestroyHandle_Handle(t *testing.T) {
@@ -21,7 +22,7 @@ func TestDestroyHandle_Handle(t *testing.T) {
 		return 100, nil
 	})
 	spyConfig := spies.NewSpyConfig()
-	spyConfig.MockGetString(func(key string) (string, error) {
+	spyConfig.On("GetString", mock.AnythingOfType("string")).Return(func(key string) (string, error) {
 		switch key {
 		case config.ApiKey:
 			return "some-api-key", nil

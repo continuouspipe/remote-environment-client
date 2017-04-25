@@ -1,3 +1,4 @@
+//TODO: Refactor spies to use testify framework https://github.com/stretchr/testify
 package spies
 
 import (
@@ -6,22 +7,25 @@ import (
 	"testing"
 )
 
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 //A map that stores a list of function arguments [argumentName] => value (any type)
 type Arguments map[string]interface{}
 
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 //Function is a struct where you can set the name and add a slice Arguments ([]Argument) for each call
 type Function struct {
 	Name      string
 	Arguments Arguments
 }
 
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 //Generic struct that can be embedded by any struct that wants to keep track to what function was called and with which args
 type Spy struct {
 	calledFunctions []Function
 	commandExec     func() (string, error)
 }
 
-//Returns the Function call element for the given functionName, this is useful when a type has received multiple functions
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 func (spy *Spy) FirstCallsFor(functionName string) *Function {
 	for _, call := range spy.calledFunctions {
 		if call.Name == functionName {
@@ -31,7 +35,7 @@ func (spy *Spy) FirstCallsFor(functionName string) *Function {
 	return nil
 }
 
-//Returns the Function call element for the given functionName and for the given sequential number of call, this is useful when a type has received multiple functions
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 func (spy *Spy) NCallsFor(n int, functionName string) *Function {
 	count := 0
 	for _, call := range spy.calledFunctions {
@@ -45,7 +49,7 @@ func (spy *Spy) NCallsFor(n int, functionName string) *Function {
 	return nil
 }
 
-//returns how many times the given function has been called
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 func (spy *Spy) CallsCountFor(functionName string) int {
 	count := 0
 	for _, call := range spy.calledFunctions {
@@ -57,6 +61,7 @@ func (spy *Spy) CallsCountFor(functionName string) int {
 	return count
 }
 
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 func (spy *Spy) ExpectsCallCount(t *testing.T, functionName string, expectedCallCount int) {
 	callsCount := spy.CallsCountFor(functionName)
 	if callsCount != expectedCallCount {
@@ -64,6 +69,7 @@ func (spy *Spy) ExpectsCallCount(t *testing.T, functionName string, expectedCall
 	}
 }
 
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 func (spy *Spy) ExpectsFirstCallArgument(t *testing.T, function string, argument string, expected interface{}) {
 	firstCall := spy.FirstCallsFor(function)
 
@@ -74,6 +80,8 @@ func (spy *Spy) ExpectsFirstCallArgument(t *testing.T, function string, argument
 		test.AssertSame(t, expected, firstCall.Arguments[argument])
 	}
 }
+
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 func (spy *Spy) ExpectsCallNArgument(t *testing.T, function string, n int, argument string, expected interface{}) {
 	nCall := spy.NCallsFor(n, function)
 
@@ -85,6 +93,7 @@ func (spy *Spy) ExpectsCallNArgument(t *testing.T, function string, n int, argum
 	}
 }
 
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 func (spy *Spy) ExpectsFirstCallArgumentStringSlice(t *testing.T, function string, argument string, expected []string) {
 	firstCall := spy.FirstCallsFor(function)
 	test.AssertDeepEqual(t, expected, firstCall.Arguments[argument])

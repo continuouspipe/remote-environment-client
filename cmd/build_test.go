@@ -8,6 +8,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
 	"testing"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestRemoteBranchNotPresent(t *testing.T) {
@@ -44,8 +45,9 @@ func TestRemoteBranchNotPresent(t *testing.T) {
 		}
 		return r, nil
 	})
+
 	spyConfig := spies.NewSpyConfig()
-	spyConfig.MockGetString(func(key string) (string, error) {
+	spyConfig.On("GetString", mock.AnythingOfType("string")).Return(func(key string) (string, error) {
 		switch key {
 		case config.ApiKey:
 			return "some-api-key", nil

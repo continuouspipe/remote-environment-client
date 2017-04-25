@@ -1,7 +1,9 @@
+//TODO: Refactor spies to use testify framework https://github.com/stretchr/testify
 package spies
 
 import "io"
 
+//TODO: Update to use mock.Mock from testify framework https://github.com/stretchr/testify
 type SpyInitStrategy struct {
 	Spy
 	complete  func(argsIn []string) error

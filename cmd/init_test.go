@@ -10,6 +10,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/test"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
+	"github.com/stretchr/testify/mock"
 	"io/ioutil"
 	"k8s.io/kubernetes/pkg/api"
 	"testing"
@@ -22,11 +23,8 @@ func TestInitHandler_Complete(t *testing.T) {
 
 	//get mocked dependencies
 	spyConfig := spies.NewSpyConfig()
-	spyConfig.MockGetString(func(key string) (string, error) {
+	spyConfig.On("GetString", mock.AnythingOfType("string")).Return(func(key string) (string, error) {
 		return "origin", nil
-	})
-	spyConfig.MockSet(func(key string, value interface{}) error {
-		return nil
 	})
 
 	//init is called without providing a token
@@ -87,7 +85,7 @@ func TestInitHandler_Handle_InitStatusAlreadyCompleted(t *testing.T) {
 	})
 
 	//if the initialization status is completed
-	spyConfig.MockGetString(func(key string) (string, error) {
+	spyConfig.On("GetString", mock.AnythingOfType("string")).Return(func(key string) (string, error) {
 		if key == config.InitStatus {
 			return initStateCompleted, nil
 		}
@@ -112,12 +110,6 @@ func TestParseSaveTokenInfo_Handle(t *testing.T) {
 
 	//get mocked dependencies
 	spyConfig := spies.NewSpyConfig()
-	spyConfig.MockSet(func(key string, value interface{}) error {
-		return nil
-	})
-	spyConfig.MockSave(func(configType config.ConfigType) error {
-		return nil
-	})
 	spyApiProvider := spies.NewSpyApiProvider()
 	spyApiProvider.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, errors.ErrorListProvider) {
 		r := &cpapi.ApiRemoteEnvironmentStatus{}
@@ -133,25 +125,13 @@ func TestParseSaveTokenInfo_Handle(t *testing.T) {
 	handler.Handle()
 
 	//expectations
-	spyConfig.ExpectsCallCount(t, "Save", 2)
-
-	spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.InitStatus)
-	spyConfig.ExpectsFirstCallArgument(t, "Set", "value", initStateParseSaveToken)
-
-	spyConfig.ExpectsCallNArgument(t, "Set", 2, "key", config.Username)
-	spyConfig.ExpectsCallNArgument(t, "Set", 2, "value", "cp-user")
-
-	spyConfig.ExpectsCallNArgument(t, "Set", 3, "key", config.ApiKey)
-	spyConfig.ExpectsCallNArgument(t, "Set", 3, "value", "some-api-key")
-
-	spyConfig.ExpectsCallNArgument(t, "Set", 4, "key", config.FlowId)
-	spyConfig.ExpectsCallNArgument(t, "Set", 4, "value", "my-project")
-
-	spyConfig.ExpectsCallNArgument(t, "Set", 5, "key", config.RemoteBranch)
-	spyConfig.ExpectsCallNArgument(t, "Set", 5, "value", "my-branch")
-
-	spyConfig.ExpectsCallNArgument(t, "Set", 6, "key", config.RemoteEnvironmentId)
-	spyConfig.ExpectsCallNArgument(t, "Set", 6, "value", "remote-env-id")
+	spyConfig.AssertNumberOfCalls(t, "Save", 2)
+	spyConfig.AssertCalled(t, "Set", config.InitStatus, initStateParseSaveToken)
+	spyConfig.AssertCalled(t, "Set", config.Username, "cp-user")
+	spyConfig.AssertCalled(t, "Set", config.ApiKey, "some-api-key")
+	spyConfig.AssertCalled(t, "Set", config.FlowId, "my-project")
+	spyConfig.AssertCalled(t, "Set", config.RemoteBranch, "my-branch")
+	spyConfig.AssertCalled(t, "Set", config.RemoteEnvironmentId, "remote-env-id")
 }
 
 func TestTriggerBuild_Handle(t *testing.T) {
@@ -160,7 +140,7 @@ func TestTriggerBuild_Handle(t *testing.T) {
 
 	//get mocked dependencies
 	spyConfig := spies.NewSpyConfig()
-	spyConfig.MockGetString(func(key string) (string, error) {
+	spyConfig.On("GetString", mock.AnythingOfType("string")).Return(func(key string) (string, error) {
 		switch key {
 		case config.ApiKey:
 			return "some-api-key", nil
@@ -176,12 +156,6 @@ func TestTriggerBuild_Handle(t *testing.T) {
 			return "remote-dev-user-foo", nil
 		}
 		return "", nil
-	})
-	spyConfig.MockSave(func(configType config.ConfigType) error {
-		return nil
-	})
-	spyConfig.MockSet(func(key string, value interface{}) error {
-		return nil
 	})
 
 	spyApi := spies.NewSpyApiProvider()
@@ -235,9 +209,8 @@ func TestTriggerBuild_Handle(t *testing.T) {
 	handler.Handle()
 
 	//expectations
-	spyConfig.ExpectsCallCount(t, "Save", 1)
-	spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.InitStatus)
-	spyConfig.ExpectsFirstCallArgument(t, "Set", "value", initStateTriggerBuild)
+	spyConfig.AssertNumberOfCalls(t, "Save", 1)
+	spyConfig.AssertCalled(t, "Set", config.InitStatus, initStateTriggerBuild)
 
 	spyApi.ExpectsCallCount(t, "SetApiKey", 1)
 	spyApi.ExpectsFirstCallArgument(t, "SetApiKey", "apiKey", "some-api-key")
@@ -265,7 +238,7 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 
 	//get mocked dependencies
 	spyConfig := spies.NewSpyConfig()
-	spyConfig.MockGetString(func(key string) (string, error) {
+	spyConfig.On("GetString", mock.AnythingOfType("string")).Return(func(key string) (string, error) {
 		switch key {
 		case config.ApiKey:
 			return "some-api-key", nil
@@ -277,12 +250,6 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 			return "remote-dev-user-foo", nil
 		}
 		return "", nil
-	})
-	spyConfig.MockSave(func(configType config.ConfigType) error {
-		return nil
-	})
-	spyConfig.MockSet(func(key string, value interface{}) error {
-		return nil
 	})
 
 	//make ticker really quick as is only a test
@@ -332,9 +299,8 @@ func TestWaitEnvironmentReady_Handle(t *testing.T) {
 	handler.Handle()
 
 	//expectations
-	spyConfig.ExpectsCallCount(t, "Save", 1)
-	spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.InitStatus)
-	spyConfig.ExpectsFirstCallArgument(t, "Set", "value", initStateWaitEnvironmentReady)
+	spyConfig.AssertNumberOfCalls(t, "Save", 1)
+	spyConfig.AssertCalled(t, "Set", config.InitStatus, initStateWaitEnvironmentReady)
 
 	spyApi.ExpectsCallCount(t, "GetRemoteEnvironmentStatus", 4)
 
@@ -364,7 +330,7 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 
 	//get  mocked dependencies
 	spyConfig := spies.NewSpyConfig()
-	spyConfig.MockGetString(func(key string) (string, error) {
+	spyConfig.On("GetString", mock.AnythingOfType("string")).Return(func(key string) (string, error) {
 		switch key {
 		case config.ApiKey:
 			return "some-api-key", nil
@@ -383,16 +349,6 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 		}
 		return "", nil
 	})
-	spyConfig.MockConfigFileUsed(func(configType config.ConfigType) (string, error) {
-		return "", nil
-	})
-	spyConfig.MockSave(func(configType config.ConfigType) error {
-		return nil
-	})
-	spyConfig.MockSet(func(key string, value interface{}) error {
-		return nil
-	})
-
 	spyApi := spies.NewSpyApiProvider()
 	spyApi.MockGetRemoteEnvironmentStatus(func(flowId string, environmentId string) (*cpapi.ApiRemoteEnvironmentStatus, errors.ErrorListProvider) {
 		return &cpapi.ApiRemoteEnvironmentStatus{
@@ -422,9 +378,8 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	handler.Handle()
 
 	//expectations
-	spyConfig.ExpectsCallCount(t, "Save", 3)
-	spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.InitStatus)
-	spyConfig.ExpectsFirstCallArgument(t, "Set", "value", initStateApplyEnvironmentSettings)
+	spyConfig.AssertNumberOfCalls(t, "Save", 3)
+	spyConfig.AssertCalled(t, "Set", config.InitStatus, initStateApplyEnvironmentSettings)
 
 	spyApi.ExpectsCallCount(t, "SetApiKey", 1)
 	spyApi.ExpectsFirstCallArgument(t, "SetApiKey", "apiKey", "some-api-key")
@@ -433,10 +388,8 @@ func TestApplyEnvironmentSettings_Handle(t *testing.T) {
 	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironmentStatus", "flowId", "837d92hd-19su1d91")
 	spyApi.ExpectsFirstCallArgument(t, "GetRemoteEnvironmentStatus", "environmentId", "987654321")
 
-	spyConfig.ExpectsCallNArgument(t, "Set", 2, "key", config.ClusterIdentifier)
-	spyConfig.ExpectsCallNArgument(t, "Set", 2, "value", "the-cluster-one")
-	spyConfig.ExpectsCallNArgument(t, "Set", 3, "key", config.KubeEnvironmentName)
-	spyConfig.ExpectsCallNArgument(t, "Set", 3, "value", "837d92hd-19su1d91-dev-some-user")
+	spyConfig.AssertCalled(t, "Set", 2, "key", config.ClusterIdentifier, "the-cluster-one")
+	spyConfig.AssertCalled(t, "Set", 3, "key", config.KubeEnvironmentName, "837d92hd-19su1d91-dev-some-user")
 
 	spyKubeCtlInitializer.ExpectsCallCount(t, "Init", 1)
 }
@@ -447,20 +400,13 @@ func TestApplyDefaultService_Handle(t *testing.T) {
 
 	//get mocked dependencies
 	spyConfig := spies.NewSpyConfig()
-	spyConfig.MockGetString(func(key string) (string, error) {
+	spyConfig.On("GetString", mock.AnythingOfType("string")).Return(func(key string) (string, error) {
 		switch key {
 		case config.KubeEnvironmentName:
 			return "837d92hd-19su1d91-dev-some-user", nil
 		}
 		return "", nil
 	})
-	spyConfig.MockSave(func(configType config.ConfigType) error {
-		return nil
-	})
-	spyConfig.MockSet(func(key string, value interface{}) error {
-		return nil
-	})
-
 	spyServiceFinder := spies.NewSpyServiceFinder()
 	spyServiceFinder.MockFindAll(func(user string, apiKey string, address string, environment string) (*api.ServiceList, error) {
 		mockWeb := api.Service{}
@@ -508,12 +454,10 @@ func TestApplyDefaultService_Handle(t *testing.T) {
 
 Select an option from 0 to 1: `)
 
-	spyConfig.ExpectsCallCount(t, "Save", 2)
-	spyConfig.ExpectsCallCount(t, "Set", 2)
-	spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.InitStatus)
-	spyConfig.ExpectsFirstCallArgument(t, "Set", "value", initStateApplyDefaultService)
-	spyConfig.ExpectsCallNArgument(t, "Set", 2, "key", config.Service)
-	spyConfig.ExpectsCallNArgument(t, "Set", 2, "value", "db")
+	spyConfig.AssertNumberOfCalls(t, "Save", 2)
+	spyConfig.AssertNumberOfCalls(t, "Set", 2)
+	spyConfig.AssertCalled(t, "Set", config.InitStatus, initStateApplyDefaultService)
+	spyConfig.AssertCalled(t, "Set", config.Service, "db")
 }
 
 func TestInitInteractiveHandler_Handle(t *testing.T) {
@@ -531,16 +475,14 @@ func TestInitInteractiveHandler_Handle(t *testing.T) {
 	}
 
 	usernameSet := func(t *testing.T, spyConfig *spies.SpyConfig, spyApiProvider *spies.SpyApiProvider, spyQuestionPrompt *spies.SpyQuestionPrompt) {
-		spyConfig.ExpectsFirstCallArgument(t, "Set", "key", config.Username)
-		spyConfig.ExpectsFirstCallArgument(t, "Set", "value", "foo")
+		spyConfig.AssertCalled(t, "Set", config.Username, "foo")
 	}
 	apiKeySet := func(t *testing.T, spyConfig *spies.SpyConfig, spyApiProvider *spies.SpyApiProvider, spyQuestionPrompt *spies.SpyQuestionPrompt) {
-		spyConfig.ExpectsCallNArgument(t, "Set", 2, "key", config.ApiKey)
-		spyConfig.ExpectsCallNArgument(t, "Set", 2, "value", "bar")
+		spyConfig.AssertCalled(t, "Set", config.ApiKey, "bar")
 	}
 	configSaved := func(t *testing.T, spyConfig *spies.SpyConfig, spyApiProvider *spies.SpyApiProvider, spyQuestionPrompt *spies.SpyQuestionPrompt) {
-		spyConfig.ExpectsCallCount(t, "Save", 1)
-		spyConfig.ExpectsFirstCallArgument(t, "Save", "configType", config.GlobalConfigType)
+		spyConfig.AssertNumberOfCalls(t, "Save", 1)
+		spyConfig.AssertCalled(t, "Save", config.GlobalConfigType)
 	}
 
 	scenarios := []scenario{
@@ -569,13 +511,7 @@ func TestInitInteractiveHandler_Handle(t *testing.T) {
 	for _, scenario := range scenarios {
 		//get mocked dependencies
 		spyConfig := spies.NewSpyConfig()
-		spyConfig.MockSet(func(key string, value interface{}) error {
-			return nil
-		})
-		spyConfig.MockSave(func(configType config.ConfigType) error {
-			return nil
-		})
-		spyConfig.MockGetString(func(key string) (string, error) {
+		spyConfig.On("GetString", mock.AnythingOfType("string")).Return(func(key string) (string, error) {
 			switch key {
 			case config.Username:
 				return scenario.currentUsername, nil

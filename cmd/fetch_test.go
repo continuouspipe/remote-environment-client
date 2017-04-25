@@ -21,15 +21,12 @@ func TestFetch(t *testing.T) {
 		return &api.PodList{}, nil
 	})
 	mockPodFilter := mocks.NewMockPodsFilter()
-	mockPodFilter.MockByService(func(podList *api.PodList, service string) (*api.Pod, error) {
-		mockPod := &api.Pod{}
-		mockPod.SetName("web-123456")
-		return mockPod, nil
-	})
+	//mockPodFilter.MockByService(func(podList *api.PodList, service string) (*api.Pod, error) {
+	//	mockPod := &api.Pod{}
+	//	mockPod.SetName("web-123456")
+	//	return mockPod, nil
+	//})
 	spyFetcher := spies.NewSpyRsyncFetch()
-	spyFetcher.MockFetch(func() error {
-		return nil
-	})
 	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
 	spyKubeCtlInitializer.MockGetSettings(func() (addr string, user string, apiKey string, err error) {
 		return "", "", "", nil
@@ -44,16 +41,16 @@ func TestFetch(t *testing.T) {
 	handler.RemoteProjectPath = "/my/sub/path/"
 	handler.Handle([]string{}, mockPodsFinder, mockPodFilter, spyFetcher)
 
-	spyFetcher.ExpectsCallCount(t, "SetKubeConfigKey", 1)
-	spyFetcher.ExpectsCallCount(t, "SetRemoteProjectPath", 1)
-	spyFetcher.ExpectsCallCount(t, "SetEnvironment", 1)
-	spyFetcher.ExpectsCallCount(t, "SetPod", 1)
-	spyFetcher.ExpectsCallCount(t, "Fetch", 1)
-	spyFetcher.ExpectsFirstCallArgument(t, "SetKubeConfigKey", "kubeConfigKey", "proj-feature-testing")
-	spyFetcher.ExpectsFirstCallArgument(t, "SetRemoteProjectPath", "remoteProjectPath", "/my/sub/path/")
-	spyFetcher.ExpectsFirstCallArgument(t, "SetEnvironment", "environment", "proj-feature-testing")
-	spyFetcher.ExpectsFirstCallArgument(t, "SetPod", "pod", "web-123456")
-	spyFetcher.ExpectsFirstCallArgument(t, "Fetch", "filePath", "some-file.txt")
+	spyFetcher.AssertCalled(t, "SetKubeConfigKey")
+	spyFetcher.AssertCalled(t, "SetRemoteProjectPath")
+	spyFetcher.AssertCalled(t, "SetEnvironment")
+	spyFetcher.AssertCalled(t, "SetPod")
+	spyFetcher.AssertCalled(t, "Fetch")
+	spyFetcher.AssertCalled(t, "SetKubeConfigKey", "kubeConfigKey", "proj-feature-testing")
+	spyFetcher.AssertCalled(t, "SetRemoteProjectPath", "remoteProjectPath", "/my/sub/path/")
+	spyFetcher.AssertCalled(t, "SetEnvironment", "environment", "proj-feature-testing")
+	spyFetcher.AssertCalled(t, "SetPod", "pod", "web-123456")
+	spyFetcher.AssertCalled(t, "Fetch", "filePath", "some-file.txt")
 
 	spyKubeCtlInitializer.ExpectsCallCount(t, "GetSettings", 1)
 }

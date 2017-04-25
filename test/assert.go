@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 func AssertSame(t *testing.T, expected interface{}, actual interface{}) {
 	if actual != expected {
 		stack := debug.Stack()
@@ -13,6 +14,7 @@ func AssertSame(t *testing.T, expected interface{}, actual interface{}) {
 	}
 }
 
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 func AssertDeepEqual(t *testing.T, expected interface{}, actual interface{}) {
 	if !reflect.DeepEqual(expected, actual) {
 		stack := debug.Stack()
@@ -20,6 +22,7 @@ func AssertDeepEqual(t *testing.T, expected interface{}, actual interface{}) {
 	}
 }
 
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 func AssertError(t *testing.T, expected string, actual error) {
 	stack := debug.Stack()
 	if actual == nil {
@@ -30,6 +33,7 @@ func AssertError(t *testing.T, expected string, actual error) {
 	}
 }
 
+//DEPRECATED use testify framework https://github.com/stretchr/testify
 func AssertNotError(t *testing.T, actual error) {
 	if actual != nil {
 		stack := debug.Stack()

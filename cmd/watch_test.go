@@ -3,15 +3,16 @@ package cmd
 
 import (
 	"fmt"
-	"testing"
-	"time"
-	"github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
+	"github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
 	"github.com/continuouspipe/remote-environment-client/test/spies"
+	"github.com/stretchr/testify/mock"
 	"k8s.io/kubernetes/pkg/api"
+	"testing"
+	"time"
 )
 
 func TestWatch(t *testing.T) {
@@ -24,11 +25,11 @@ func TestWatch(t *testing.T) {
 		return &api.PodList{}, nil
 	})
 	mockPodFilter := mocks.NewMockPodsFilter()
-	mockPodFilter.MockByService(func(podList *api.PodList, service string) (*api.Pod, error) {
-		mockPod := &api.Pod{}
-		mockPod.SetName("web-123456")
-		return mockPod, nil
-	})
+	//mockPodFilter.MockByService(func(podList *api.PodList, service string) (*api.Pod, error) {
+	//	mockPod := &api.Pod{}
+	//	mockPod.SetName("web-123456")
+	//	return mockPod, nil
+	//})
 
 	spyOsDirectoryMonitor := spies.NewSpyOsDirectoryMonitor()
 	spyOsDirectoryMonitor.MockAnyEventCall(func(directory string, observer monitor.EventsObserver) error {
@@ -41,9 +42,6 @@ func TestWatch(t *testing.T) {
 	})
 
 	spySyncer := spies.NewSpySyncer()
-	spySyncer.MockSync(func(filePaths []string) error {
-		return nil
-	})
 
 	spyKubeCtlInitializer := spies.NewSpyKubeCtlInitializer()
 	spyKubeCtlInitializer.MockGetSettings(func() (addr string, user string, apiKey string, err error) {
@@ -67,7 +65,7 @@ func TestWatch(t *testing.T) {
 		return r, nil
 	})
 	spyConfig := spies.NewSpyConfig()
-	spyConfig.MockGetString(func(key string) (string, error) {
+	spyConfig.On("GetString", mock.AnythingOfType("string")).Return(func(key string) (string, error) {
 		switch key {
 		case config.ApiKey:
 			return "some-api-key", nil
@@ -82,28 +80,31 @@ func TestWatch(t *testing.T) {
 	//test subject called
 	handler := &WatchHandle{}
 	handler.kubeCtlInit = spyKubeCtlInitializer
-	handler.Environment = "proj-feature-testing"
-	handler.RemoteProjectPath = "/my/sub/path/"
-	handler.Service = "web"
-	handler.Latency = 1000
+	handler.options = watchCmdOptions{
+		environment:                 "proj-feature-testing",
+		remoteProjectPath:           "/my/sub/path/",
+		service:                     "web",
+		latency:                     1000,
+		individualFileSyncThreshold: 20,
+	}
 	handler.Stdout = mockStdout
-	handler.IndividualFileSyncThreshold = 20
 	handler.syncer = spySyncer
 	handler.config = spyConfig
 	handler.api = spyApiProvider
 	handler.Handle(spyOsDirectoryMonitor, mockPodsFinder, mockPodFilter)
-	//expectations
-	spySyncer.ExpectsCallCount(t, "SetKubeConfigKey", 1)
-	spySyncer.ExpectsCallCount(t, "SetEnvironment", 1)
-	spySyncer.ExpectsCallCount(t, "SetPod", 1)
-	spySyncer.ExpectsCallCount(t, "SetIndividualFileSyncThreshold", 1)
-	spySyncer.ExpectsCallCount(t, "SetRemoteProjectPath", 1)
 
-	spySyncer.ExpectsFirstCallArgument(t, "SetKubeConfigKey", "key", "proj-feature-testing")
-	spySyncer.ExpectsFirstCallArgument(t, "SetEnvironment", "env", "proj-feature-testing")
-	spySyncer.ExpectsFirstCallArgument(t, "SetPod", "pod", "web-123456")
-	spySyncer.ExpectsFirstCallArgument(t, "SetIndividualFileSyncThreshold", "threshold", 20)
-	spySyncer.ExpectsFirstCallArgument(t, "SetRemoteProjectPath", "remoteProjectPath", "/my/sub/path/")
+	//expectations
+	spySyncer.AssertNumberOfCalls(t, "SetKubeConfigKey", 1)
+	spySyncer.AssertNumberOfCalls(t, "SetEnvironment", 1)
+	spySyncer.AssertNumberOfCalls(t, "SetPod", 1)
+	spySyncer.AssertNumberOfCalls(t, "SetIndividualFileSyncThreshold", 1)
+	spySyncer.AssertNumberOfCalls(t, "SetRemoteProjectPath", 1)
+
+	spySyncer.AssertCalled(t, "SetKubeConfigKey", "key", "proj-feature-testing")
+	spySyncer.AssertCalled(t, "SetEnvironment", "env", "proj-feature-testing")
+	spySyncer.AssertCalled(t, "SetPod", "pod", "web-123456")
+	spySyncer.AssertCalled(t, "SetIndividualFileSyncThreshold", "threshold", 20)
+	spySyncer.AssertCalled(t, "SetRemoteProjectPath", "remoteProjectPath", "/my/sub/path/")
 
 	spyOsDirectoryMonitor.ExpectsCallCount(t, "SetLatency", 1)
 	spyOsDirectoryMonitor.ExpectsCallCount(t, "AnyEventCall", 1)

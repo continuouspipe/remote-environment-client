@@ -1,5 +1,7 @@
+//TODO: Refactor mocks to use testify framework https://github.com/stretchr/testify
 package mocks
 
+//TODO: Update to use mock.Mock from testify framework https://github.com/stretchr/testify
 //Mock for LsRemote
 type MockLsRemote struct {
 	getList func(remoteName string, remoteBranch string) (string, error)

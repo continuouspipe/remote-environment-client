@@ -1,3 +1,4 @@
+//TODO: Refactor spies to use testify framework https://github.com/stretchr/testify
 package spies
 
 import (
@@ -5,6 +6,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/errors"
 )
 
+//TODO: Update to use mock.Mock from testify framework https://github.com/stretchr/testify
 type SpyApiProvider struct {
 	Spy
 	getApiTeams                         func() ([]cpapi.ApiTeam, error)

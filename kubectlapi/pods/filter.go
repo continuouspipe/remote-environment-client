@@ -6,9 +6,9 @@ import (
 )
 
 type Filter interface {
-	List(pods api.PodList) KubePodsFilter
-	ByService(service string) KubePodsFilter
-	ByStatus(status string) KubePodsFilter
+	List(pods api.PodList) Filter
+	ByService(service string) Filter
+	ByStatus(status string) Filter
 	First() *api.Pod
 }
 
@@ -20,9 +20,9 @@ func NewKubePodsFilter() *KubePodsFilter {
 	return &KubePodsFilter{}
 }
 
-func (p *KubePodsFilter) List(podList api.PodList) KubePodsFilter {
+func (p KubePodsFilter) List(podList api.PodList) Filter {
 	p.podList = podList
-	return *p
+	return p
 }
 
 func (p KubePodsFilter) First() *api.Pod {
@@ -32,7 +32,7 @@ func (p KubePodsFilter) First() *api.Pod {
 	return nil
 }
 
-func (p KubePodsFilter) ByService(service string) KubePodsFilter {
+func (p KubePodsFilter) ByService(service string) Filter {
 	filteredPodItems := p.podList.Items[:0]
 	for _, pod := range p.podList.Items {
 		if strings.HasPrefix(pod.GetName(), service) {
@@ -43,7 +43,7 @@ func (p KubePodsFilter) ByService(service string) KubePodsFilter {
 	return p
 }
 
-func (p KubePodsFilter) ByStatus(status string) KubePodsFilter {
+func (p KubePodsFilter) ByStatus(status string) Filter {
 	filteredPodItems := p.podList.Items[:0]
 	for _, pod := range p.podList.Items {
 		if pod.Status.Phase == statusToPodPhase(status) {

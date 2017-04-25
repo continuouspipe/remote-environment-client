@@ -1,9 +1,11 @@
+//TODO: Refactor spies to use testify framework https://github.com/stretchr/testify
 package spies
 
 import (
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 )
 
+//TODO: Update to use mock.Mock from testify framework https://github.com/stretchr/testify
 //Spy to mock the LocalExecutor
 type SpyLocalExecutor struct {
 	Spy

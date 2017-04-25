@@ -1,5 +1,7 @@
+//TODO: Refactor spies to use testify framework https://github.com/stretchr/testify
 package spies
 
+//TODO: Update to use mock.Mock from testify framework https://github.com/stretchr/testify
 //Spy for Commit
 type SpyCommit struct {
 	Spy

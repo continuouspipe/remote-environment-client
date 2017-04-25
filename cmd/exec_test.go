@@ -25,11 +25,12 @@ func TestCommandsAreSpawned(t *testing.T) {
 		return &api.PodList{}, nil
 	})
 	mockPodFilter := mocks.NewMockPodsFilter()
-	mockPodFilter.MockByService(func(podList *api.PodList, service string) (*api.Pod, error) {
-		mockPod := &api.Pod{}
-		mockPod.SetName("web-123456")
-		return mockPod, nil
-	})
+	//mockPodFilter.MockByService(func(podList *api.PodList, service string) (*api.Pod, error) {
+	//	mockPod := &api.Pod{}
+	//	mockPod.SetName("web-123456")
+	//	return mockPod, nil
+	//})
+
 	spyLocalExecutor := spies.NewSpyLocalExecutor()
 	spyLocalExecutor.MockStartProcess(func() error {
 		return nil
@@ -77,11 +78,11 @@ func TestExecHandle_Handle_InteractiveMode(t *testing.T) {
 		return &api.PodList{}, nil
 	})
 	mockPodFilter := mocks.NewMockPodsFilter()
-	mockPodFilter.MockByService(func(podList *api.PodList, service string) (*api.Pod, error) {
-		mockPod := &api.Pod{}
-		mockPod.SetName("web-123456")
-		return mockPod, nil
-	})
+	//mockPodFilter.MockByService(func(podList *api.PodList, service string) (*api.Pod, error) {
+	//	mockPod := &api.Pod{}
+	//	mockPod.SetName("web-123456")
+	//	return mockPod, nil
+	//})
 	spyLocalExecutor := spies.NewSpyLocalExecutor()
 	spyLocalExecutor.MockStartProcess(func() error {
 		return nil
@@ -93,14 +94,8 @@ func TestExecHandle_Handle_InteractiveMode(t *testing.T) {
 	spyKubeCtlInitializer.MockGetSettings(func() (addr string, user string, apiKey string, err error) {
 		return "a", "b", "c", nil
 	})
-	spyConfig := spies.NewSpyConfig()
-	spyConfig.MockGetString(func(key string) (string, error) {
-		return "", nil
-	})
-	spyConfig.MockSet(func(key string, value interface{}) error {
-		return nil
-	})
 
+	spyConfig := spies.NewSpyConfig()
 	spyInitInteractiveH := spies.NewSpyInitStrategy()
 	spyInitInteractiveH.MockComplete(func(argsIn []string) error {
 		return nil
@@ -152,14 +147,9 @@ func TestExecHandle_Handle_InteractiveMode(t *testing.T) {
 
 	spyApi.ExpectsCallCount(t, "SetApiKey", 1)
 
-	spyConfig.ExpectsCallNArgument(t, "Set", 1, "key", config.CpKubeProxyEnabled)
-	spyConfig.ExpectsCallNArgument(t, "Set", 1, "value", true)
-
-	spyConfig.ExpectsCallNArgument(t, "Set", 2, "key", config.FlowId)
-	spyConfig.ExpectsCallNArgument(t, "Set", 2, "value", "my-flow")
-
-	spyConfig.ExpectsCallNArgument(t, "Set", 3, "key", config.ClusterIdentifier)
-	spyConfig.ExpectsCallNArgument(t, "Set", 3, "value", "my-cluster")
+	spyConfig.AssertCalled(t, "Set", config.CpKubeProxyEnabled, true)
+	spyConfig.AssertCalled(t, "Set", config.FlowId, "my-flow")
+	spyConfig.AssertCalled(t, "Set", config.ClusterIdentifier, "my-cluster")
 
 	spyLocalExecutor.ExpectsCallCount(t, "StartProcess", 1)
 	spyLocalExecutor.ExpectsFirstCallArgument(t, "StartProcess", "kscmd", kscmd)
