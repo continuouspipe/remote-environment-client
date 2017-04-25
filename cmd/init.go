@@ -70,7 +70,7 @@ func NewInitCmd() *cobra.Command {
 	remoteName, err := settings.GetString(config.RemoteName)
 	checkErr(err)
 	command.PersistentFlags().String(config.RemoteName, remoteName, "Override the default remote name (origin)")
-	command.PersistentFlags().BoolP("reset", "r", false, "With reset flag set to true, init will not attempt to restore interrupted initializations")
+	command.PersistentFlags().BoolP("reset", "r", false, "With the reset flag set, init will start any partial initializations from the beginning.")
 	command.PersistentFlags().BoolP("interactive", "i", false, "Interactive mode allow you specify your cp username and api-key without a token so they can be used with commands that allow the interactive mode.")
 	return command
 }
