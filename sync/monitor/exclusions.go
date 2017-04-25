@@ -79,6 +79,11 @@ func (m Exclusion) MatchExclusionList(target string) (bool, error) {
 		return false, err
 	}
 
+	//current working directory with relative path "." should always be included in the transfer
+	if target == "." {
+		return false, err
+	}
+
 	m.rsyncMatcherPath.AddPattern(m.ignore.List...)
 	matchIncluded, msg, err := m.rsyncMatcherPath.HasMatchAndIsIncluded(target)
 	if msg != "" {
