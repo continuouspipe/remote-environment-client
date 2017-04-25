@@ -33,7 +33,7 @@ const (
 func newLocalConfig() *localConfig {
 	local := &localConfig{}
 	local.settings = []Setting{
-		{InitToken, "", true},                  //Token used when the project was initialised
+		{InitToken, "", false},                 //Token used when the project was initialised
 		{FlowId, "", true},                     //CP flow uuid
 		{ClusterIdentifier, "", true},          //CP cluster Identifier
 		{KubeEnvironmentName, "", true},        //Kubernetes environment name
