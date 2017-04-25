@@ -232,7 +232,7 @@ func (i initHandler) Validate() error {
 	splitToken := strings.Split(string(i.token), ",")
 	if len(splitToken) != 5 {
 		cplogs.V(5).Infof("Token provided %s has %d parts, expected 4", splitToken, len(splitToken))
-		return fmt.Errorf("Malformed token. Please go to continouspipe.io to obtain a valid token")
+		return fmt.Errorf("Malformed token. Please go to https://continuouspipe.io/ to obtain a valid token")
 	}
 
 	for key, val := range splitToken {
@@ -251,7 +251,7 @@ func (i initHandler) Validate() error {
 				element = "git-branch"
 			}
 			cplogs.V(4).Infof("element %s is not specified in the token.", element)
-			return fmt.Errorf("Malformed token. Please go to continouspipe.io to obtain a valid token")
+			return fmt.Errorf("Malformed token. Please go to https://continuouspipe.io/ to obtain a valid token")
 		}
 	}
 
