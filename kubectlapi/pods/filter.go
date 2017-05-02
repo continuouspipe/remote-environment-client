@@ -1,14 +1,16 @@
 package pods
 
 import (
-	"k8s.io/kubernetes/pkg/api"
 	"strings"
+
+	"k8s.io/kubernetes/pkg/api"
 )
 
 type Filter interface {
 	List(pods api.PodList) Filter
 	ByService(service string) Filter
 	ByStatus(status string) Filter
+	ByStatusReason(reason string) Filter
 	First() *api.Pod
 }
 
@@ -47,6 +49,17 @@ func (p KubePodsFilter) ByStatus(status string) Filter {
 	filteredPodItems := p.podList.Items[:0]
 	for _, pod := range p.podList.Items {
 		if pod.Status.Phase == statusToPodPhase(status) {
+			filteredPodItems = append(filteredPodItems, pod)
+		}
+	}
+	p.podList.Items = filteredPodItems
+	return p
+}
+
+func (p KubePodsFilter) ByStatusReason(reason string) Filter {
+	filteredPodItems := p.podList.Items[:0]
+	for _, pod := range p.podList.Items {
+		if reason == statusReason(pod) {
 			filteredPodItems = append(filteredPodItems, pod)
 		}
 	}

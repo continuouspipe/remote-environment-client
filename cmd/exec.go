@@ -5,6 +5,9 @@ import (
 	"os"
 	"strings"
 
+	"io/ioutil"
+	"runtime"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
@@ -12,10 +15,8 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
-	"github.com/spf13/cobra"
-	"io/ioutil"
-	"runtime"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/spf13/cobra"
 )
 
 var execExample = fmt.Sprintf(`
@@ -180,7 +181,7 @@ func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 		return err
 	}
 
-	pod := podsFilter.List(*podsList).ByService(h.service).ByStatus("Running").First()
+	pod := podsFilter.List(*podsList).ByService(h.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service))
 	}

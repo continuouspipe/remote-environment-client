@@ -131,7 +131,7 @@ func (h *LogsCmdHandle) Handle(args []string, podsFinder pods.Finder, podsFilter
 		return err
 	}
 
-	pod := podsFilter.List(*allPods).ByService(h.service).ByStatus("Running").First()
+	pod := podsFilter.List(*allPods).ByService(h.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service))
 	}

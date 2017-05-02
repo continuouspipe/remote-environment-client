@@ -1,3 +1,3 @@
 package messages
 
-const NoActivePodsFoundForSpecifiedServiceName = "No active pods were found for the specified service name (%s)"
+const NoActivePodsFoundForSpecifiedServiceName = "No running pods were found for the specified service name (%s)"

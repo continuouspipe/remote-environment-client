@@ -2,14 +2,15 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"k8s.io/kubernetes/pkg/kubectl"
-	"os"
-	"strings"
 )
 
 func NewListPodsCmd() *cobra.Command {
