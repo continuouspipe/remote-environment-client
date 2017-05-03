@@ -1,13 +1,12 @@
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"fmt"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
