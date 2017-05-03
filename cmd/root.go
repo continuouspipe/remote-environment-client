@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/errors"
@@ -10,8 +13,6 @@ import (
 	"github.com/spf13/cobra"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"os"
-	"path/filepath"
 )
 
 var localConfigFile string
@@ -74,6 +75,10 @@ func Execute() {
 func init() {
 	RootCmd.PersistentFlags().StringVar(&localConfigFile, "config", ".cp-remote-settings.yml", "local config file (default is .cp-remote-settings.yml in the directory cp-remote is run from.)")
 
+	//Initialise all config before that the commands are created
+	initLocalConfig()
+	initGlobalConfig()
+
 	RootCmd.AddCommand(NewInitCmd())
 	RootCmd.AddCommand(NewBuildCmd())
 	RootCmd.AddCommand(NewDestroyCmd())
@@ -98,12 +103,10 @@ func init() {
 
 	RootCmd.SetUsageTemplate(usageTemplate)
 
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(onInitialize)
 }
 
-func initConfig() {
-	initLocalConfig()
-	initGlobalConfig()
+func onInitialize() {
 	checkLegacyApplicationFile()
 	addApplicationFilesToGitIgnore()
 }
