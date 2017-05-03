@@ -130,7 +130,7 @@ func (h *ForwardHandle) Handle() error {
 		return err
 	}
 
-	pod := h.podsFilter.List(*allPods).ByService(h.Service).ByStatus("Running").First()
+	pod := h.podsFilter.List(*allPods).ByService(h.Service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.Service))
 	}

@@ -168,7 +168,7 @@ func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 		return err
 	}
 
-	pod := podsFilter.List(*allPods).ByService(h.options.service).ByStatus("Running").First()
+	pod := podsFilter.List(*allPods).ByService(h.options.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.options.service))
 	}
