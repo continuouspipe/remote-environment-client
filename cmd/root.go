@@ -103,10 +103,10 @@ func init() {
 
 	RootCmd.SetUsageTemplate(usageTemplate)
 
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(onInitialize)
 }
 
-func initConfig() {
+func onInitialize() {
 	checkLegacyApplicationFile()
 	addApplicationFilesToGitIgnore()
 }
