@@ -84,6 +84,7 @@ func init() {
 	RootCmd.AddCommand(NewDestroyCmd())
 	RootCmd.AddCommand(NewListPodsCmd())
 	RootCmd.AddCommand(NewCheckConnectionCmd())
+	RootCmd.AddCommand(NewDeleteCmd())
 	RootCmd.AddCommand(NewBashCmd())
 	RootCmd.AddCommand(NewExecCmd())
 	RootCmd.AddCommand(NewWatchCmd())
