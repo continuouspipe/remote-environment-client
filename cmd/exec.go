@@ -2,22 +2,21 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"strings"
-
-	"runtime"
-
 	"io/ioutil"
+	"os"
+	"runtime"
+	"strings"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
-	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/spf13/cobra"
+	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
+	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 var execExample = fmt.Sprintf(`
@@ -131,12 +130,6 @@ func (h *execHandle) Validate() error {
 
 // Handle opens a bash console against a pod.
 func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, executor exec.Executor) error {
-	//TODO: Remove this when we get rid of the dependency on ~/.kube/config and call directly the KubeExecCmd without spawning
-	err := h.kubeCtlInit.Init(h.environment)
-	if err != nil {
-		return err
-	}
-
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
 		return nil
@@ -152,14 +145,11 @@ func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service))
 	}
 
-	//TODO: Change to call directly the KubeCtl NewCmdExec()
-	kscmd := kexec.KSCommand{}
-	kscmd.KubeConfigKey = h.environment
-	kscmd.Environment = h.environment
-	kscmd.Pod = pod.GetName()
-	kscmd.Stdin = os.Stdin
-	kscmd.Stdout = os.Stdout
-	kscmd.Stderr = os.Stderr
+	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr, h.environment)
+	kubeCmdExec := kubectlcmd.NewCmdExec(kubectlcmdutil.NewFactory(clientConfig), os.Stdin, os.Stdout, os.Stderr)
+	kubeCmdExec.Flags().Set("pod", pod.GetName())
+	kubeCmdExec.Flags().Set("stdin", "true")
+	kubeCmdExec.Flags().Set("tty", "true")
 
 	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 
@@ -174,7 +164,8 @@ func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 		h.args = append([]string{"env", "TERM=" + envTerm}, h.args...)
 	}
 
-	return executor.StartProcess(kscmd, h.args...)
+	kubeCmdExec.Run(kubeCmdExec, h.args)
+	return nil
 }
 
 type interactiveModeHandler interface {
