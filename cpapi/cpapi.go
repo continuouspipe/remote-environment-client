@@ -8,15 +8,17 @@ import (
 	"net/url"
 
 	"bytes"
+	"io"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/errors"
-	"io"
 )
 
 type CpApiProvider interface {
 	SetApiKey(apiKey string)
 	GetApiTeams() ([]ApiTeam, error)
+	GetApiFlows(project string) ([]ApiFlow, error)
 	GetApiUser(user string) (*ApiUser, error)
 	GetApiEnvironments(flowId string) ([]ApiEnvironment, errors.ErrorListProvider)
 	GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, errors.ErrorListProvider)
@@ -126,9 +128,39 @@ type ApiCodeReference struct {
 }
 
 type ApiEnvironment struct {
-	Cluster    string        `json:"cluster"`
-	Components []interface{} `json:"components"`
-	Identifier string        `json:"identifier"`
+	Cluster    string         `json:"cluster"`
+	Components []ApiComponent `json:"components"`
+	Identifier string         `json:"identifier"`
+}
+
+type ApiRepository struct {
+	Address      string `json:"address"`
+	Identifier   string `json:"identifier"`
+	Name         string `json:"name"`
+	Organisation string `json:"organisation"`
+	Private      bool   `json:"private"`
+	Type         string `json:"type"`
+}
+
+type ApiFlow struct {
+	Uuid          string        `json:"uuid"`
+	Configuration interface{}   `json:"configuration"`
+	Pipelines     interface{}   `json:"pipelines"`
+	Repository    ApiRepository `json:"repository"`
+	Team          ApiTeam       `json:"team"`
+	Tides         []ApiTide     `json:"tides"`
+	User          ApiUser       `json:"user"`
+}
+
+type ApiComponent struct {
+	DeploymentStrategy interface{}   `json:"deployment_strategy"`
+	Endpoints          []interface{} `json:"endpoints"`
+	Extensions         []interface{} `json:"extensions"`
+	Identifier         string        `json:"identifier"`
+	Labels             interface{}   `json:"labels"`
+	Name               string        `json:"name"`
+	Specification      interface{}   `json:"specification"`
+	Status             interface{}   `json:"status"`
 }
 
 func (c *CpApi) SetApiKey(apiKey string) {
@@ -169,7 +201,7 @@ func (c CpApi) GetApiTeams() ([]ApiTeam, error) {
 	}
 
 	teams := make([]ApiTeam, 0)
-	err = json.Unmarshal(respBody, teams)
+	err = json.Unmarshal(respBody, &teams)
 	if err != nil {
 		cplogs.V(4).Infof("error running Unmarshal() on response body %s", respBody)
 		el.Add(err)
@@ -177,6 +209,50 @@ func (c CpApi) GetApiTeams() ([]ApiTeam, error) {
 	}
 
 	return teams, nil
+}
+
+func (c CpApi) GetApiFlows(project string) ([]ApiFlow, error) {
+	el := errors.NewErrorList()
+	el.AddErrorf("error when getting the list of the flows using the CP Api")
+
+	if c.apiKey == "" {
+		el.AddErrorf("Api key not provided.")
+		return nil, el
+	}
+
+	u, err := c.getAuthenticatorURL()
+	if err != nil {
+		el.Add(err)
+		return nil, el
+	}
+	u.Path = fmt.Sprintf("/teams/%s/flows", project)
+
+	cplogs.V(5).Infof("getting api flows info on cp using url %s", u.String())
+
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		el.Add(err)
+		return nil, el
+	}
+	req.Header.Add("X-Api-Key", c.apiKey)
+
+	respBody, elr := c.getResponseBody(c.client, req)
+	if elr != nil {
+		cplogs.V(4).Infof("failed to get the response body for request %s", u.String())
+		cplogs.Flush()
+		el.Add(elr.Items()...)
+		return nil, el
+	}
+
+	flows := make([]ApiFlow, 0)
+	err = json.Unmarshal(respBody, &flows)
+	if err != nil {
+		cplogs.V(4).Infof("error running Unmarshal() on response body %s", respBody)
+		el.Add(err)
+		return nil, el
+	}
+
+	return flows, nil
 }
 
 func (c CpApi) GetApiUser(user string) (*ApiUser, error) {
