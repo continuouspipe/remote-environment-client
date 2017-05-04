@@ -22,7 +22,7 @@
 # $ aws s3 sync downloads/x.y.x (-n)/ s3://inviqa-cp-remote-client-environment/downloads/x.y.x (-n)*
 # $ aws s3 sync downloads/x.y.x (-1)/ s3://inviqa-cp-remote-client-environment/downloads/x.y.x (-1)*
 # $ aws s3 sync downloads/x.y.x/ s3://inviqa-cp-remote-client-environment/downloads/x.y.x
-# $ aws s3 sync downloads/x.y.x/*.json s3://inviqa-cp-remote-client-environment/downloads/*.json
+# $ aws s3 sync downloads s3://inviqa-cp-remote-client-environment/downloads/ --exclude=* --include=*.json
 #
 # as (-1) and (-n) means any previous version for which there is a bin diff that needs uploaded
 #
