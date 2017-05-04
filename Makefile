@@ -4,11 +4,11 @@
 #
 # Then cross-compile for all supported goos-goarch:
 #
-# make build BUILDOS=darwin BUILDARCH=amd64
-# make build BUILDOS=windows BUILDARCH=amd64
-# make build BUILDOS=windows BUILDARCH=386
-# make build BUILDOS=linux BUILDARCH=amd64
-# make build BUILDOS=linux BUILDARCH=386
+# $ make build BUILDOS=darwin BUILDARCH=amd64
+# $ make build BUILDOS=windows BUILDARCH=amd64
+# $ make build BUILDOS=windows BUILDARCH=386
+# $ make build BUILDOS=linux BUILDARCH=amd64
+# $ make build BUILDOS=linux BUILDARCH=386
 #
 #
 # Auto-Upgrade Section:
@@ -19,42 +19,46 @@
 #
 # after make package completes, copy and sync all content of public/* into the aws s3 bucket inviqa-cp-remote-client-environment "downloads" folder
 #
-# aws s3 sync downloads/x.y.x/ inviqa-cp-remote-client-environment/downloads/x.y.z
+# $ aws s3 sync downloads/x.y.x (-n)/ s3://inviqa-cp-remote-client-environment/downloads/x.y.x (-n)*
+# $ aws s3 sync downloads/x.y.x (-1)/ s3://inviqa-cp-remote-client-environment/downloads/x.y.x (-1)*
+# $ aws s3 sync downloads/x.y.x/ s3://inviqa-cp-remote-client-environment/downloads/x.y.x
+# $ aws s3 sync downloads/x.y.x/*.json s3://inviqa-cp-remote-client-environment/downloads/*.json
+#
+# as (-1) and (-n) means any previous version for which there is a bin diff that needs uploaded
 #
 # ----------------------------------
 #
 # User-Friendly Latest Release Downloads Links:
 #
-# cp downloads/0.1.4/darwin-amd64.gz latest/darwin-amd64/;
-# cp downloads/0.1.4/linux-amd64.gz latest/linux-amd64/;
-# cp downloads/0.1.4/linux-386.gz latest/linux-386/;
-# cp downloads/0.1.4/windows-amd64.gz latest/windows-amd64/;
-# cp downloads/0.1.4/windows-386.gz latest/windows-386/;
+# $ cp downloads/0.1.4/darwin-amd64.gz latest/darwin-amd64/;
+# $ cp downloads/0.1.4/linux-amd64.gz latest/linux-amd64/;
+# $ cp downloads/0.1.4/linux-386.gz latest/linux-386/;
+# $ cp downloads/0.1.4/windows-amd64.gz latest/windows-amd64/;
+# $ cp downloads/0.1.4/windows-386.gz latest/windows-386/;
 #
+# $ cd latest/darwin-amd64/; gzip -d darwin-amd64.gz; chmod +x darwin-amd64; mv darwin-amd64 cp-remote;
+# $ tar -czvf cp-remote.tar.gz cp-remote;
 #
-# rm -fr 0.1.4; upgrade binaries are kept only on the s3 bucket
+# $ cd ../../latest/linux-amd64/; gzip -d linux-amd64.gz; chmod +x linux-amd64; mv linux-amd64 cp-remote;
+# $ tar -czvf cp-remote.tar.gz cp-remote;
 #
-# cd latest/darwin-amd64/; gzip -d darwin-amd64.gz; chmod +x darwin-amd64; mv darwin-amd64 cp-remote;
-# tar -czvf cp-remote.tar.gz cp-remote;
+# $ cd ../../latest/linux-386/; gzip -d linux-386.gz; chmod +x linux-386; mv linux-386 cp-remote;
+# $ tar -czvf cp-remote.tar.gz cp-remote;
 #
-# cd ../../latest/linux-amd64/; gzip -d linux-amd64.gz; chmod +x linux-amd64; mv linux-amd64 cp-remote;
-# tar -czvf cp-remote.tar.gz cp-remote;
+# $ cd ../../latest/windows-386/; gzip -d windows-386.gz; mv windows-386 cp-remote.exe;
+# $ zip -r cp-remote.zip cp-remote.exe;
 #
-# cd ../../latest/linux-386/; gzip -d linux-386.gz; chmod +x linux-386; mv linux-386 cp-remote;
-# tar -czvf cp-remote.tar.gz cp-remote;
+# $ cd ../../latest/windows-amd64/; gzip -d windows-amd64.gz; mv windows-amd64 cp-remote.exe;
+# $ zip -r cp-remote.zip cp-remote.exe;
 #
-# cd ../../latest/windows-386/; gzip -d windows-386.gz; mv windows-386 cp-remote.exe;
-# zip -r cp-remote.zip cp-remote.exe;
+# $ cd ../../
+# $ rm -fr latest/*/cp-remote
+# $ rm -fr latest/*/cp-remote.exe
 #
-# cd ../../latest/windows-amd64/; gzip -d windows-amd64.gz; mv windows-amd64 cp-remote.exe;
-# zip -r cp-remote.zip cp-remote.exe;
+# $ ls -l latest/*/*
 #
-# cd ../../
-# rm -fr latest/*/cp-remote
-# rm -fr latest/*/cp-remote.exe
 # sync the new files into the aws s3 bucket inviqa-cp-remote-client-environment
-#
-#
+# $ aws s3 sync latest s3://inviqa-cp-remote-client-environment/latest
 # ----------------------------------
 #
 # Home Brew Tools:
