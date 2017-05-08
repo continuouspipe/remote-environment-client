@@ -2,21 +2,22 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"strings"
-
 	"io/ioutil"
+	"os"
 	"runtime"
+	"strings"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
-	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
+	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 var execExample = fmt.Sprintf(`
@@ -27,9 +28,15 @@ var execExample = fmt.Sprintf(`
 %[1]s ex -e techup-dev-user -s web -- ls -all
 `, config.AppName)
 
+//NewExecCmd return a cobra command struct pointer which on Run, if required it prepares the config so we can reach the pod and
+//then uses a command handler to execute the command specified in the arguments
 func NewExecCmd() *cobra.Command {
 	settings := config.C
-	handler := NewExecHandle()
+	handler := newExecHandle()
+
+	var interactive bool
+	var flowID string
+
 	bashcmd := &cobra.Command{
 		Use:     "exec",
 		Aliases: []string{"ex"},
@@ -42,50 +49,85 @@ the exec command. The command and its arguments need to follow --`,
 			podsFilter := pods.NewKubePodsFilter()
 			local := exec.NewLocal()
 
-			checkErr(handler.Complete(args, settings))
-			checkErr(handler.Validate())
-			checkErr(handler.Handle(podsFinder, podsFilter, local))
+			defaultEnvironment, err := settings.GetString(config.KubeEnvironmentName)
+			checkErr(err)
+			defaultService, err := settings.GetString(config.Service)
+			checkErr(err)
+
+			if interactive {
+				cplogs.V(5).Infoln("exec in interactive mode")
+				//make sure config has an api key and a cp user set
+				initInteractiveH := NewInitInteractiveHandler(false)
+				initInteractiveH.SetWriter(ioutil.Discard)
+				err := initInteractiveH.Complete(args)
+				checkErr(err)
+				err = initInteractiveH.Validate()
+				checkErr(err)
+				err = initInteractiveH.Handle()
+				checkErr(err)
+
+				if flowID == "" && handler.environment == "" && handler.service == "" {
+					//guide the user to choose the right pod they want to target
+					questioner := cpapi.NewMultipleChoiceCpEntityQuestioner()
+					apiKey, err := settings.GetString(config.ApiKey)
+					checkErr(err)
+					questioner.SetApiKey(apiKey)
+					resp := questioner.WhichEntities().Responses()
+					checkErr(questioner.Errors())
+
+					handler.environment = resp.Environment.Value
+					handler.service = resp.Pod.Value
+					flowID = resp.Flow.Value
+
+					suggestedFlags := color.GreenString("-i -e %s -f %s -s %s", handler.environment, resp.Flow.Value, resp.Pod.Value)
+					fmt.Printf(msgs.InteractiveModeSuggestingFlags, suggestedFlags)
+				}
+
+				//alter the configuration so that we connect to the flow and environment specified by the user
+				err = newInteractiveModeH().findTargetClusterAndApplyToConfig(flowID, handler.environment)
+				checkErr(err)
+			} else {
+				//apply default values
+				if handler.environment == "" {
+					handler.environment = defaultEnvironment
+				}
+				if handler.service == "" {
+					handler.service = defaultService
+				}
+			}
+
+			checkErr(handler.complete(args, settings))
+			checkErr(handler.validate())
+			checkErr(handler.handle(podsFinder, podsFilter, local))
 		},
 	}
 
-	environment, err := settings.GetString(config.KubeEnvironmentName)
-	checkErr(err)
-	service, err := settings.GetString(config.Service)
-	checkErr(err)
-	flowId, err := settings.GetString(config.FlowId)
-	checkErr(err)
+	bashcmd.PersistentFlags().BoolVarP(&interactive, "interactive", "i", false, "Interactive mode requires the flags: --environment --service --flow to be specified")
 
-	bashcmd.PersistentFlags().StringVarP(&handler.environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name")
-	bashcmd.PersistentFlags().StringVarP(&handler.service, config.Service, "s", service, "The service to use (e.g.: web, mysql)")
-	bashcmd.PersistentFlags().BoolVarP(&handler.interactive, "interactive", "i", false, "Interactive mode requires the flags: --environment --service --flow to be specified")
-	bashcmd.PersistentFlags().StringVarP(&handler.flowId, config.FlowId, "f", flowId, "The flow to use")
+	bashcmd.PersistentFlags().StringVarP(&handler.environment, config.KubeEnvironmentName, "e", "", "The full remote environment name")
+	bashcmd.PersistentFlags().StringVarP(&handler.service, config.Service, "s", "", "The service to use (e.g.: web, mysql)")
+	bashcmd.PersistentFlags().StringVarP(&flowID, config.FlowId, "f", "", "The flow to use")
 
 	return bashcmd
 }
 
 type execHandle struct {
-	args             []string
-	config           config.ConfigProvider
-	environment      string
-	service          string
-	flowId           string
-	interactive      bool
-	api              cpapi.CpApiProvider
-	kubeCtlInit      kubectlapi.KubeCtlInitializer
-	initInteractiveH InitStrategy
+	args        []string
+	config      config.ConfigProvider
+	environment string
+	service     string
+	kubeCtlInit kubectlapi.KubeCtlInitializer
 }
 
-func NewExecHandle() *execHandle {
+func newExecHandle() *execHandle {
 	p := &execHandle{}
-	p.api = cpapi.NewCpApi()
 	p.config = config.C
 	p.kubeCtlInit = kubectlapi.NewKubeCtlInit()
-	p.initInteractiveH = NewInitInteractiveHandler(false)
 	return p
 }
 
-// Complete verifies command line arguments and loads data from the command environment
-func (h *execHandle) Complete(argsIn []string, conf config.ConfigProvider) error {
+// complete verifies command line arguments and loads data from the command environment
+func (h *execHandle) complete(argsIn []string, conf config.ConfigProvider) error {
 	h.args = argsIn
 	h.config = conf
 	var err error
@@ -100,77 +142,19 @@ func (h *execHandle) Complete(argsIn []string, conf config.ConfigProvider) error
 	return nil
 }
 
-// Validate checks that the provided bash options are specified.
-func (h *execHandle) Validate() error {
+// validate checks that the provided bash options are specified.
+func (h *execHandle) validate() error {
 	if len(strings.Trim(h.environment, " ")) == 0 {
 		return fmt.Errorf("the environment specified is invalid")
 	}
 	if len(strings.Trim(h.service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
 	}
-	if h.interactive {
-		if len(strings.Trim(h.flowId, " ")) == 0 {
-			return fmt.Errorf("the flowId specified is invalid")
-		}
-	}
 	return nil
 }
 
-// Handle opens a bash console against a pod.
-func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, executor exec.Executor) error {
-
-	if h.interactive {
-		cplogs.V(5).Infoln("bash in interactive mode")
-		h.initInteractiveH.SetWriter(ioutil.Discard)
-		err := h.initInteractiveH.Complete(h.args)
-		if err != nil {
-			return err
-		}
-		err = h.initInteractiveH.Validate()
-		if err != nil {
-			return err
-		}
-		err = h.initInteractiveH.Handle()
-		if err != nil {
-			return err
-		}
-		apiKey, err := h.config.GetString(config.ApiKey)
-		if err != nil {
-			return err
-		}
-
-		h.api.SetApiKey(apiKey)
-
-		environments, el := h.api.GetApiEnvironments(h.flowId)
-		if el != nil {
-			return el
-		}
-
-		clusterIdentifier := ""
-		for _, environment := range environments {
-			if environment.Identifier == h.environment {
-				clusterIdentifier = environment.Cluster
-			}
-		}
-
-		if clusterIdentifier == "" {
-			return fmt.Errorf("The specified environment %s has not been found on the flow %s. Please check that you have inserted the correct flowId and environment at https://ui.continuouspipe.io/project/")
-		}
-
-		//set the not persistent config information (do not save the local config in interactive mode)
-		h.config.Set(config.CpKubeProxyEnabled, true)
-		h.config.Set(config.FlowId, h.flowId)
-		cplogs.V(5).Infof("interactive mode: flow set to %s", h.flowId)
-		h.config.Set(config.ClusterIdentifier, clusterIdentifier)
-		cplogs.V(5).Infof("interactive mode: cluster found and is set to %s", clusterIdentifier)
-	}
-
-	//TODO: Remove this when we get rid of the dependency on ~/.kube/config and call directly the KubeExecCmd without spawning
-	err := h.kubeCtlInit.Init(h.environment)
-	if err != nil {
-		return err
-	}
-
+// handle opens a bash console against a pod.
+func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter, executor exec.Executor) error {
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
 		return nil
@@ -186,14 +170,11 @@ func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service))
 	}
 
-	//TODO: Change to call directly the KubeCtl NewCmdExec()
-	kscmd := kexec.KSCommand{}
-	kscmd.KubeConfigKey = h.environment
-	kscmd.Environment = h.environment
-	kscmd.Pod = pod.GetName()
-	kscmd.Stdin = os.Stdin
-	kscmd.Stdout = os.Stdout
-	kscmd.Stderr = os.Stderr
+	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr, h.environment)
+	kubeCmdExec := kubectlcmd.NewCmdExec(kubectlcmdutil.NewFactory(clientConfig), os.Stdin, os.Stdout, os.Stderr)
+	kubeCmdExec.Flags().Set("pod", pod.GetName())
+	kubeCmdExec.Flags().Set("stdin", "true")
+	kubeCmdExec.Flags().Set("tty", "true")
 
 	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 
@@ -208,5 +189,55 @@ func (h *execHandle) Handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 		h.args = append([]string{"env", "TERM=" + envTerm}, h.args...)
 	}
 
-	return executor.StartProcess(kscmd, h.args...)
+	kubeCmdExec.Run(kubeCmdExec, h.args)
+	return nil
+}
+
+type interactiveModeHandler interface {
+	Handle(flowID string, environment string) error
+}
+
+type interactiveModeH struct {
+	config config.ConfigProvider
+	api    cpapi.CpApiProvider
+}
+
+func newInteractiveModeH() *interactiveModeH {
+	p := &interactiveModeH{}
+	p.config = config.C
+	p.api = cpapi.NewCpApi()
+	return p
+}
+
+func (h interactiveModeH) findTargetClusterAndApplyToConfig(flowID string, targetEnvironment string) error {
+	apiKey, err := h.config.GetString(config.ApiKey)
+	if err != nil {
+		return err
+	}
+
+	h.api.SetApiKey(apiKey)
+
+	environments, el := h.api.GetApiEnvironments(flowID)
+	if el != nil {
+		return el
+	}
+
+	clusterIdentifier := ""
+	for _, environment := range environments {
+		if environment.Identifier == targetEnvironment {
+			clusterIdentifier = environment.Cluster
+		}
+	}
+
+	if clusterIdentifier == "" {
+		return fmt.Errorf("The specified environment %s has not been found on the flow %s. Please check that you have inserted the correct flowID and environment at https://ui.continuouspipe.io/project/")
+	}
+
+	//set the not persistent config information (do not save the local config in interactive mode)
+	h.config.Set(config.CpKubeProxyEnabled, true)
+	h.config.Set(config.FlowId, flowID)
+	cplogs.V(5).Infof("interactive mode: flow set to %s", flowID)
+	h.config.Set(config.ClusterIdentifier, clusterIdentifier)
+	cplogs.V(5).Infof("interactive mode: cluster found and is set to %s", clusterIdentifier)
+	return nil
 }

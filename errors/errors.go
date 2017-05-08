@@ -2,10 +2,11 @@ package errors
 
 import (
 	"fmt"
-	"github.com/continuouspipe/remote-environment-client/cplogs"
-	"github.com/fatih/color"
 	"os"
 	"runtime/debug"
+
+	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/fatih/color"
 )
 
 func CheckErr(err error) {
@@ -47,6 +48,7 @@ func ExitWithMessage(message string) {
 type ErrorListProvider interface {
 	error
 	Add(elems ...error)
+	AddErrorf(format string, a ...interface{})
 	Items() []error
 }
 
