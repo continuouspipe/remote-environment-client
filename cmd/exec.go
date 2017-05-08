@@ -7,11 +7,13 @@ import (
 	"runtime"
 	"strings"
 
+	"os/signal"
+	"syscall"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
-	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/fatih/color"
@@ -27,6 +29,8 @@ var execExample = fmt.Sprintf(`
 # execute -l -all on the web pod overriding the project-key and remote-branch
 %[1]s ex -e techup-dev-user -s web -- ls -all
 `, config.AppName)
+
+var terminationSignals = []os.Signal{syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT}
 
 //NewExecCmd return a cobra command struct pointer which on Run, if required it prepares the config so we can reach the pod and
 //then uses a command handler to execute the command specified in the arguments
@@ -47,7 +51,6 @@ the exec command. The command and its arguments need to follow --`,
 		Run: func(cmd *cobra.Command, args []string) {
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
-			local := exec.NewLocal()
 
 			defaultEnvironment, err := settings.GetString(config.KubeEnvironmentName)
 			checkErr(err)
@@ -98,7 +101,7 @@ the exec command. The command and its arguments need to follow --`,
 
 			checkErr(handler.complete(args, settings))
 			checkErr(handler.validate())
-			checkErr(handler.handle(podsFinder, podsFilter, local))
+			checkErr(handler.handle(podsFinder, podsFilter))
 		},
 	}
 
@@ -154,7 +157,7 @@ func (h *execHandle) validate() error {
 }
 
 // handle opens a bash console against a pod.
-func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter, executor exec.Executor) error {
+func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) error {
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
 		return nil
@@ -189,7 +192,28 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 		h.args = append([]string{"env", "TERM=" + envTerm}, h.args...)
 	}
 
-	kubeCmdExec.Run(kubeCmdExec, h.args)
+	sigs := make(chan os.Signal, 1)
+	done := make(chan bool, 1)
+
+	go func(kubeCmdExec *cobra.Command, args []string, sigs chan<- os.Signal, done chan<- bool) {
+		signal.Notify(sigs, terminationSignals...)
+		kubeCmdExec.Run(kubeCmdExec, h.args)
+		done <- true
+	}(kubeCmdExec, h.args, sigs, done)
+
+ENDLOOP:
+	for {
+		select {
+		case sig := <-sigs:
+			//TODO: Take control of the terminal as at this point is still controlled by kubeCmdExec
+			fmt.Println(sig)
+			break ENDLOOP
+		case _ = <-done:
+			fmt.Println("OK")
+			break ENDLOOP
+		}
+	}
+
 	return nil
 }
 
