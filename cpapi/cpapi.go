@@ -220,7 +220,7 @@ func (c CpApi) GetApiFlows(project string) ([]ApiFlow, error) {
 		return nil, el
 	}
 
-	u, err := c.getAuthenticatorURL()
+	u, err := c.getRiverURL()
 	if err != nil {
 		el.Add(err)
 		return nil, el
