@@ -189,20 +189,33 @@ func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []Multip
 
 	question := fmt.Sprintf("Which %s would you like to use?\n"+
 		"%s\n"+
-		"Select an option from 0 to %d: ", entity, printedOptions, len(optionList)-1)
+		"Please insert the option in full or a type its corrispondent value between [0-%d]:", entity, printedOptions, len(optionList)-1)
 
-	keySelected := q.qp.RepeatUntilValid(question, func(answer string) (bool, error) {
-		for key := range optionList {
+	optionSelected := q.qp.RepeatUntilValid(question, func(answer string) (bool, error) {
+		for key, option := range optionList {
+			if option.Name == answer {
+				return true, nil
+			}
 			if strconv.Itoa(key) == answer {
 				return true, nil
 			}
 		}
-		return false, fmt.Errorf("Please select an option between [0-%d]", len(optionList))
+		return false, fmt.Errorf("Please insert the option in full or a type its corrispondent value between [0-%d]", len(optionList))
 
 	})
-	keySelectedAsInt, err := strconv.Atoi(keySelected)
+
+	keySelectedAsInt, err := strconv.Atoi(optionSelected)
 	if err != nil {
-		q.errors.Add(err)
+		keySelectedAsInt = -1
+		for key, v := range optionList {
+			if v.Name == optionSelected {
+				keySelectedAsInt = key
+				break
+			}
+		}
+		if keySelectedAsInt == -1 {
+			q.errors.Add(err)
+		}
 	}
 	return optionList[keySelectedAsInt]
 }
