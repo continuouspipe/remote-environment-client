@@ -1,5 +1,5 @@
-hash: 64b2d1f473418a23c9fa2b3c4f1a945e912b77abe6c708ba86eedfb9e04556d4
-updated: 2017-04-24T17:23:12.145741617+01:00
+hash: 645b2c60a62e874d9c6f8791b620fca8f1555e8c39cac2f309ce19a65d90f77d
+updated: 2017-05-08T14:50:24.086517651+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -98,6 +98,8 @@ imports:
   version: babee2ae61e03a44a2bdffe421055226e8168958
 - name: github.com/fsnotify/fsnotify
   version: f12c6236fe7b5cf6bcf30e5935d08cb079d78334
+- name: github.com/getsentry/raven-go
+  version: b68337dbf03e7fbb53d9fd9b63fd09b28e8f13f7
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-openapi/jsonpointer
