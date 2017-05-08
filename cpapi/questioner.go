@@ -200,7 +200,7 @@ func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []Multip
 				return true, nil
 			}
 		}
-		return false, fmt.Errorf("Please insert the option in full or a type its corrispondent value between [0-%d]", len(optionList))
+		return false, fmt.Errorf("Please insert the option in full or a type its correspondent value between [0-%d]", len(optionList))
 
 	})
 
