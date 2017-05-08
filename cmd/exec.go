@@ -57,7 +57,7 @@ the exec command. The command and its arguments need to follow --`,
 			defaultService, err := settings.GetString(config.Service)
 			checkErr(err)
 
-			if interactive == true {
+			if interactive {
 				cplogs.V(5).Infoln("exec in interactive mode")
 				//make sure config has an api key and a cp user set
 				initInteractiveH := NewInitInteractiveHandler(false)
@@ -72,12 +72,17 @@ the exec command. The command and its arguments need to follow --`,
 				if flowID == "" && handler.environment == "" && handler.service == "" {
 					//guide the user to choose the right pod they want to target
 					questioner := NewMultipleChoiceCpEntityQuestioner()
-					apiKey, _ := settings.GetString(config.ApiKey)
+					apiKey, err := settings.GetString(config.ApiKey)
+					checkErr(err)
 					questioner.api.SetApiKey(apiKey)
-					_, flowID, handler.environment, handler.service = questioner.WhichEntities().Responses()
+					resp := questioner.WhichEntities().Responses()
 					checkErr(questioner.errors)
 
-					suggestedFlags := color.GreenString("-i -e %s -f %s -s %s", handler.environment, flowID, handler.service)
+					handler.environment = resp.Environment.Value
+					handler.service = resp.Pod.Value
+					flowID = resp.Flow.Value
+
+					suggestedFlags := color.GreenString("-i -e %s -f %s -s %s", handler.environment, resp.Flow.Value, resp.Pod.Value)
 					fmt.Printf(msgs.InteractiveModeSuggestingFlags, suggestedFlags)
 				}
 
@@ -240,15 +245,24 @@ func (h interactiveModeH) findTargetClusterAndApplyToConfig(flowID string, targe
 	return nil
 }
 
+//MultipleChoiceCpEntityOption holds an option that will be presented to the user
 type MultipleChoiceCpEntityOption struct {
 	Value string
 	Name  string
 }
 
+//MultipleChoiceCpEntityAnswer for each entity holds the option selected by the user
+type MultipleChoiceCpEntityAnswer struct {
+	Project     MultipleChoiceCpEntityOption
+	Flow        MultipleChoiceCpEntityOption
+	Environment MultipleChoiceCpEntityOption
+	Pod         MultipleChoiceCpEntityOption
+}
+
 //MultipleChoiceCpEntityQuestioner presents the user with a list of option for cp entities (project, flows, environments, pods)
 //to choose from and requests to select a single one
 type MultipleChoiceCpEntityQuestioner struct {
-	answers         map[string]MultipleChoiceCpEntityOption
+	answers         MultipleChoiceCpEntityAnswer
 	api             cpapi.CpApiProvider
 	errors          errors.ErrorListProvider
 	apiEnvironments []cpapi.ApiEnvironment
@@ -258,26 +272,18 @@ type MultipleChoiceCpEntityQuestioner struct {
 //NewMultipleChoiceCpEntityQuestioner returns a *MultipleChoiceCpEntityQuestioner struct
 func NewMultipleChoiceCpEntityQuestioner() *MultipleChoiceCpEntityQuestioner {
 	q := &MultipleChoiceCpEntityQuestioner{}
-	q.answers = map[string]MultipleChoiceCpEntityOption{
-		"project":     {},
-		"flowID":      {},
-		"environment": {},
-		"pod":         {},
-	}
 	q.api = cpapi.NewCpApi()
 	q.errors = errors.NewErrorList()
 	q.qp = util.NewQuestionPrompt()
 	return q
 }
 
-//WhichEntities triggers an api request to the cp api based on the arguments and presents to the user a list of options
-//to choose from, it then stores the user response
+//WhichEntities triggers an api request to the cp api based on the arguments and presents to the user a list of options to choose from, it then stores the user response
 func (q MultipleChoiceCpEntityQuestioner) WhichEntities() MultipleChoiceCpEntityQuestioner {
-	q.WhichProject().whichFlow().whichEnvironment().whichPod()
-	return q
+	return q.whichProject().whichFlow().whichEnvironment().whichPod()
 }
 
-func (q MultipleChoiceCpEntityQuestioner) WhichProject() MultipleChoiceCpEntityQuestioner {
+func (q MultipleChoiceCpEntityQuestioner) whichProject() MultipleChoiceCpEntityQuestioner {
 	var optionList []MultipleChoiceCpEntityOption
 	apiTeams, err := q.api.GetApiTeams()
 	if err != nil {
@@ -295,17 +301,17 @@ func (q MultipleChoiceCpEntityQuestioner) WhichProject() MultipleChoiceCpEntityQ
 		return q
 	}
 
-	q.answers["project"] = q.ask("project", optionList)
+	q.answers.Project = q.ask("project", optionList)
 	return q
 }
 
 func (q MultipleChoiceCpEntityQuestioner) whichFlow() MultipleChoiceCpEntityQuestioner {
-	if q.answers["project"].Value == "" {
+	if q.answers.Project.Value == "" {
 		return q
 	}
 
 	var optionList []MultipleChoiceCpEntityOption
-	apiFlows, err := q.api.GetApiFlows(q.answers["project"].Value)
+	apiFlows, err := q.api.GetApiFlows(q.answers.Project.Value)
 	if err != nil {
 		q.errors.Add(err)
 	}
@@ -321,19 +327,19 @@ func (q MultipleChoiceCpEntityQuestioner) whichFlow() MultipleChoiceCpEntityQues
 		return q
 	}
 
-	q.answers["flowID"] = q.ask("flowID", optionList)
+	q.answers.Flow = q.ask("flowID", optionList)
 	return q
 }
 
 func (q MultipleChoiceCpEntityQuestioner) whichEnvironment() MultipleChoiceCpEntityQuestioner {
-	if q.answers["flowID"].Value == "" {
+	if q.answers.Flow.Value == "" {
 		return q
 	}
 
 	var optionList []MultipleChoiceCpEntityOption
 	if len(q.apiEnvironments) == 0 {
 		var err error
-		q.apiEnvironments, err = q.api.GetApiEnvironments(q.answers["flowID"].Value)
+		q.apiEnvironments, err = q.api.GetApiEnvironments(q.answers.Flow.Value)
 		if err != nil {
 			q.errors.Add(err)
 		}
@@ -351,26 +357,26 @@ func (q MultipleChoiceCpEntityQuestioner) whichEnvironment() MultipleChoiceCpEnt
 		return q
 	}
 
-	q.answers["environment"] = q.ask("environment", optionList)
+	q.answers.Environment = q.ask("environment", optionList)
 	return q
 }
 
 func (q MultipleChoiceCpEntityQuestioner) whichPod() MultipleChoiceCpEntityQuestioner {
-	if q.answers["flowID"].Value == "" {
+	if q.answers.Flow.Value == "" {
 		return q
 	}
 
 	var optionList []MultipleChoiceCpEntityOption
 	if len(q.apiEnvironments) == 0 {
 		var err error
-		q.apiEnvironments, err = q.api.GetApiEnvironments(q.answers["flowID"].Value)
+		q.apiEnvironments, err = q.api.GetApiEnvironments(q.answers.Flow.Value)
 		if err != nil {
 			q.errors.Add(err)
 		}
 	}
 	var targetEnv *cpapi.ApiEnvironment
 	for _, apiEnvironment := range q.apiEnvironments {
-		if apiEnvironment.Identifier == q.answers["environment"].Value {
+		if apiEnvironment.Identifier == q.answers.Environment.Value {
 			targetEnv = &apiEnvironment
 			break
 		}
@@ -389,7 +395,7 @@ func (q MultipleChoiceCpEntityQuestioner) whichPod() MultipleChoiceCpEntityQuest
 		return q
 	}
 
-	q.answers["pod"] = q.ask("pod", optionList)
+	q.answers.Pod = q.ask("pod", optionList)
 	return q
 }
 
@@ -399,9 +405,7 @@ func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []Multip
 		return MultipleChoiceCpEntityOption{}
 	}
 	if len(optionList) == 1 {
-		for _, option := range optionList {
-			return option
-		}
+		return optionList[0]
 	}
 
 	printedOptions := ""
@@ -414,7 +418,7 @@ func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []Multip
 		"Select an option from 0 to %d: ", entity, printedOptions, len(optionList)-1)
 
 	keySelected := q.qp.RepeatUntilValid(question, func(answer string) (bool, error) {
-		for key, _ := range optionList {
+		for key := range optionList {
 			if strconv.Itoa(key) == answer {
 				return true, nil
 			}
@@ -429,13 +433,7 @@ func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []Multip
 	return optionList[keySelectedAsInt]
 }
 
-//ApplyDefault sets an aswer as if it was given by the user. Can be used to fetch the environment without asking to the user to specify the the Project and FlowId
-func (q MultipleChoiceCpEntityQuestioner) ApplyDefault(arg string, option MultipleChoiceCpEntityOption) MultipleChoiceCpEntityQuestioner {
-	q.answers[arg] = option
-	return q
-}
-
-//Responses returns the answers
-func (q MultipleChoiceCpEntityQuestioner) Responses() (project string, flowID string, environment string, pod string) {
-	return q.answers["project"].Value, q.answers["flowID"].Value, q.answers["environment"].Value, q.answers["pod"].Value
+//Responses returns the struct containing the answer selected by the user
+func (q MultipleChoiceCpEntityQuestioner) Responses() MultipleChoiceCpEntityAnswer {
+	return q.answers
 }
