@@ -11,7 +11,6 @@ import (
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
-	"github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/fatih/color"
@@ -47,7 +46,6 @@ the exec command. The command and its arguments need to follow --`,
 		Run: func(cmd *cobra.Command, args []string) {
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
-			local := exec.NewLocal()
 
 			defaultEnvironment, err := settings.GetString(config.KubeEnvironmentName)
 			checkErr(err)
@@ -98,7 +96,7 @@ the exec command. The command and its arguments need to follow --`,
 
 			checkErr(handler.complete(args, settings))
 			checkErr(handler.validate())
-			checkErr(handler.handle(podsFinder, podsFilter, local))
+			checkErr(handler.handle(podsFinder, podsFilter))
 		},
 	}
 
@@ -154,7 +152,7 @@ func (h *execHandle) validate() error {
 }
 
 // handle opens a bash console against a pod.
-func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter, executor exec.Executor) error {
+func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) error {
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
 		return nil
@@ -172,9 +170,19 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 
 	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr, h.environment)
 	kubeCmdExec := kubectlcmd.NewCmdExec(kubectlcmdutil.NewFactory(clientConfig), os.Stdin, os.Stdout, os.Stderr)
-	kubeCmdExec.Flags().Set("pod", pod.GetName())
-	kubeCmdExec.Flags().Set("stdin", "true")
-	kubeCmdExec.Flags().Set("tty", "true")
+	kubeCmdExecOptions := &kubectlcmd.ExecOptions{
+		StreamOptions: kubectlcmd.StreamOptions{
+			In:  os.Stdin,
+			Out: os.Stdout,
+			Err: os.Stderr,
+		},
+
+		Executor: &kubectlcmd.DefaultRemoteExecutor{},
+	}
+
+	kubeCmdExecOptions.TTY = true
+	kubeCmdExecOptions.Stdin = true
+	kubeCmdExecOptions.PodName = pod.GetName()
 
 	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 
@@ -189,7 +197,19 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter, exec
 		h.args = append([]string{"env", "TERM=" + envTerm}, h.args...)
 	}
 
-	kubeCmdExec.Run(kubeCmdExec, h.args)
+	kubeCmdUtilFactory := kubectlcmdutil.NewFactory(clientConfig)
+	argsLenAtDash := kubeCmdExec.ArgsLenAtDash()
+	kubectlcmdutil.CheckErr(kubeCmdExecOptions.Complete(kubeCmdUtilFactory, kubeCmdExec, h.args, argsLenAtDash))
+	kubectlcmdutil.CheckErr(kubeCmdExecOptions.Validate())
+
+	err = kubeCmdExecOptions.Run()
+	if err != nil {
+		cplogs.V(5).Infof("The pod may have been killed or moved to a different node. Error %s", err)
+		cplogs.Flush()
+		fmt.Println(msgs.PodKilledOrMoved)
+		fmt.Println(msgs.PodKilledOrMovedSuggestingAction)
+	}
+
 	return nil
 }
 
