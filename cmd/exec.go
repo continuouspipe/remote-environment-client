@@ -18,7 +18,6 @@ import (
 	"github.com/spf13/cobra"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/util/interrupt"
 )
 
 var execExample = fmt.Sprintf(`
@@ -187,11 +186,6 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) erro
 	kubeCmdExecOptions.TTY = true
 	kubeCmdExecOptions.Stdin = true
 	kubeCmdExecOptions.PodName = pod.GetName()
-	kubeCmdExecOptions.InterruptParent = interrupt.Chain(nil, func() {
-		cplogs.V(5).Infof("The pod may have been killed or moved to a different node.")
-		cplogs.Flush()
-		fmt.Println("The pod may have been killed or moved to a different node.")
-	})
 
 	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 
@@ -210,7 +204,14 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) erro
 	argsLenAtDash := kubeCmdExec.ArgsLenAtDash()
 	kubectlcmdutil.CheckErr(kubeCmdExecOptions.Complete(kubeCmdUtilFactory, kubeCmdExec, h.args, argsLenAtDash))
 	kubectlcmdutil.CheckErr(kubeCmdExecOptions.Validate())
-	kubectlcmdutil.CheckErr(kubeCmdExecOptions.Run())
+
+	err = kubeCmdExecOptions.Run()
+	if err != nil {
+		cplogs.V(5).Infof("The pod may have been killed or moved to a different node. Error %s", err)
+		cplogs.Flush()
+		fmt.Println(msgs.PodKilledOrMoved)
+		fmt.Println(msgs.PodKilledOrMovedSuggestingAction)
+	}
 
 	return nil
 }

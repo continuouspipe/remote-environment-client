@@ -2,13 +2,17 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
-	"github.com/spf13/cobra"
-	"strings"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/spf13/cobra"
+	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
+	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 var (
@@ -64,7 +68,7 @@ the port number to forward.`,
 
 type ForwardHandle struct {
 	Command     *cobra.Command
-	ports       string
+	ports       []string
 	podsFinder  pods.Finder
 	podsFilter  pods.Filter
 	Environment string
@@ -75,10 +79,7 @@ type ForwardHandle struct {
 // Complete verifies command line arguments and loads data from the command environment
 func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
 	h.Command = cmd
-
-	if len(argsIn) > 0 {
-		h.ports = argsIn[0]
-	}
+	h.ports = argsIn
 
 	h.podsFinder = pods.NewKubePodsFind()
 	h.podsFilter = pods.NewKubePodsFilter()
@@ -111,11 +112,6 @@ func (h *ForwardHandle) Validate() error {
 }
 
 func (h *ForwardHandle) Handle() error {
-	//TODO: Remove this when we get rid of the dependency on ~/.kube/config and call directly the NewCmdPortForward without spawning
-	err := h.kubeCtlInit.Init(h.Environment)
-	if err != nil {
-		return err
-	}
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
 		return nil
@@ -137,6 +133,9 @@ func (h *ForwardHandle) Handle() error {
 
 	cplogs.V(5).Infof("setting up forwarding for target pod %s and ports %s", pod.GetName(), h.ports)
 	cplogs.Flush()
-	//TODO: Change to call directly the KubeCtl NewCmdPortForward()
-	return kubectlapi.Forward(h.Environment, h.Environment, pod.GetName(), h.ports, nil)
+
+	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr, h.Environment)
+	kubeCmdPortForward := kubectlcmd.NewCmdPortForward(kubectlcmdutil.NewFactory(clientConfig), os.Stdout, os.Stderr)
+	kubeCmdPortForward.Run(kubeCmdPortForward, append([]string{pod.GetName()}, h.ports...))
+	return nil
 }
