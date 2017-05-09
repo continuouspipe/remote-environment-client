@@ -23,5 +23,10 @@ type CheckUpdates struct {
 }
 
 func (h *CheckUpdates) Handle(args []string) {
-	checkErr(update.CheckForLatestVersion())
+	err := update.CheckForLatestVersion()
+	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
+	}
 }

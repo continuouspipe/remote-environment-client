@@ -2,13 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/continuouspipe/remote-environment-client/benchmark"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/initialization"
 	"github.com/spf13/cobra"
-	"io"
-	"os"
 )
 
 func NewBuildCmd() *cobra.Command {
@@ -52,15 +53,27 @@ type BuildHandle struct {
 func (h *BuildHandle) Handle() error {
 	err := h.triggerBuild.Handle()
 	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
 		return err
 	}
 	err = h.waitForEnvironmentReady.Handle()
 	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
 		return err
 	}
 
 	h.config.Set(config.InitStatus, initStateCompleted)
-	h.config.Save(config.AllConfigTypes)
+	err = h.config.Save(config.AllConfigTypes)
+	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
+		return err
+	}
 
 	apiKey, err := h.config.GetString(config.ApiKey)
 	if err != nil {
@@ -79,13 +92,16 @@ func (h *BuildHandle) Handle() error {
 
 	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
 		return err
 	}
 
 	fmt.Fprintf(h.stdout, "\n\n# Get started !\n")
 	fmt.Fprintln(h.stdout, "You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
-	cpapi.PrintPublicEndpoints(h.stdout, remoteEnv.PublicEndpoints)
 	fmt.Fprintf(h.stdout, "\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
+	cpapi.PrintPublicEndpoints(h.stdout, remoteEnv.PublicEndpoints)
 
 	return nil
 }

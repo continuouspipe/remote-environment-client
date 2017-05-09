@@ -13,6 +13,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl"
 )
 
+//NewListPodsCmd return a cobra cmd alias of NewCheckConnectionCmd
 func NewListPodsCmd() *cobra.Command {
 	ck := NewCheckConnectionCmd()
 	ck.Use = "pods"
@@ -21,6 +22,7 @@ func NewListPodsCmd() *cobra.Command {
 	return ck
 }
 
+//NewCheckConnectionCmd return a new cobra command that on run executes the CheckConnectionHandle
 func NewCheckConnectionCmd() *cobra.Command {
 	settings := config.C
 	handler := &CheckConnectionHandle{}
@@ -48,13 +50,14 @@ It can be used with the environment option to check another environment`,
 	return command
 }
 
+//CheckConnectionHandle holds the command handler dependencies
 type CheckConnectionHandle struct {
 	Command     *cobra.Command
 	Environment string
 	kubeCtlInit kubectlapi.KubeCtlInitializer
 }
 
-// Complete verifies command line arguments and loads data from the command environment
+//Complete verifies command line arguments and loads data from the command environment
 func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, setting *config.Config) error {
 	h.Command = cmd
 	var err error
@@ -65,15 +68,16 @@ func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, se
 	return nil
 }
 
-// Validate checks that the provided checkconnection options are specified.
+//Validate checks that the provided checkconnection options are specified.
 func (h *CheckConnectionHandle) Validate() error {
 	if len(strings.Trim(h.Environment, " ")) == 0 {
+		//TODO: Reply with something more helpful
 		return fmt.Errorf("the environment specified is invalid")
 	}
 	return nil
 }
 
-// Finds the pods and prints them
+//Handle finds the pods and prints them
 func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) error {
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
@@ -84,6 +88,9 @@ func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) er
 
 	podsList, err := podsFinder.FindAll(user, apiKey, addr, h.Environment)
 	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
 		return err
 	}
 
