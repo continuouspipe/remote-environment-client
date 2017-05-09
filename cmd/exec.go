@@ -6,7 +6,6 @@ import (
 	"os"
 	"runtime"
 	"strings"
-	"syscall"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
@@ -27,8 +26,6 @@ var execExample = fmt.Sprintf(`
 # execute -l -all on the web pod overriding the project-key and remote-branch
 %[1]s ex -e techup-dev-user -s web -- ls -all
 `, config.AppName)
-
-var terminationSignals = []os.Signal{syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT}
 
 //NewExecCmd return a cobra command struct pointer which on Run, if required it prepares the config so we can reach the pod and
 //then uses a command handler to execute the command specified in the arguments
