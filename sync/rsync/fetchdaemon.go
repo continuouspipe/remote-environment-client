@@ -91,6 +91,8 @@ func (r RsyncDaemonFetch) Fetch(filePath string) error {
 
 	stopChan, err := r.remoteRsync.StartPortForwardOnRandomPort()
 	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
 		return err
 	}
 	defer r.remoteRsync.StopPortForward(stopChan)
@@ -131,15 +133,10 @@ func (r RsyncDaemonFetch) Fetch(filePath string) error {
 		args = append(args, r.remoteRsync.GetRsyncURL(rsyncConfigSection, r.remoteProjectPath+filePath))
 	}
 
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
 	if runtime.GOOS == "windows" {
-		currentDir = convertWindowsPath(currentDir)
+		cwd = convertWindowsPath(cwd)
 	}
-	args = append(args, currentDir)
+	args = append(args, cwd)
 
 	cplogs.V(5).Infof("rsync arguments: %s", args)
 	cplogs.Flush()
@@ -150,7 +147,12 @@ func (r RsyncDaemonFetch) Fetch(filePath string) error {
 	scmd.Stdout = os.Stdout
 	scmd.Stderr = os.Stderr
 
-	return osapi.CommandExecL(scmd, args...)
+	err = osapi.CommandExecL(scmd, args...)
+	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+	}
+	return err
 }
 
 type RemoteRsyncDeamon struct {
@@ -201,6 +203,7 @@ func (r RemoteRsyncDeamon) KillDaemon(pidFile string) error {
 	r.kscmd.Stdin = bytes.NewBufferString(stop)
 	err := r.executor.StartProcess(r.kscmd, "sh")
 	if err != nil {
+		//TODO: Send error log to Sentry
 		cplogs.V(4).Infof("error when killing rsync daemon with pid file: %s, error %s", pidFile, err.Error())
 	}
 	return err
@@ -230,6 +233,7 @@ func (r *RemoteRsyncDeamon) StartPortForwardOnRandomPort() (*chan bool, error) {
 // closes the channel that will then kill the goroutine that is running the port forwarding
 func (r RemoteRsyncDeamon) StopPortForward(stopChan *chan bool) {
 	if stopChan == nil {
+		//TODO: Send error log to Sentry
 		cplogs.V(5).Infoln("was not possible to stop the port forwarding")
 		return
 	}

@@ -2,6 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/continuouspipe/remote-environment-client/benchmark"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
@@ -11,9 +15,6 @@ import (
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/spf13/cobra"
-	"io"
-	"os"
-	"strings"
 )
 
 var fetchExample = fmt.Sprintf(`
@@ -133,11 +134,17 @@ func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter p
 
 	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.Environment)
 	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
 		return err
 	}
 
 	pod := podsFilter.List(*allPods).ByService(h.Service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.Service))
 	}
 

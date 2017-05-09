@@ -2,22 +2,23 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/continuouspipe/remote-environment-client/benchmark"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
-	msgs "github.com/continuouspipe/remote-environment-client/messages"
 )
 
 var pushSyncExample = `
@@ -165,11 +166,17 @@ func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 
 	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.options.environment)
 	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
 		return err
 	}
 
 	pod := podsFilter.List(*allPods).ByService(h.options.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.options.service))
 	}
 
@@ -195,6 +202,11 @@ func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 	}
 
 	err = syncer.Sync(paths)
+	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
+	}
 	fmt.Fprintf(h.writer, "Push complete, the files and folders that has been sent can be found in the logs %s\n", cplogs.GetLogInfoFile())
 	return err
 }

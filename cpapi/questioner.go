@@ -61,6 +61,7 @@ func (q MultipleChoiceCpEntityQuestioner) whichProject() MultipleChoiceCpEntityQ
 	var optionList []MultipleChoiceCpEntityOption
 	apiTeams, err := q.api.GetApiTeams()
 	if err != nil {
+		//TODO: Send error log to Sentry
 		q.errors.Add(err)
 	}
 	for _, apiTeam := range apiTeams {
@@ -87,6 +88,7 @@ func (q MultipleChoiceCpEntityQuestioner) whichFlow() MultipleChoiceCpEntityQues
 	var optionList []MultipleChoiceCpEntityOption
 	apiFlows, err := q.api.GetApiFlows(q.answers.Project.Value)
 	if err != nil {
+		//TODO: Send error log to Sentry
 		q.errors.Add(err)
 	}
 	for _, apiFlow := range apiFlows {
@@ -115,6 +117,7 @@ func (q MultipleChoiceCpEntityQuestioner) whichEnvironment() MultipleChoiceCpEnt
 		var err error
 		q.apiEnvironments, err = q.api.GetApiEnvironments(q.answers.Flow.Value)
 		if err != nil {
+			//TODO: Send error log to Sentry
 			q.errors.Add(err)
 		}
 	}
@@ -145,6 +148,7 @@ func (q MultipleChoiceCpEntityQuestioner) whichPod() MultipleChoiceCpEntityQuest
 		var err error
 		q.apiEnvironments, err = q.api.GetApiEnvironments(q.answers.Flow.Value)
 		if err != nil {
+			//TODO: Send error log to Sentry
 			q.errors.Add(err)
 		}
 	}

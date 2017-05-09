@@ -71,7 +71,6 @@ func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, se
 //Validate checks that the provided checkconnection options are specified.
 func (h *CheckConnectionHandle) Validate() error {
 	if len(strings.Trim(h.Environment, " ")) == 0 {
-		//TODO: Reply with something more helpful
 		return fmt.Errorf("the environment specified is invalid")
 	}
 	return nil

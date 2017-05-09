@@ -123,12 +123,28 @@ func initLocalConfig() {
 
 	//create the config file if it does not exist
 	configFileUsed, err := config.C.ConfigFileUsed(config.LocalConfigType)
+	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
+	}
 	checkErr(err)
 
 	_, err = os.OpenFile(configFileUsed, os.O_RDWR|os.O_CREATE, 0664)
+	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
+	}
 	checkErr(err)
 	//load config file
-	checkErr(config.C.ReadInConfig(config.LocalConfigType))
+	err = config.C.ReadInConfig(config.LocalConfigType)
+	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
+	}
+	checkErr(err)
 }
 
 func initGlobalConfig() {
@@ -138,17 +154,33 @@ func initGlobalConfig() {
 	globalConfigFilePath := filepath.Join(globalConfigPath, "config.yml")
 
 	//create the directory
-	_ = os.Mkdir(globalConfigPath, 0755)
-
+	err = os.Mkdir(globalConfigPath, 0755)
+	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
+	}
+	checkErr(err)
 	//create the global config file
 	_, err = os.OpenFile(globalConfigFilePath, os.O_RDWR|os.O_CREATE, 0664)
+	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
+	}
 	checkErr(err)
 
 	//set directory and file path in config
 	config.C.SetConfigFile(config.GlobalConfigType, globalConfigFilePath)
 
 	//load config file
-	checkErr(config.C.ReadInConfig(config.GlobalConfigType))
+	err = config.C.ReadInConfig(config.GlobalConfigType)
+	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
+	}
+	checkErr(err)
 }
 
 func checkLegacyApplicationFile() {
@@ -162,6 +194,11 @@ func addApplicationFilesToGitIgnore() {
 	gitIgnore := config.NewIgnore()
 	gitIgnore.File = config.GitIgnore
 	logFile, err := config.C.ConfigFileUsed(config.LocalConfigType)
+	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
+	}
 	checkErr(err)
 	gitIgnore.AddToIgnore("/" + filepath.Base(logFile))
 	gitIgnore.AddToIgnore(cplogs.LogDirName)
@@ -171,7 +208,6 @@ func validateConfig() {
 	valid, missing := config.C.Validate()
 	if valid == false {
 		errors.ExitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the init command.", missing))
-
 	}
 }
 

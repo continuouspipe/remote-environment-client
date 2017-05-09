@@ -160,11 +160,17 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) erro
 
 	podsList, err := podsFinder.FindAll(user, apiKey, addr, h.environment)
 	if err != nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
 		return err
 	}
 
 	pod := podsFilter.List(*podsList).ByService(h.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
+		//TODO: Send error log to Sentry
+		//TODO: Log err
+		//TODO: Print user friendly error that explains what happened and what to do next
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service))
 	}
 
@@ -199,11 +205,20 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) erro
 
 	kubeCmdUtilFactory := kubectlcmdutil.NewFactory(clientConfig)
 	argsLenAtDash := kubeCmdExec.ArgsLenAtDash()
-	kubectlcmdutil.CheckErr(kubeCmdExecOptions.Complete(kubeCmdUtilFactory, kubeCmdExec, h.args, argsLenAtDash))
-	kubectlcmdutil.CheckErr(kubeCmdExecOptions.Validate())
+	err = kubeCmdExecOptions.Complete(kubeCmdUtilFactory, kubeCmdExec, h.args, argsLenAtDash)
+	if err != nil {
+		//TODO: Log err
+		kubectlcmdutil.CheckErr(err)
+	}
+	err = kubeCmdExecOptions.Validate()
+	if err != nil {
+		//TODO: Log err
+		kubectlcmdutil.CheckErr(err)
+	}
 
 	err = kubeCmdExecOptions.Run()
 	if err != nil {
+		//TODO: Send error log to Sentry
 		cplogs.V(5).Infof("The pod may have been killed or moved to a different node. Error %s", err)
 		cplogs.Flush()
 		fmt.Println(msgs.PodKilledOrMoved)
@@ -239,6 +254,7 @@ func (h interactiveModeH) findTargetClusterAndApplyToConfig(flowID string, targe
 
 	environments, el := h.api.GetApiEnvironments(flowID)
 	if el != nil {
+		//TODO: Send error log to Sentry
 		return el
 	}
 
