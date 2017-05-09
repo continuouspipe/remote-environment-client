@@ -6,8 +6,6 @@ import (
 	"os"
 	"runtime"
 	"strings"
-
-	"os/signal"
 	"syscall"
 
 	"github.com/continuouspipe/remote-environment-client/config"
@@ -20,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/util/interrupt"
 )
 
 var execExample = fmt.Sprintf(`
@@ -175,9 +174,24 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) erro
 
 	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr, h.environment)
 	kubeCmdExec := kubectlcmd.NewCmdExec(kubectlcmdutil.NewFactory(clientConfig), os.Stdin, os.Stdout, os.Stderr)
-	kubeCmdExec.Flags().Set("pod", pod.GetName())
-	kubeCmdExec.Flags().Set("stdin", "true")
-	kubeCmdExec.Flags().Set("tty", "true")
+	kubeCmdExecOptions := &kubectlcmd.ExecOptions{
+		StreamOptions: kubectlcmd.StreamOptions{
+			In:  os.Stdin,
+			Out: os.Stdout,
+			Err: os.Stderr,
+		},
+
+		Executor: &kubectlcmd.DefaultRemoteExecutor{},
+	}
+
+	kubeCmdExecOptions.TTY = true
+	kubeCmdExecOptions.Stdin = true
+	kubeCmdExecOptions.PodName = pod.GetName()
+	kubeCmdExecOptions.InterruptParent = interrupt.Chain(nil, func() {
+		cplogs.V(5).Infof("The pod may have been killed or moved to a different node.")
+		cplogs.Flush()
+		fmt.Println("The pod may have been killed or moved to a different node.")
+	})
 
 	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 
@@ -192,27 +206,11 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) erro
 		h.args = append([]string{"env", "TERM=" + envTerm}, h.args...)
 	}
 
-	sigs := make(chan os.Signal, 1)
-	done := make(chan bool, 1)
-
-	go func(kubeCmdExec *cobra.Command, args []string, sigs chan<- os.Signal, done chan<- bool) {
-		signal.Notify(sigs, terminationSignals...)
-		kubeCmdExec.Run(kubeCmdExec, h.args)
-		done <- true
-	}(kubeCmdExec, h.args, sigs, done)
-
-ENDLOOP:
-	for {
-		select {
-		case sig := <-sigs:
-			//TODO: Take control of the terminal as at this point is still controlled by kubeCmdExec
-			fmt.Println(sig)
-			break ENDLOOP
-		case _ = <-done:
-			fmt.Println("OK")
-			break ENDLOOP
-		}
-	}
+	kubeCmdUtilFactory := kubectlcmdutil.NewFactory(clientConfig)
+	argsLenAtDash := kubeCmdExec.ArgsLenAtDash()
+	kubectlcmdutil.CheckErr(kubeCmdExecOptions.Complete(kubeCmdUtilFactory, kubeCmdExec, h.args, argsLenAtDash))
+	kubectlcmdutil.CheckErr(kubeCmdExecOptions.Validate())
+	kubectlcmdutil.CheckErr(kubeCmdExecOptions.Run())
 
 	return nil
 }
