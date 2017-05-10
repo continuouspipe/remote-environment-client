@@ -27,7 +27,7 @@ func NewBuildCmd() *cobra.Command {
 	handler.config = config.C
 	handler.triggerBuild = newTriggerBuild()
 	handler.waitForEnvironmentReady = newWaitEnvironmentReady()
-	handler.api = cpapi.NewCpApi()
+	handler.api = cpapi.NewCpAPI()
 	command := &cobra.Command{
 		Use:     BuildCmdName,
 		Aliases: []string{"bu"},
@@ -50,7 +50,6 @@ find its IP address.`,
 
 			//call the build handler
 			err := handler.Handle()
-
 			checkErr(err)
 		},
 	}
@@ -63,7 +62,7 @@ type BuildHandle struct {
 	triggerBuild            initialization.InitState
 	waitForEnvironmentReady initialization.InitState
 	stdout                  io.Writer
-	api                     cpapi.CpApiProvider
+	api                     cpapi.DataProvider
 }
 
 //Handle performs the 2 init stages that trigger that build and wait for the environment to be ready
@@ -105,7 +104,7 @@ func (h *BuildHandle) Handle() error {
 		return err
 	}
 
-	h.api.SetApiKey(apiKey)
+	h.api.SetAPIKey(apiKey)
 
 	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowID, remoteEnvID)
 	if err != nil {

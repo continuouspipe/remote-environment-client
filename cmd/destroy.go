@@ -14,7 +14,7 @@ import (
 
 func NewDestroyCmd() *cobra.Command {
 	handler := NewDestroyHandle()
-	handler.api = cpapi.NewCpApi()
+	handler.api = cpapi.NewCpAPI()
 	handler.config = config.C
 	handler.stdout = os.Stdout
 	handler.lsRemote = git.NewLsRemote()
@@ -33,7 +33,7 @@ environment, ContinuousPipe will then remove the environment.`,
 }
 
 type DestroyHandle struct {
-	api      cpapi.CpApiProvider
+	api      cpapi.DataProvider
 	config   config.ConfigProvider
 	lsRemote git.LsRemoteExecutor
 	push     git.PushExecutor
@@ -91,7 +91,7 @@ func (h *DestroyHandle) Handle() error {
 	}
 
 	if apiKey != "" && flowId != "" && remoteEnvironmentId != "" {
-		h.api.SetApiKey(apiKey)
+		h.api.SetAPIKey(apiKey)
 		//stop building any flows associated with the git branch
 		err = h.api.CancelRunningTide(flowId, remoteEnvironmentId)
 		if err != nil {

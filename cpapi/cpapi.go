@@ -12,66 +12,94 @@ import (
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
-	"github.com/continuouspipe/remote-environment-client/errors"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
+	"github.com/pkg/errors"
 )
 
-type CpApiProvider interface {
-	SetApiKey(apiKey string)
-	GetApiTeams() ([]ApiTeam, error)
-	GetApiFlows(project string) ([]ApiFlow, error)
-	GetApiUser(user string) (*ApiUser, error)
-	GetApiEnvironments(flowId string) ([]ApiEnvironment, errors.ErrorListProvider)
-	GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, errors.ErrorListProvider)
+const errorAPIKeyNotProvided = "api key not provided"
+const errorFailedToRetrievedAuthenticatorURL = "failed to retrieve the authenticator url"
+const errorFailedToRetrievedRiverURL = "failed to retrieve the river url"
+const errorFailedToCreateGetRequest = "failed to create a get request"
+const errorFailedToCreatePostRequest = "failed to create a post request"
+const errorFailedToCreateDeleteRequest = "failed to create a delete request"
+const errorResponseStatusCodeUnsuccessful = "failed to get response body, status: %d, url: %s"
+const errorParsingJSONResponse = "failed to unparse json response body %s"
+const errorFailedToGetResponseBody = "failed to get the response body"
+const errorFailedToGetRemoteEnvironmentStatus = "failed to get remote environment status"
+const errorFailedToGetEnvironmentsList = "failed to get the environments list"
+
+//DataProvider collects all cp api methods
+type DataProvider interface {
+	SetAPIKey(apiKey string)
+	GetAPITeams() ([]APITeam, error)
+	GetAPIFlows(project string) ([]APIFlow, error)
+	GetAPIUser(user string) (*APIUser, error)
+	GetAPIEnvironments(flowID string) ([]APIEnvironment, error)
+	GetRemoteEnvironmentStatus(flowID string, environmentID string) (*APIRemoteEnvironmentStatus, error)
 	RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error
-	CancelRunningTide(flowId string, remoteEnvironmentId string) error
-	RemoteEnvironmentRunningAndExists(flowId string, environmentId string) (bool, errors.ErrorListProvider)
-	RemoteEnvironmentDestroy(flowId string, environment string, cluster string) error
-	RemoteDevelopmentEnvironmentDestroy(flowId string, remoteEnvironmentId string) error
-	CancelTide(tideId string) error
+	CancelRunningTide(flowID string, remoteEnvironmentID string) error
+	RemoteEnvironmentRunningAndExists(flowID string, environmentID string) (bool, error)
+	RemoteEnvironmentDestroy(flowID string, environment string, cluster string) error
+	RemoteDevelopmentEnvironmentDestroy(flowID string, remoteEnvironmentID string) error
+	CancelTide(tideID string) error
 }
 
-type CpApi struct {
+//CpAPI holds the dependencies required to do the api calls
+type CpAPI struct {
 	client *http.Client
 	apiKey string
 }
 
-func NewCpApi() *CpApi {
-	clusterInfo := &CpApi{}
+//NewCpAPI ctor for the CpAPI
+func NewCpAPI() *CpAPI {
+	clusterInfo := &CpAPI{}
 	clusterInfo.client = &http.Client{}
 	return clusterInfo
 }
 
+//RemoteEnvironmentRunning is the status for a running remove environment
 const RemoteEnvironmentRunning = "Running"
+
+//RemoteEnvironmentTideFailed is the status for a tide that failed
 const RemoteEnvironmentTideFailed = "TideFailed"
+
+//RemoteEnvironmentTideRunning is the status for a tide that is running
 const RemoteEnvironmentTideRunning = "TideRunning"
+
+//RemoteEnvironmentTideNotStarted is the status for at tide that has not been started yet
 const RemoteEnvironmentTideNotStarted = "NotStarted"
 
+//TideRunning is the status of a running tide
 const TideRunning = "running"
 
-type ApiTeam struct {
+//APITeam holds the data expected from the cp api for this entity
+type APITeam struct {
 	Slug       string `json:"slug"`
 	Name       string `json:"name"`
-	BucketUuid string `json:"bucket_uuid"`
+	BucketUUID string `json:"bucket_uuid"`
 
-	//Should be []ApiMembership although there is a bug on the api where a list of object with keys "1", "2" is returned
+	//Should be []APIMembership although there is a bug on the api where a list of object with keys "1", "2" is returned
 	//instead of being a json array
 	Memberships []interface{} `json:"memberships"`
 }
 
-type ApiMembership struct {
-	Team        ApiTeam  `json:"team"`
-	User        ApiUser  `json:"user"`
+//APIMembership holds the data expected from the cp api for this entity
+type APIMembership struct {
+	Team        APITeam  `json:"team"`
+	User        APIUser  `json:"user"`
 	Permissions []string `json:"permissions"`
 }
 
-type ApiUser struct {
+//APIUser holds the data expected from the cp api for this entity
+type APIUser struct {
 	Username   string   `json:"username"`
 	Email      string   `json:"email"`
-	BucketUuid string   `json:"bucket_uuid"`
+	BucketUUID string   `json:"bucket_uuid"`
 	Roles      []string `json:"roles"`
 }
 
-type ApiCluster struct {
+//APICluster holds the data expected from the cp api for this entity
+type APICluster struct {
 	Identifier string `json:"identifier"`
 	Address    string `json:"address"`
 	Version    string `json:"version"`
@@ -80,60 +108,68 @@ type ApiCluster struct {
 	Type       string `json:"type"`
 }
 
-type ApiRemoteEnvironmentStatus struct {
+//APIRemoteEnvironmentStatus holds the data expected from the cp api for this entity
+type APIRemoteEnvironmentStatus struct {
 	Status              string              `json:"status"`
 	KubeEnvironmentName string              `json:"environment_name"`
 	ClusterIdentifier   string              `json:"cluster_identifier"`
-	PublicEndpoints     []ApiPublicEndpoint `json:"public_endpoints"`
-	LastTide            ApiTide             `json:"last_tide"`
+	PublicEndpoints     []APIPublicEndpoint `json:"public_endpoints"`
+	LastTide            APITide             `json:"last_tide"`
 }
 
-type ApiPublicEndpoint struct {
+//APIPublicEndpoint holds the data expected from the cp api for this entity
+type APIPublicEndpoint struct {
 	Address string                  `json:"address"`
 	Name    string                  `json:"name"`
-	Ports   []ApiPublicEndpointPort `json:"ports"`
+	Ports   []APIPublicEndpointPort `json:"ports"`
 }
 
-type ApiPublicEndpointPort struct {
+//APIPublicEndpointPort holds the data expected from the cp api for this entity
+type APIPublicEndpointPort struct {
 	Number   int    `json:"number"`
 	Protocol string `json:"protocol"`
 }
 
-type ApiTide struct {
-	CodeReference  ApiCodeReference `json:"code_reference"`
+//APITide holds the data expected from the cp api for this entity
+type APITide struct {
+	CodeReference  APICodeReference `json:"code_reference"`
 	Configuration  interface{}      `json:"configuration"`
 	CreationDate   string           `json:"creation_date"`
 	FinishDate     string           `json:"finish_date"`
-	FlowUuid       string           `json:"flow_uuid"`
-	GenerationUuid string           `json:"generation_uuid"`
-	LogId          string           `json:"log_id"`
+	FlowUUID       string           `json:"flow_uuid"`
+	GenerationUUID string           `json:"generation_uuid"`
+	LogID          string           `json:"log_id"`
 	StartDate      string           `json:"start_date"`
 	Status         string           `json:"status"`
 	Tasks          []interface{}    `json:"tasks"`
-	Team           ApiTideTeam      `json:"team"`
+	Team           APITideTeam      `json:"team"`
 	User           interface{}      `json:"user"`
-	Uuid           string           `json:"uuid"`
+	UUID           string           `json:"uuid"`
 }
 
-type ApiTideTeam struct {
+//APITideTeam holds the data expected from the cp api for this entity
+type APITideTeam struct {
 	Slug       string `json:"slug"`
 	Name       string `json:"name"`
-	BucketUuid string `json:"bucket_uuid"`
+	BucketUUID string `json:"bucket_uuid"`
 }
 
-type ApiCodeReference struct {
+//APICodeReference holds the data expected from the cp api for this entity
+type APICodeReference struct {
 	Branch         string      `json:"branch"`
 	CodeRepository interface{} `json:"code_repository"`
 	Sha1           string      `json:"sha1"`
 }
 
-type ApiEnvironment struct {
+//APIEnvironment holds the data expected from the cp api for this entity
+type APIEnvironment struct {
 	Cluster    string         `json:"cluster"`
-	Components []ApiComponent `json:"components"`
+	Components []APIComponent `json:"components"`
 	Identifier string         `json:"identifier"`
 }
 
-type ApiRepository struct {
+//APIRepository holds the data expected from the cp api for this entity
+type APIRepository struct {
 	Address      string `json:"address"`
 	Identifier   string `json:"identifier"`
 	Name         string `json:"name"`
@@ -142,17 +178,19 @@ type ApiRepository struct {
 	Type         string `json:"type"`
 }
 
-type ApiFlow struct {
-	Uuid          string        `json:"uuid"`
+//APIFlow holds the data expected from the cp api for this entity
+type APIFlow struct {
+	UUID          string        `json:"uuid"`
 	Configuration interface{}   `json:"configuration"`
 	Pipelines     interface{}   `json:"pipelines"`
-	Repository    ApiRepository `json:"repository"`
-	Team          ApiTeam       `json:"team"`
-	Tides         []ApiTide     `json:"tides"`
-	User          ApiUser       `json:"user"`
+	Repository    APIRepository `json:"repository"`
+	Team          APITeam       `json:"team"`
+	Tides         []APITide     `json:"tides"`
+	User          APIUser       `json:"user"`
 }
 
-type ApiComponent struct {
+//APIComponent holds the data expected from the cp api for this entity
+type APIComponent struct {
 	DeploymentStrategy interface{}   `json:"deployment_strategy"`
 	Endpoints          []interface{} `json:"endpoints"`
 	Extensions         []interface{} `json:"extensions"`
@@ -163,23 +201,20 @@ type ApiComponent struct {
 	Status             interface{}   `json:"status"`
 }
 
-func (c *CpApi) SetApiKey(apiKey string) {
+//SetAPIKey sets the cp api key
+func (c *CpAPI) SetAPIKey(apiKey string) {
 	c.apiKey = apiKey
 }
 
-func (c CpApi) GetApiTeams() ([]ApiTeam, error) {
-	el := errors.NewErrorList()
-	el.AddErrorf("error when getting the list of the teams using the CP Api")
-
+//GetAPITeams sends a request to the cp api to fetch the list of teams for the user
+func (c CpAPI) GetAPITeams() ([]APITeam, error) {
 	if c.apiKey == "" {
-		el.AddErrorf("Api key not provided.")
-		return nil, el
+		return nil, errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
 	}
 
 	u, err := c.getAuthenticatorURL()
 	if err != nil {
-		el.Add(err)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedAuthenticatorURL))
 	}
 	u.Path = "/api/teams"
 
@@ -187,43 +222,37 @@ func (c CpApi) GetApiTeams() ([]ApiTeam, error) {
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		el.Add(err)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateGetRequest))
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
 	respBody, elr := c.getResponseBody(c.client, req)
 	if elr != nil {
-		cplogs.V(4).Infof("failed to get the response body for request %s", u.String())
+		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		el.Add(elr.Items()...)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
 	}
 
-	teams := make([]ApiTeam, 0)
+	teams := make([]APITeam, 0)
 	err = json.Unmarshal(respBody, &teams)
 	if err != nil {
-		cplogs.V(4).Infof("error running Unmarshal() on response body %s", respBody)
-		el.Add(err)
-		return nil, el
+		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
+		cplogs.V(4).Infof(msg)
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusBadRequest, msg))
 	}
 
 	return teams, nil
 }
 
-func (c CpApi) GetApiFlows(project string) ([]ApiFlow, error) {
-	el := errors.NewErrorList()
-	el.AddErrorf("error when getting the list of the flows using the CP Api")
-
+//GetAPIFlows sends a request to the cp api to fetch the list of flows
+func (c CpAPI) GetAPIFlows(project string) ([]APIFlow, error) {
 	if c.apiKey == "" {
-		el.AddErrorf("Api key not provided.")
-		return nil, el
+		return nil, errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		el.Add(err)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
 	}
 	u.Path = fmt.Sprintf("/teams/%s/flows", project)
 
@@ -231,43 +260,37 @@ func (c CpApi) GetApiFlows(project string) ([]ApiFlow, error) {
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		el.Add(err)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateGetRequest))
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
 	respBody, elr := c.getResponseBody(c.client, req)
 	if elr != nil {
-		cplogs.V(4).Infof("failed to get the response body for request %s", u.String())
+		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		el.Add(elr.Items()...)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
 	}
 
-	flows := make([]ApiFlow, 0)
+	flows := make([]APIFlow, 0)
 	err = json.Unmarshal(respBody, &flows)
 	if err != nil {
-		cplogs.V(4).Infof("error running Unmarshal() on response body %s", respBody)
-		el.Add(err)
-		return nil, el
+		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
+		cplogs.V(4).Infof(msg)
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusBadRequest, msg))
 	}
 
 	return flows, nil
 }
 
-func (c CpApi) GetApiUser(user string) (*ApiUser, error) {
-	el := errors.NewErrorList()
-	el.AddErrorf("error when getting the CP User using the CP Api")
-
+//GetAPIUser sends a request to the cp api to fetch the cp user information
+func (c CpAPI) GetAPIUser(user string) (*APIUser, error) {
 	if c.apiKey == "" {
-		el.AddErrorf("Api key not provided.")
-		return nil, el
+		return nil, errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
 	}
 
 	u, err := c.getAuthenticatorURL()
 	if err != nil {
-		el.Add(err)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedAuthenticatorURL))
 	}
 	u.Path = "/api/user/" + user
 
@@ -275,277 +298,237 @@ func (c CpApi) GetApiUser(user string) (*ApiUser, error) {
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		el.Add(err)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateGetRequest))
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
 	respBody, elr := c.getResponseBody(c.client, req)
 	if elr != nil {
-		cplogs.V(4).Infof("failed to get the response body for request %s", u.String())
+		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		el.Add(elr.Items()...)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
 	}
 
-	apiUserResponse := &ApiUser{}
+	apiUserResponse := &APIUser{}
 	err = json.Unmarshal(respBody, apiUserResponse)
 	if err != nil {
-		cplogs.V(4).Infof("error running Unmarshal() on response body %s", respBody)
-		el.Add(err)
-		return nil, el
+		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
+		cplogs.V(4).Infof(msg)
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusBadRequest, msg))
 	}
 
 	return apiUserResponse, nil
 }
 
-func (c CpApi) GetApiEnvironments(flowId string) ([]ApiEnvironment, errors.ErrorListProvider) {
-	el := errors.NewErrorList()
-	el.AddErrorf("error when getting the list of environments using the CP Api")
-
+//GetAPIEnvironments sends a request to the cp api to fetch the cp environments list for the user
+func (c CpAPI) GetAPIEnvironments(flowID string) ([]APIEnvironment, error) {
 	if c.apiKey == "" {
-		el.AddErrorf("api key not provided")
-		return nil, el
+		return nil, errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
 	}
 
-	url, err := c.getRiverURL()
+	u, err := c.getRiverURL()
 	if err != nil {
-		el.AddErrorf("error when getting the river url")
-		el.Add(err)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
 	}
-	url.Path = fmt.Sprintf("/flows/%s/environments", flowId)
+	u.Path = fmt.Sprintf("/flows/%s/environments", flowID)
 
-	cplogs.V(5).Infof("getting flow environments using url %s", url.String())
+	cplogs.V(5).Infof("getting flow environments using url %s", u.String())
 
-	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		el.AddErrorf("error when getting a new http request object for fetching the list of environments")
-		el.Add(err)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateGetRequest))
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
 	respBody, elr := c.getResponseBody(c.client, req)
 	if elr != nil {
-		el.Add(elr.Items()...)
-		return nil, el
+		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
+		cplogs.Flush()
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
 	}
 
-	environments := make([]ApiEnvironment, 0)
+	environments := make([]APIEnvironment, 0)
 	err = json.Unmarshal(respBody, &environments)
 	if err != nil {
-		errText := fmt.Sprintf("error running Unmarshal() on response body %s", respBody)
-		cplogs.V(4).Infof(errText)
-		el.AddErrorf(errText)
-		el.Add(err)
-		return nil, el
+		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
+		cplogs.V(4).Infof(msg)
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusBadRequest, msg))
 	}
 
 	return environments, nil
 }
 
-//calls CP Api to retrieve information about the remote environment
-func (c CpApi) GetRemoteEnvironmentStatus(flowId string, environmentId string) (*ApiRemoteEnvironmentStatus, errors.ErrorListProvider) {
-	el := errors.NewErrorList()
-	el.AddErrorf("error when getting the remote environment status using the CP Api")
-
+//GetRemoteEnvironmentStatus sends a request to the cp api to retrieve information about the remote environment
+func (c CpAPI) GetRemoteEnvironmentStatus(flowID string, environmentID string) (*APIRemoteEnvironmentStatus, error) {
 	if c.apiKey == "" {
-		el.AddErrorf("api key not provided")
-		return nil, el
+		return nil, errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		el.AddErrorf("error when getting the river url")
-		el.Add(err)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
 	}
-	u.Path = fmt.Sprintf("/flows/%s/development-environments/%s/status", flowId, environmentId)
+	u.Path = fmt.Sprintf("/flows/%s/development-environments/%s/status", flowID, environmentID)
 
 	cplogs.V(5).Infof("getting remote environment status using url %s", u.String())
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		el.AddErrorf("error when getting a new http request object for fetching the environment status")
-		el.Add(err)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateGetRequest))
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
 	respBody, elr := c.getResponseBody(c.client, req)
 	if elr != nil {
-		cplogs.V(4).Infof("failed to get the response body for request %s", u.String())
+		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		el.Add(elr.Items()...)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
 	}
 
-	apiRemoteEnvironment := &ApiRemoteEnvironmentStatus{}
+	apiRemoteEnvironment := &APIRemoteEnvironmentStatus{}
 	err = json.Unmarshal(respBody, apiRemoteEnvironment)
 	if err != nil {
-		errText := fmt.Sprintf("error running Unmarshal() on response body %s", respBody)
-		cplogs.V(4).Infof(errText)
-		el.AddErrorf(errText)
-		el.Add(err)
-		return nil, el
+		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
+		cplogs.V(4).Infof(msg)
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusBadRequest, msg))
 	}
 
 	return apiRemoteEnvironment, nil
 }
 
-//calls CP API to request to build a new remote environment
-func (c CpApi) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error {
-	el := errors.NewErrorList()
-	el.AddErrorf("error when triggering the build for the remote environment using the CP Api")
-
+//RemoteEnvironmentBuild sends a request to the cp api to request to build a new remote environment
+func (c CpAPI) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error {
 	if c.apiKey == "" {
-		el.AddErrorf("Api key not provided.")
-		return el
+		return errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		el.Add(err)
-		return el
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
 	}
 	u.Path = fmt.Sprintf("/flows/%s/tides", remoteEnvironmentFlowID)
 
 	type requestBody struct {
 		BranchName string `json:"branch"`
 	}
-	reqBodyJson, err := json.Marshal(&requestBody{gitBranch})
+	reqBodyJSON, err := json.Marshal(&requestBody{gitBranch})
 
-	cplogs.V(5).Infof("triggering remote environment build using url %s and payload %s", u.Path, reqBodyJson)
+	cplogs.V(5).Infof("triggering remote environment build using url %s and payload %s", u.Path, reqBodyJSON)
 
-	req, err := http.NewRequest(http.MethodPost, u.String(), bytes.NewReader(reqBodyJson))
+	req, err := http.NewRequest(http.MethodPost, u.String(), bytes.NewReader(reqBodyJSON))
 	if err != nil {
-		el.Add(err)
-		return el
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreatePostRequest))
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
 
 	_, elr := c.getResponseBody(c.client, req)
 	if elr != nil {
-		cplogs.V(4).Infof("failed to get the response body for request %s", u.String())
+		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		el.Add(elr.Items()...)
-		return el
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
 	}
 
 	return nil
 }
 
-//find the tide id associated with the branch and cancel the tide
-func (c CpApi) CancelRunningTide(flowId string, remoteEnvironmentId string) error {
-	el := errors.NewErrorList()
-	el.AddErrorf("error when cancelling the running tide using the CP Api")
+//CancelRunningTide find the tide id associated with the branch and cancel the tide
+func (c CpAPI) CancelRunningTide(flowID string, remoteEnvironmentID string) error {
+	if c.apiKey == "" {
+		return errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
+	}
 
-	remoteEnv, elr := c.GetRemoteEnvironmentStatus(flowId, remoteEnvironmentId)
-	if elr != nil {
-		el.Add(elr.Items()...)
-		return el
+	remoteEnv, err := c.GetRemoteEnvironmentStatus(flowID, remoteEnvironmentID)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetRemoteEnvironmentStatus))
 	}
 
 	if remoteEnv.LastTide.Status != TideRunning {
-		cplogs.V(5).Infof("TideId %s not running, skipping", remoteEnv.LastTide.Uuid)
+		cplogs.V(5).Infof("TideId %s not running, skipping", remoteEnv.LastTide.UUID)
 		cplogs.Flush()
 		return nil
 	}
 
-	return c.CancelTide(remoteEnv.LastTide.Uuid)
+	return c.CancelTide(remoteEnv.LastTide.UUID)
 }
 
-func (c CpApi) CancelTide(tideId string) error {
-	el := errors.NewErrorList()
-	el.AddErrorf("error when cancelling the tide using the CP Api")
-
+//CancelTide send a request to the cp api to cancel the tide specified
+func (c CpAPI) CancelTide(tideID string) error {
 	if c.apiKey == "" {
-		el.AddErrorf("Api key not provided.")
-		return el
+		return errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		el.Add(err)
-		return el
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
 	}
-	u.Path = fmt.Sprintf("/tides/%s/cancel", tideId)
+	u.Path = fmt.Sprintf("/tides/%s/cancel", tideID)
 
 	cplogs.V(5).Infof("cancelling tide using url %s", u.String())
 
 	req, err := http.NewRequest(http.MethodPost, u.String(), nil)
 	if err != nil {
-		el.Add(err)
-		return el
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreatePostRequest))
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
 
 	_, elr := c.getResponseBody(c.client, req)
 	if elr != nil {
-		cplogs.V(4).Infof("failed to get the response body for request %s", u.String())
+		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		el.Add(elr.Items()...)
-		return el
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
 	}
 
 	return nil
 }
 
-//calls CP API to request to destroy the remote environment
-func (c CpApi) RemoteEnvironmentDestroy(flowId string, environment string, cluster string) error {
-	el := errors.NewErrorList()
-	el.AddErrorf("error when requesting the destruction of the environment using the CP Api")
-
+//RemoteEnvironmentDestroy sends a request to the cp api to request to destroy the remote environment
+func (c CpAPI) RemoteEnvironmentDestroy(flowID string, environment string, cluster string) error {
 	if c.apiKey == "" {
-		el.AddErrorf("Api key not provided.")
-		return el
+		return errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		el.Add(err)
-		return el
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
 	}
-	u.Path = fmt.Sprintf("/flows/%s/environments/%s", flowId, environment)
+	u.Path = fmt.Sprintf("/flows/%s/environments/%s", flowID, environment)
 	u.RawQuery = fmt.Sprintf("cluster=%s", cluster)
 
 	cplogs.V(5).Infof("destroying remote environment using url %s", u.String())
 
 	req, err := http.NewRequest(http.MethodDelete, u.String(), nil)
 	if err != nil {
-		el.Add(err)
-		return el
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateDeleteRequest))
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
 
 	_, elr := c.getResponseBody(c.client, req)
 	if elr != nil {
-		cplogs.V(4).Infof("failed to get the response body for request %s", u.String())
+		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		el.Add(elr.Items()...)
-		return el
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
 	}
 
 	return nil
 }
 
-func (c CpApi) RemoteEnvironmentRunningAndExists(flowId string, environmentId string) (bool, errors.ErrorListProvider) {
-	el := errors.NewErrorList()
-
-	remoteEnv, elr := c.GetRemoteEnvironmentStatus(flowId, environmentId)
-	if elr != nil {
-		el.Add(elr.Items()...)
-		return false, el
+//RemoteEnvironmentRunningAndExists get the remote environment status and the list of all environments to ensure that the environment actually exists
+func (c CpAPI) RemoteEnvironmentRunningAndExists(flowID string, environmentID string) (bool, error) {
+	if c.apiKey == "" {
+		return false, errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
 	}
 
-	environments, err := c.GetApiEnvironments(flowId)
+	remoteEnv, err := c.GetRemoteEnvironmentStatus(flowID, environmentID)
 	if err != nil {
-		el.Add(elr.Items()...)
-		return false, el
+		return false, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetRemoteEnvironmentStatus))
+	}
+
+	environments, err := c.GetAPIEnvironments(flowID)
+	if err != nil {
+		return false, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetEnvironmentsList))
 	}
 	for _, environment := range environments {
 		if environment.Identifier == remoteEnv.KubeEnvironmentName {
@@ -555,88 +538,80 @@ func (c CpApi) RemoteEnvironmentRunningAndExists(flowId string, environmentId st
 	return true, nil
 }
 
-func (c CpApi) RemoteDevelopmentEnvironmentDestroy(flowId string, remoteEnvironmentId string) error {
-	el := errors.NewErrorList()
-	el.AddErrorf("error when requesting the destruction of the remote environment using the CP Api")
-
+//RemoteDevelopmentEnvironmentDestroy send a request to the cp api to destroy the environment
+func (c CpAPI) RemoteDevelopmentEnvironmentDestroy(flowID string, remoteEnvironmentID string) error {
 	if c.apiKey == "" {
-		el.AddErrorf("Api key not provided.")
-		return el
+		return errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		el.Add(err)
-		return el
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
 	}
-	u.Path = fmt.Sprintf("/flows/%s/development-environments/%s", flowId, remoteEnvironmentId)
+	u.Path = fmt.Sprintf("/flows/%s/development-environments/%s", flowID, remoteEnvironmentID)
 
 	cplogs.V(5).Infof("destroying remote development environment using url %s", u.String())
 
 	req, err := http.NewRequest(http.MethodDelete, u.String(), nil)
 	if err != nil {
-		el.Add(err)
-		return el
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateDeleteRequest))
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
 
 	_, elr := c.getResponseBody(c.client, req)
 	if elr != nil {
-		cplogs.V(4).Infof("failed to get the response body for request %s", u.String())
+		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		el.Add(elr.Items()...)
-		return el
+		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
 	}
 
 	return nil
 }
 
-func (c CpApi) getResponseBody(client *http.Client, req *http.Request) ([]byte, errors.ErrorListProvider) {
-	el := errors.NewErrorList()
+func (c CpAPI) getResponseBody(client *http.Client, req *http.Request) ([]byte, error) {
 	res, err := client.Do(req)
 	if err != nil {
-		el.Add(err)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, err))
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 && res.StatusCode > 202 {
-		el.AddErrorf("error getting response body, status: %d, url: %s", res.StatusCode, req.URL.String())
-		return nil, el
+		errStr := fmt.Sprintf(errorResponseStatusCodeUnsuccessful, res.StatusCode, req.URL.String())
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errStr))
 	}
 	resBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		el.Add(err)
-		return nil, el
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, err))
 	}
 	return resBody, nil
 }
 
-func (c CpApi) getAuthenticatorURL() (*url.URL, error) {
-	cpApiAddr, err := config.C.GetString(config.CpAuthenticatorApiAddr)
+func (c CpAPI) getAuthenticatorURL() (*url.URL, error) {
+	cpAPIAddr, err := config.C.GetString(config.CpAuthenticatorApiAddr)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, err))
 	}
-	u, err := url.Parse(cpApiAddr)
+	u, err := url.Parse(cpAPIAddr)
 	if err != nil {
-		return nil, err
-	}
-	return u, nil
-}
-
-func (c CpApi) getRiverURL() (*url.URL, error) {
-	cpApiAddr, err := config.C.GetString(config.CpRiverApiAddr)
-	if err != nil {
-		return nil, err
-	}
-	u, err := url.Parse(cpApiAddr)
-	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, err))
 	}
 	return u, nil
 }
 
-func PrintPublicEndpoints(writer io.Writer, endpoints []ApiPublicEndpoint) {
+func (c CpAPI) getRiverURL() (*url.URL, error) {
+	cpAPIAddr, err := config.C.GetString(config.CpRiverApiAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, err))
+	}
+	u, err := url.Parse(cpAPIAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, err))
+	}
+	return u, nil
+}
+
+//PrintPublicEndpoints given a list of public api endpoints it prints them on the given writer
+func PrintPublicEndpoints(writer io.Writer, endpoints []APIPublicEndpoint) {
 	for _, publicEndpoint := range endpoints {
 		for _, port := range publicEndpoint.Ports {
 			switch port.Number {

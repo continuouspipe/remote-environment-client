@@ -69,7 +69,7 @@ the exec command. The command and its arguments need to follow --`,
 					questioner := cpapi.NewMultipleChoiceCpEntityQuestioner()
 					apiKey, err := settings.GetString(config.ApiKey)
 					checkErr(err)
-					questioner.SetApiKey(apiKey)
+					questioner.SetAPIKey(apiKey)
 					resp := questioner.WhichEntities().Responses()
 					checkErr(questioner.Errors())
 
@@ -234,13 +234,13 @@ type interactiveModeHandler interface {
 
 type interactiveModeH struct {
 	config config.ConfigProvider
-	api    cpapi.CpApiProvider
+	api    cpapi.DataProvider
 }
 
 func newInteractiveModeH() *interactiveModeH {
 	p := &interactiveModeH{}
 	p.config = config.C
-	p.api = cpapi.NewCpApi()
+	p.api = cpapi.NewCpAPI()
 	return p
 }
 
@@ -250,9 +250,9 @@ func (h interactiveModeH) findTargetClusterAndApplyToConfig(flowID string, targe
 		return err
 	}
 
-	h.api.SetApiKey(apiKey)
+	h.api.SetAPIKey(apiKey)
 
-	environments, el := h.api.GetApiEnvironments(flowID)
+	environments, el := h.api.GetAPIEnvironments(flowID)
 	if el != nil {
 		//TODO: Send error log to Sentry
 		return el

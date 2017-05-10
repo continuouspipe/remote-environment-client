@@ -24,7 +24,7 @@ func NewWatchCmd() *cobra.Command {
 	handler := &WatchHandle{}
 	handler.qp = util.NewQuestionPrompt()
 	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
-	handler.api = cpapi.NewCpApi()
+	handler.api = cpapi.NewCpAPI()
 	handler.config = settings
 	handler.writer = os.Stdout
 
@@ -77,7 +77,7 @@ type WatchHandle struct {
 	Stdout      io.Writer
 	syncer      sync.Syncer
 	kubeCtlInit kubectlapi.KubeCtlInitializer
-	api         cpapi.CpApiProvider
+	api         cpapi.DataProvider
 	config      config.ConfigProvider
 	writer      io.Writer
 	qp          util.QuestionPrompter
@@ -181,7 +181,7 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 		return err
 	}
 
-	h.api.SetApiKey(apiKey)
+	h.api.SetAPIKey(apiKey)
 	remoteEnv, el := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if el != nil {
 		//TODO: Send error log to Sentry

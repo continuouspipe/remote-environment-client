@@ -1,5 +1,5 @@
-hash: afe71d9a5a33a1acd685fdb808f32ec4a67fd1b9f0b45dbdbab8ab8e9d2ec216
-updated: 2017-05-10T11:17:21.958909658+01:00
+hash: 423c714f1961820278513373c6772df68ab5178d0676588d975917ed5319abe3
+updated: 2017-05-10T13:26:36.013163082+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -205,7 +205,7 @@ imports:
 - name: github.com/pelletier/go-toml
   version: 0049ab3dc4c4c70a9eee23087437b69c0dde2130
 - name: github.com/pkg/errors
-  version: a22138067af1c4942683050411a841ade67fe1eb
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/pkg/sftp
   version: 4d0e916071f68db74f8a73926335f809396d6b42
 - name: github.com/pmezard/go-difflib
