@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -113,16 +114,16 @@ func (h *WatchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *co
 // Validate checks that the provided watch options are specified.
 func (h *WatchHandle) Validate() error {
 	if len(strings.Trim(h.options.environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return errors.New("the environment specified is invalid")
 	}
 	if len(strings.Trim(h.options.service, " ")) == 0 {
-		return fmt.Errorf("the service specified is invalid")
+		return errors.New("the service specified is invalid")
 	}
 	if h.options.latency <= 100 {
-		return fmt.Errorf("please specify a latency of at least 100 milli-seconds")
+		return errors.New("please specify a latency of at least 100 milli-seconds")
 	}
 	if strings.HasPrefix(h.options.remoteProjectPath, "/") == false {
-		return fmt.Errorf("please specify an absolute path for your --remote-project-path")
+		return errors.New("please specify an absolute path for your --remote-project-path")
 	}
 	return nil
 }
@@ -144,7 +145,7 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 		fmt.Fprintln(h.writer, "Dry run mode enabled")
 	}
 
-	fmt.Fprintf(h.writer, "\nWatching for changes. Quit anytime with Ctrl-C.\n")
+	fmt.Fprintln(h.writer, "Watching for changes. Quit anytime with Ctrl-C.")
 
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
@@ -195,7 +196,7 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 
 	dirMonitor.SetLatency(time.Duration(h.options.latency))
 
-	fmt.Fprintf(h.Stdout, "\nDestination Pod: %s\n", pod.GetName())
+	fmt.Fprintln(h.Stdout, "Destination Pod: %s", pod.GetName())
 
 	observer := sync.GetSyncOnEventObserver(h.syncer)
 

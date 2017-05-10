@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -68,7 +69,7 @@ func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, se
 // Validate checks that the provided checkconnection options are specified.
 func (h *CheckConnectionHandle) Validate() error {
 	if len(strings.Trim(h.Environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return errors.New("the environment specified is invalid")
 	}
 	return nil
 }
