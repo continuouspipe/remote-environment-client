@@ -138,9 +138,9 @@ func (h *ForwardHandle) Handle() error {
 	kubeCmdPortForward := kubectlcmd.NewCmdPortForward(kubectlcmdutil.NewFactory(clientConfig), os.Stdout, os.Stderr)
 
 	//TODO: Change to use directly the PortForwardOptions struct and RunPortForward() so that we can get the error. We may have to copy paste the unexported struct defaultPortForwarder
-	//TODO: Send error log to Sentry
-	//TODO: Log err
-	//TODO: Print user friendly error that explains what happened and what to do next
+
+
+	//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	kubeCmdPortForward.Run(kubeCmdPortForward, append([]string{pod.GetName()}, h.ports...))
 	return nil
 }

@@ -75,8 +75,8 @@ func (o RSyncRsh) Sync(paths []string) error {
 
 	paths, err = o.getRelativePathList(paths)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
+		//TODO: Wrap the error making it Stateful
+
 		return err
 	}
 
@@ -134,8 +134,8 @@ func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 
 		err := o.executeRsync(lArgs, os.Stdout)
 		if err != nil {
-			//TODO: Send error log to Sentry
-			//TODO: Log err
+			//TODO: Wrap the error making it Stateful
+
 			return err
 		}
 	}
@@ -152,8 +152,8 @@ func (o RSyncRsh) syncAllFiles(paths []string, args []string) error {
 	)
 	err := o.executeRsync(args, os.Stdout)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
+		//TODO: Wrap the error making it Stateful
+
 	}
 	return err
 }

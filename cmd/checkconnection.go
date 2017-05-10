@@ -87,9 +87,7 @@ func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) er
 
 	podsList, err := podsFinder.FindAll(user, apiKey, addr, h.Environment)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 

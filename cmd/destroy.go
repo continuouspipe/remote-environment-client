@@ -95,9 +95,9 @@ func (h *DestroyHandle) Handle() error {
 		//stop building any flows associated with the git branch
 		err = h.api.CancelRunningTide(flowId, remoteEnvironmentId)
 		if err != nil {
-			//TODO: Send error log to Sentry
-			//TODO: Log err
-			//TODO: Print user friendly error that explains what happened and what to do next
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 
@@ -105,9 +105,9 @@ func (h *DestroyHandle) Handle() error {
 			//delete the remote environment via cp api
 			err = h.api.RemoteEnvironmentDestroy(flowId, environment, cluster)
 			if err != nil {
-				//TODO: Send error log to Sentry
-				//TODO: Log err
-				//TODO: Print user friendly error that explains what happened and what to do next
+
+
+				//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 				return err
 			}
 		}
@@ -117,18 +117,18 @@ func (h *DestroyHandle) Handle() error {
 		//if remote exists delete remote branch
 		remoteExists, err := h.hasRemote(remoteName, gitBranch)
 		if err != nil {
-			//TODO: Send error log to Sentry
-			//TODO: Log err
-			//TODO: Print user friendly error that explains what happened and what to do next
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 
 		if remoteExists == true {
 			_, err = h.push.DeleteRemote(remoteName, gitBranch)
 			if err != nil {
-				//TODO: Send error log to Sentry
-				//TODO: Log err
-				//TODO: Print user friendly error that explains what happened and what to do next
+
+
+				//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			}
 		}
 	}

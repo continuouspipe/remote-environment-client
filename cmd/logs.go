@@ -129,17 +129,13 @@ func (h *LogsCmdHandle) Handle(args []string, podsFinder pods.Finder, podsFilter
 
 	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.environment)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 
 	pod := podsFilter.List(*allPods).ByService(h.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service))
 	}
 
@@ -155,9 +151,8 @@ func (h *LogsCmdHandle) Handle(args []string, podsFinder pods.Finder, podsFilter
 	kubeCmdLogs.Flags().Set("previous", strconv.FormatBool(h.previous))
 
 	//TODO: Change to use directly the LogsOptions struct and RunLogs() so that we can get the error
-	//TODO: Send error log to Sentry
-	//TODO: Log err
-	//TODO: Print user friendly error that explains what happened and what to do next
+
+	//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	kubeCmdLogs.Run(kubeCmdLogs, []string{pod.GetName()})
 	return nil
 }

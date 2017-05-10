@@ -162,7 +162,7 @@ func (h *DeletePodCmdHandle) Handle(args []string) error {
 	kubeCmdDelete.Flags().Set("timeout", h.options.timeout.String())
 
 	//TODO: Run doesn't return the error, extract the content of NewCmdDelete().Run() and call directly k8s.io/kubernetes/pkg/kubectl/cmd/delete.go::RunDelete()
-	//TODO: Log err
+
 	//TODO: Print native kubectl response using CheckErr() in "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	kubeCmdDelete.Run(kubeCmdDelete, h.argsIn)
 	return nil

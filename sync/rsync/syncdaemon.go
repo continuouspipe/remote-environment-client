@@ -54,8 +54,8 @@ func (r *RSyncDaemon) Sync(paths []string) error {
 
 	err := r.remoteRsync.StartDaemonOnRandomPort()
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
+		//TODO: Wrap the error making it Stateful
+
 		return err
 	}
 	defer r.remoteRsync.KillDaemon(pidFile)

@@ -146,9 +146,7 @@ func (i initInteractiveHandler) Handle() error {
 		i.api.SetAPIKey(apiKey)
 		user, err := i.api.GetAPIUser(username)
 		if err != nil {
-			//TODO: Send error log to Sentry
-			//TODO: Log err
-			//TODO: Print user friendly error that explains what happened and what to do next
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 		if user.Username != username {
@@ -156,9 +154,7 @@ func (i initInteractiveHandler) Handle() error {
 		}
 		err = i.config.Save(config.GlobalConfigType)
 		if err != nil {
-			//TODO: Send error log to Sentry
-			//TODO: Log err
-			//TODO: Print user friendly error that explains what happened and what to do next
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		}
 	}
 
@@ -220,9 +216,9 @@ func (i *initHandler) Complete(argsIn []string) error {
 		i.config.Set(config.InitToken, inputToken)
 		err = i.config.Save(config.AllConfigTypes)
 		if err != nil {
-			//TODO: Send error log to Sentry
-			//TODO: Log err
-			//TODO: Print user friendly error that explains what happened and what to do next
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		}
 	} else {
 		return fmt.Errorf("Malformed token. Please go to https://continuouspipe.io/ to obtain a valid token")
@@ -238,9 +234,9 @@ func (i *initHandler) Complete(argsIn []string) error {
 	i.config.Set(config.RemoteName, i.remoteName)
 	err = i.config.Save(config.AllConfigTypes)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	}
 
 	return nil
@@ -373,9 +369,9 @@ func (p parseSaveTokenInfo) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
 	err := p.config.Save(config.AllConfigTypes)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 	//we expect the token to have: api-key, remote-environment-id, project, cp-username, git-branch
@@ -396,9 +392,9 @@ func (p parseSaveTokenInfo) Handle() error {
 	cplogs.V(5).Infof("fetching remote environment info for user: %s", cpUsername)
 	_, err = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		cplogs.Flush()
 		return err
 	}
@@ -412,9 +408,9 @@ func (p parseSaveTokenInfo) Handle() error {
 	p.config.Set(config.RemoteEnvironmentId, remoteEnvId)
 	el := p.config.Save(config.AllConfigTypes)
 	if el != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	}
 	cplogs.V(5).Infof("saved parsed token info for user: %s", cpUsername)
 	cplogs.Flush()
@@ -457,9 +453,9 @@ func (p triggerBuild) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
 	err := p.config.Save(config.AllConfigTypes)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 	apiKey, err := p.config.GetString(config.ApiKey)
@@ -490,17 +486,17 @@ func (p triggerBuild) Handle() error {
 	p.api.SetAPIKey(apiKey)
 	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if el != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return el
 	}
 
 	envExists, elr := p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
 	if elr != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return elr
 	}
 
@@ -533,16 +529,16 @@ func (p triggerBuild) Handle() error {
 
 		err := p.pushLocalBranchToRemote(remoteName, gitBranch)
 		if err != nil {
-			//TODO: Send error log to Sentry
-			//TODO: Log err
-			//TODO: Print user friendly error that explains what happened and what to do next
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 		err = p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 		if err != nil {
-			//TODO: Send error log to Sentry
-			//TODO: Log err
-			//TODO: Print user friendly error that explains what happened and what to do next
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 		fmt.Fprintf(p.writer, "\n# Environment is building...\n")
@@ -601,9 +597,9 @@ func (p waitEnvironmentReady) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
 	err := p.config.Save(config.AllConfigTypes)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 	apiKey, err := p.config.GetString(config.ApiKey)
@@ -628,17 +624,17 @@ func (p waitEnvironmentReady) Handle() error {
 
 	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if el != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return el
 	}
 
 	envExists, elr := p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
 	if elr != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return elr
 	}
 
@@ -646,9 +642,9 @@ func (p waitEnvironmentReady) Handle() error {
 		fmt.Fprintln(p.writer, "The build had previously failed, retrying..")
 		err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 		if err != nil {
-			//TODO: Send error log to Sentry
-			//TODO: Log err
-			//TODO: Print user friendly error that explains what happened and what to do next
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 	}
@@ -667,8 +663,8 @@ WAIT_LOOP:
 
 		remoteEnv, el = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 		if el != nil {
-			//TODO: Send error log to Sentry
-			//TODO: Log err
+
+
 			break
 		}
 
@@ -684,18 +680,18 @@ WAIT_LOOP:
 			cplogs.Flush()
 			err = p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 			if err != nil {
-				//TODO: Send error log to Sentry
-				//TODO: Log err
-				//TODO: Print user friendly error that explains what happened and what to do next
+
+
+				//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			}
 			break
 
 		case cpapi.RemoteEnvironmentTideFailed:
 			err = fmt.Errorf("remote environment id %s creation has failed. To see more information about the error go to https://ui.continuouspipe.io/", remoteEnvId)
 			if err != nil {
-				//TODO: Send error log to Sentry
-				//TODO: Log err
-				//TODO: Print user friendly error that explains what happened and what to do next
+
+
+				//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			}
 			break WAIT_LOOP
 
@@ -710,9 +706,9 @@ WAIT_LOOP:
 	//if there has been an error return it
 	if err != nil {
 		s.Stop()
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 
@@ -725,9 +721,9 @@ WAIT_LOOP:
 		envCreated, elr = p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
 		if elr != nil {
 			s.Stop()
-			//TODO: Send error log to Sentry
-			//TODO: Log err
-			//TODO: Print user friendly error that explains what happened and what to do next
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return elr
 		}
 
@@ -781,9 +777,9 @@ func (p applyEnvironmentSettings) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
 	err := p.config.Save(config.AllConfigTypes)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 
@@ -804,9 +800,9 @@ func (p applyEnvironmentSettings) Handle() error {
 
 	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if el != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return el
 	}
 
@@ -816,9 +812,9 @@ func (p applyEnvironmentSettings) Handle() error {
 	p.config.Set(config.KubeEnvironmentName, remoteEnv.KubeEnvironmentName)
 	err = p.config.Save(config.AllConfigTypes)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 	cplogs.V(5).Infoln("saved remote environment info")
@@ -826,9 +822,9 @@ func (p applyEnvironmentSettings) Handle() error {
 
 	err = p.applySettingsToCubeCtlConfig()
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 	return nil
@@ -842,9 +838,9 @@ func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 
 	err = p.kubeCtlInitializer.Init(environment)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 	return nil
@@ -879,9 +875,9 @@ func (p applyDefaultService) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
 	err := p.config.Save(config.AllConfigTypes)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 	address, username, apiKey, err := p.kubeCtlInitializer.GetSettings()
@@ -896,9 +892,9 @@ func (p applyDefaultService) Handle() error {
 
 	list, err := p.ks.FindAll(username, apiKey, address, environment)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 
@@ -912,9 +908,9 @@ func (p applyDefaultService) Handle() error {
 		p.config.Set(list.Items[0].GetName(), config.Service)
 		err = p.config.Save(config.AllConfigTypes)
 		if err != nil {
-			//TODO: Send error log to Sentry
-			//TODO: Log err
-			//TODO: Print user friendly error that explains what happened and what to do next
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 		return nil
@@ -940,18 +936,18 @@ func (p applyDefaultService) Handle() error {
 	})
 	key, err := strconv.Atoi(serviceKey)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 	serviceName := list.Items[key].GetName()
 	p.config.Set(config.Service, serviceName)
 	err = p.config.Save(config.AllConfigTypes)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 	return nil

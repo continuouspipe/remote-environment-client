@@ -91,8 +91,8 @@ func (r RsyncDaemonFetch) Fetch(filePath string) error {
 
 	stopChan, err := r.remoteRsync.StartPortForwardOnRandomPort()
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
+		//TODO: Wrap the error making it Stateful
+
 		return err
 	}
 	defer r.remoteRsync.StopPortForward(stopChan)
@@ -149,8 +149,8 @@ func (r RsyncDaemonFetch) Fetch(filePath string) error {
 
 	err = osapi.CommandExecL(scmd, args...)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
+		//TODO: Wrap the error making it Stateful
+
 	}
 	return err
 }
@@ -203,7 +203,7 @@ func (r RemoteRsyncDeamon) KillDaemon(pidFile string) error {
 	r.kscmd.Stdin = bytes.NewBufferString(stop)
 	err := r.executor.StartProcess(r.kscmd, "sh")
 	if err != nil {
-		//TODO: Send error log to Sentry
+		//TODO: Wrap the error making it Stateful
 		cplogs.V(4).Infof("error when killing rsync daemon with pid file: %s, error %s", pidFile, err.Error())
 	}
 	return err
@@ -233,7 +233,7 @@ func (r *RemoteRsyncDeamon) StartPortForwardOnRandomPort() (*chan bool, error) {
 // closes the channel that will then kill the goroutine that is running the port forwarding
 func (r RemoteRsyncDeamon) StopPortForward(stopChan *chan bool) {
 	if stopChan == nil {
-		//TODO: Send error log to Sentry
+		//TODO: Wrap the error making it Stateful
 		cplogs.V(5).Infoln("was not possible to stop the port forwarding")
 		return
 	}

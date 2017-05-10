@@ -5,10 +5,11 @@ package cplogs
 
 import (
 	"fmt"
+	"net/url"
 	"runtime"
 	"time"
 
-	"net/url"
+	"net/http"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/session"
@@ -61,6 +62,9 @@ type RemoteCommandStatus struct {
 	//The reason describing why the event is a success or a failure.
 	Reason string `json:"reason"`
 
+	//The full error stack
+	Stack string `json:"error_stack"`
+
 	//A unique id which can be used to find any messages sent to Sentry or in the logs
 	DebugIdentifier string `json:"debug_identifier"`
 }
@@ -88,11 +92,17 @@ func NewRemoteCommand(cmd string, args []string) *RemoteCommand {
 	}
 }
 
+func (rc *RemoteCommand) EndedOk(cmdSession session.CommandSession) *RemoteCommand {
+	rc.Ended(http.StatusOK, "", "", cmdSession)
+	return rc
+}
+
 //Ended indicates that the remote command has terminated its execution sets the duration and the command status
-func (rc *RemoteCommand) Ended(code int, reason string, cmdSession session.CommandSession) *RemoteCommand {
+func (rc *RemoteCommand) Ended(code int, reason string, stack string, cmdSession session.CommandSession) *RemoteCommand {
 	rc.Status = RemoteCommandStatus{
 		Code:            code,
 		Reason:          reason,
+		Stack:           stack,
 		DebugIdentifier: cmdSession.SessionID,
 	}
 	rc.Duration = cmdSession.Duration()

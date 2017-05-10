@@ -5,8 +5,6 @@ import (
 	"io"
 	"os"
 
-	"net/http"
-
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
@@ -42,16 +40,21 @@ find its IP address.`,
 			cmdSession := session.NewCommandSession().Start()
 
 			//validate the configuration file
-			valid, missing := config.C.Validate()
-			if valid == false {
-				reason := fmt.Sprintf(msgs.InvalidConfigSettings, missing)
-				cplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, *cmdSession))
-				cperrors.ExitWithMessage(reason)
+			_, err := config.C.Validate()
+			if err != nil {
+				code, reason, stack := cperrors.FindCause(err)
+				cplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(code, reason, stack, *cmdSession))
+				cperrors.ExitWithMessage(err.Error())
 			}
 
 			//call the build handler
-			err := handler.Handle()
-			checkErr(err)
+			err = handler.Handle()
+			if err != nil {
+				code, reason, stack := cperrors.FindCause(err)
+				cplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(code, reason, stack, *cmdSession))
+				cperrors.ExitWithMessage(err.Error())
+			}
+			cplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cmdSession))
 		},
 	}
 	return command
@@ -83,20 +86,11 @@ func (h *BuildHandle) Handle() error {
 		return errors.Wrapf(err, msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID)
 	}
 
-	apiKey, err := h.config.GetString(config.ApiKey)
-	if err != nil {
-		return err
-	}
-	remoteEnvID, err := h.config.GetString(config.RemoteEnvironmentId)
-	if err != nil {
-		return err
-	}
-	flowID, err := h.config.GetString(config.FlowId)
-	if err != nil {
-		return err
-	}
-
+	apiKey := h.config.GetStringQ(config.ApiKey)
 	h.api.SetAPIKey(apiKey)
+
+	remoteEnvID := h.config.GetStringQ(config.RemoteEnvironmentId)
+	flowID := h.config.GetStringQ(config.FlowId)
 
 	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowID, remoteEnvID)
 	if err != nil {

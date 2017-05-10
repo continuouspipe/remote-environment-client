@@ -153,17 +153,15 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 
 	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.options.environment)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 
 	pod := podsFilter.List(*allPods).ByService(h.options.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.options.service))
 	}
 
@@ -184,9 +182,8 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 	h.api.SetAPIKey(apiKey)
 	remoteEnv, el := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if el != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return el
 	}
 	cpapi.PrintPublicEndpoints(h.Stdout, remoteEnv.PublicEndpoints)
@@ -210,9 +207,8 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 
 	err = dirMonitor.AnyEventCall(cwd, observer)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	}
 	return err
 }

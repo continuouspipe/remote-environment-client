@@ -3,8 +3,11 @@ package config
 import (
 	"bufio"
 	"fmt"
+	"net/http"
 	"os"
 
+	"github.com/continuouspipe/remote-environment-client/errors"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/spf13/viper"
 )
 
@@ -28,6 +31,7 @@ type ConfigProvider interface {
 	Set(key string, value interface{}) error
 	GetBool(key string) (bool, error)
 	GetString(key string) (string, error)
+	GetStringQ(key string) string
 	SetConfigFile(configType ConfigType, in string) error
 	SetConfigPath(configType ConfigType, in string) error
 	ConfigFileUsed(configType ConfigType) (string, error)
@@ -164,11 +168,15 @@ func (c *Config) Save(configType ConfigType) error {
 }
 
 //check if all mandatory settings are set for both config types
-func (c Config) Validate() (bool, []string) {
+func (c Config) Validate() ([]string, error) {
 	local := c.local.GetMissingMandatorySettings()
 	global := c.global.GetMissingMandatorySettings()
 	all := append(local, global...)
-	return len(all) == 0, all
+
+	if len(all) != 0 {
+		return all, fmt.Errorf(errors.StatusReasonFormat, http.StatusBadRequest, msgs.InvalidConfigSettings)
+	}
+	return all, nil
 }
 
 func init() {

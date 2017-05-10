@@ -89,8 +89,8 @@ func (r RsyncRshFetch) Fetch(filePath string) error {
 
 	err = osapi.CommandExecL(scmd, args...)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
+		//TODO: Wrap the error making it Stateful
+
 	}
 	return err
 }
