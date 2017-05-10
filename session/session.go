@@ -11,9 +11,15 @@ type CommandSession struct {
 	Started   time.Time
 }
 
+//CurrentSession stores the last pointer created by NewCommandSession
+var CurrentSession *CommandSession
+
 func NewCommandSession() *CommandSession {
 	s := &CommandSession{}
 	s.SessionID = uuid.NewV4().String()
+
+	//persist the new session as the current session
+	CurrentSession = s
 	return s
 }
 

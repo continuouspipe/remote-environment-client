@@ -10,10 +10,11 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
-	"github.com/continuouspipe/remote-environment-client/errors"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/initialization"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/continuouspipe/remote-environment-client/session"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +46,7 @@ find its IP address.`,
 			if valid == false {
 				reason := fmt.Sprintf(msgs.InvalidConfigSettings, missing)
 				cplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, *cmdSession))
-				errors.ExitWithMessage(reason)
+				cperrors.ExitWithMessage(reason)
 			}
 
 			//call the build handler
@@ -69,26 +70,17 @@ type BuildHandle struct {
 func (h *BuildHandle) Handle() error {
 	err := h.triggerBuild.Handle()
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
-		return err
+		return errors.Wrapf(err, msgs.SuggestionTriggerBuildFailed, session.CurrentSession.SessionID)
 	}
 	err = h.waitForEnvironmentReady.Handle()
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
-		return err
+		return errors.Wrapf(err, msgs.SuggestionWaitForEnvironmentReadyFailed, session.CurrentSession.SessionID)
 	}
 
 	h.config.Set(config.InitStatus, initStateCompleted)
 	err = h.config.Save(config.AllConfigTypes)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
-		return err
+		return errors.Wrapf(err, msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID)
 	}
 
 	apiKey, err := h.config.GetString(config.ApiKey)
@@ -108,10 +100,7 @@ func (h *BuildHandle) Handle() error {
 
 	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowID, remoteEnvID)
 	if err != nil {
-		//TODO: Send error log to Sentry
-		//TODO: Log err
-		//TODO: Print user friendly error that explains what happened and what to do next
-		return err
+		return errors.Wrapf(err, msgs.SuggestionGetEnvironmentStatusFailed, session.CurrentSession.SessionID)
 	}
 
 	fmt.Fprintf(h.stdout, "\n\n# Get started !\n")

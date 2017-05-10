@@ -9,8 +9,10 @@ import (
 	"github.com/fatih/color"
 )
 
+//StatusReasonFormat default format for stateful error messages
 const StatusReasonFormat = "%s: %s"
 
+//CheckErr calls ExitWithMessage when there is an error
 func CheckErr(err error) {
 	if err == nil {
 		return
@@ -18,6 +20,7 @@ func CheckErr(err error) {
 	ExitWithMessage(err.Error())
 }
 
+//ExitWithMessage print and write the stacktrace on the logs
 func ExitWithMessage(message string) {
 	color.Set(color.FgRed)
 	fmt.Println(message)
