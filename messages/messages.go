@@ -8,3 +8,4 @@ const RunningPodNotFound = "We could not find any running pod, ensure that the e
 const InteractiveModeSuggestingFlags = "\nThank you, we will use the pod specified.\nNext time, if you want to connect directly the same pod, you can also use this flag values '%s'\n"
 const PodKilledOrMoved = "The pod may have been killed or moved to a different node."
 const PodKilledOrMovedSuggestingAction = "Check the pod status with `cp-remote pods` and re-connect once the pod is running again."
+const InvalidConfigSettings = "The remote settings file is missing or the require parameters are missing (%v), please run the init command."

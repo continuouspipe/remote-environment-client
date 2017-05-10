@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/continuouspipe/remote-environment-client/benchmark"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
@@ -48,9 +47,6 @@ with the default container specified during setup but you can specify another co
 
 			fmt.Println("Fetch in progress")
 
-			b := benchmark.NewCmdBenchmark()
-			b.Start("fetch")
-
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
 			fetcher := sync.GetFetcher()
@@ -59,8 +55,6 @@ with the default container specified during setup but you can specify another co
 			checkErr(handler.Validate())
 			checkErr(handler.Handle(args, podsFinder, podsFilter, fetcher))
 
-			_, err := b.StopAndLog()
-			checkErr(err)
 			fmt.Printf("Fetch complete, files and folders retrieved has been logged in %s\n", cplogs.GetLogInfoFile())
 			cplogs.Flush()
 		},

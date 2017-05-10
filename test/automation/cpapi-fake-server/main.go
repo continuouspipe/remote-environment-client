@@ -27,9 +27,6 @@ type ApiRemoteEnvironment struct {
 	KubeEnvironmentName string `json:"kubernetes_environment_name"`
 	ClusterIdentifier   string `json:"cluster_identifier"`
 	AnyBarPort          string `json:"any_bar_port"`
-	KeenId              string `json:"keen_id"`
-	KeenWriteKey        string `json:"keen_write_key"`
-	KeenEventCollection string `json:"keen_event_collection"`
 }
 
 func ServeGetRemoteEnvironment(w http.ResponseWriter, r *http.Request) {
@@ -55,9 +52,6 @@ func ServeGetRemoteEnvironment(w http.ResponseWriter, r *http.Request) {
 		"123456",
 		"1268cc54-b265-11e6-b835-0c360641bb54-remote-alessandrozucca",
 		"strava-de-france",
-		"",
-		"",
-		"",
 		""}
 	p, _ := json.Marshal(apiRemoteEnvironment)
 	fmt.Fprint(w, string(p))

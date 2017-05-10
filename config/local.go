@@ -17,9 +17,6 @@ const (
 	RemoteBranch        = "remote-branch"
 	Service             = "service"
 	AnybarPort          = "anybar-port"
-	KeenWriteKey        = "keen-write-key"
-	KeenProjectId       = "keen-project-id"
-	KeenEventCollection = "keen-event-collection"
 	RemoteEnvironmentId = "remote-environment-id"
 	InitStatus          = "init-status"
 
@@ -41,9 +38,6 @@ func newLocalConfig() *localConfig {
 		{RemoteBranch, "", true},               //Git name of the git branch used for the remote environment
 		{Service, "web", true},                 //Kubernetes service name for the commands like (watch, bash, fetch and resync)
 		{AnybarPort, "", false},                //AnyBar port number
-		{KeenWriteKey, "", false},              //Keen.io write key
-		{KeenProjectId, "", false},             //Keen.io project id
-		{KeenEventCollection, "", false},       //Keen.io event collection
 		{InitStatus, "", false},                //Initialization status used in the init cmd
 		{RemoteEnvironmentId, "", false},       //Remote environment Id
 		{CpKubeProxyEnabled, "true", false},    //Determine if the Cp Kube proxy is used

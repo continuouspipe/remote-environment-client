@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/continuouspipe/remote-environment-client/benchmark"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
@@ -61,9 +60,6 @@ Note that this will delete any files/folders in the remote container that are no
 
 			fmt.Println("Push in progress")
 
-			benchmrk := benchmark.NewCmdBenchmark()
-			benchmrk.Start("push")
-
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
 			syncer := sync.GetSyncer()
@@ -72,7 +68,6 @@ Note that this will delete any files/folders in the remote container that are no
 			checkErr(handler.Validate())
 			checkErr(handler.Handle(args, podsFinder, podsFilter, syncer))
 
-			_, err = benchmrk.StopAndLog()
 			checkErr(err)
 			cplogs.Flush()
 		},

@@ -94,6 +94,14 @@ func (c *Config) GetString(key string) (string, error) {
 	return "", fmt.Errorf("The key specified %s didn't match any of the handled configs.", key)
 }
 
+//GetStringQ calls GetString returning empty if there key didn't match a config handler
+func (c *Config) GetStringQ(key string) string {
+	if val, err := c.GetString(key); err != nil {
+		return val
+	}
+	return ""
+}
+
 //set the config file for the given config type
 func (c *Config) SetConfigFile(configType ConfigType, in string) error {
 	if configType == LocalConfigType {

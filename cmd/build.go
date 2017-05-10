@@ -5,13 +5,22 @@ import (
 	"io"
 	"os"
 
-	"github.com/continuouspipe/remote-environment-client/benchmark"
+	"net/http"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/initialization"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/continuouspipe/remote-environment-client/session"
 	"github.com/spf13/cobra"
 )
 
+//BuildCmdName is the name identifier for the build command
+const BuildCmdName = "build"
+
+//NewBuildCmd return a new cobra command that handles the build
 func NewBuildCmd() *cobra.Command {
 	handler := &BuildHandle{}
 	handler.stdout = os.Stdout
@@ -20,7 +29,7 @@ func NewBuildCmd() *cobra.Command {
 	handler.waitForEnvironmentReady = newWaitEnvironmentReady()
 	handler.api = cpapi.NewCpApi()
 	command := &cobra.Command{
-		Use:     "build",
+		Use:     BuildCmdName,
 		Aliases: []string{"bu"},
 		Short:   "Create/Update the remote environment",
 		Long: `The build command will push changes the branch you have checked out locally to your remote
@@ -28,19 +37,27 @@ environment branch. ContinuousPipe will then build the environment. You can use 
 https://ui.continuouspipe.io/ to see when the environment has finished building and to
 find its IP address.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			validateConfig()
+			remoteCommand := cplogs.NewRemoteCommand(BuildCmdName, args)
+			cmdSession := session.NewCommandSession().Start()
 
-			benchmrk := benchmark.NewCmdBenchmark()
-			benchmrk.Start("build")
+			//validate the configuration file
+			valid, missing := config.C.Validate()
+			if valid == false {
+				reason := fmt.Sprintf(msgs.InvalidConfigSettings, missing)
+				cplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, *cmdSession))
+				errors.ExitWithMessage(reason)
+			}
 
-			checkErr(handler.Handle())
-			_, err := benchmrk.StopAndLog()
+			//call the build handler
+			err := handler.Handle()
+
 			checkErr(err)
 		},
 	}
 	return command
 }
 
+//BuildHandle holds the dependencies of the build handler
 type BuildHandle struct {
 	config                  config.ConfigProvider
 	triggerBuild            initialization.InitState
@@ -49,7 +66,7 @@ type BuildHandle struct {
 	api                     cpapi.CpApiProvider
 }
 
-//build performs the 2 init stages that trigger that build and wait for the environment to be ready
+//Handle performs the 2 init stages that trigger that build and wait for the environment to be ready
 func (h *BuildHandle) Handle() error {
 	err := h.triggerBuild.Handle()
 	if err != nil {
@@ -79,18 +96,18 @@ func (h *BuildHandle) Handle() error {
 	if err != nil {
 		return err
 	}
-	remoteEnvId, err := h.config.GetString(config.RemoteEnvironmentId)
+	remoteEnvID, err := h.config.GetString(config.RemoteEnvironmentId)
 	if err != nil {
 		return err
 	}
-	flowId, err := h.config.GetString(config.FlowId)
+	flowID, err := h.config.GetString(config.FlowId)
 	if err != nil {
 		return err
 	}
 
 	h.api.SetApiKey(apiKey)
 
-	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowID, remoteEnvID)
 	if err != nil {
 		//TODO: Send error log to Sentry
 		//TODO: Log err

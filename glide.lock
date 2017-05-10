@@ -1,5 +1,5 @@
-hash: 645b2c60a62e874d9c6f8791b620fca8f1555e8c39cac2f309ce19a65d90f77d
-updated: 2017-05-08T14:50:24.086517651+01:00
+hash: afe71d9a5a33a1acd685fdb808f32ec4a67fd1b9f0b45dbdbab8ab8e9d2ec216
+updated: 2017-05-10T11:17:21.958909658+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -224,6 +224,8 @@ imports:
   version: bf295275fb1ee4e347c09330ed9a3c76cc19895a
   subpackages:
   - selfupdate
+- name: github.com/satori/go.uuid
+  version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shurcooL/sanitized_anchor_name
   version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
 - name: github.com/Sirupsen/logrus
