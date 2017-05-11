@@ -224,7 +224,7 @@ func (c CpAPI) GetAPITeams() ([]APITeam, error) {
 	if err != nil {
 		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf(cphttp.ErrorFailedToGetResponseBody, u.String())).String())
 	}
 
 	teams := make([]APITeam, 0)
@@ -262,7 +262,7 @@ func (c CpAPI) GetAPIFlows(project string) ([]APIFlow, error) {
 	if err != nil {
 		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf(cphttp.ErrorFailedToGetResponseBody, u.String())).String())
 	}
 
 	flows := make([]APIFlow, 0)
@@ -300,7 +300,7 @@ func (c CpAPI) GetAPIUser(user string) (*APIUser, error) {
 	if err != nil {
 		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf(cphttp.ErrorFailedToGetResponseBody, u.String())).String())
 	}
 
 	apiUserResponse := &APIUser{}
@@ -338,7 +338,7 @@ func (c CpAPI) GetAPIEnvironments(flowID string) ([]APIEnvironment, error) {
 	if err != nil {
 		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf(cphttp.ErrorFailedToGetResponseBody, u.String())).String())
 	}
 
 	environments := make([]APIEnvironment, 0)
@@ -376,7 +376,7 @@ func (c CpAPI) GetRemoteEnvironmentStatus(flowID string, environmentID string) (
 	if err != nil {
 		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf(cphttp.ErrorFailedToGetResponseBody, u.String())).String())
 	}
 
 	apiRemoteEnvironment := &APIRemoteEnvironmentStatus{}
@@ -425,7 +425,7 @@ func (c CpAPI) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch 
 	if err != nil {
 		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf(cphttp.ErrorFailedToGetResponseBody, u.String())).String())
 	}
 
 	return nil
@@ -476,7 +476,7 @@ func (c CpAPI) CancelTide(tideID string) error {
 	if err != nil {
 		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf(cphttp.ErrorFailedToGetResponseBody, u.String())).String())
 	}
 
 	return nil
@@ -508,7 +508,7 @@ func (c CpAPI) RemoteEnvironmentDestroy(flowID string, environment string, clust
 	if err != nil {
 		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf(cphttp.ErrorFailedToGetResponseBody, u.String())).String())
 	}
 
 	return nil
@@ -562,7 +562,7 @@ func (c CpAPI) RemoteDevelopmentEnvironmentDestroy(flowID string, remoteEnvironm
 	if err != nil {
 		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf(cphttp.ErrorFailedToGetResponseBody, u.String())).String())
 	}
 
 	return nil
