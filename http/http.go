@@ -15,7 +15,7 @@ const ErrorFailedToCreatePostRequest = "failed to create a post request"
 const ErrorFailedToCreateDeleteRequest = "failed to create a delete request"
 const ErrorParsingJSONResponse = "failed to unparse json response body %s"
 const ErrorCreatingJSONRequest = "failed to create json request from struct %v"
-const ErrorFailedToGetResponseBody = "failed to get the response body"
+const ErrorFailedToGetResponseBody = "failed to get the response body: %s"
 
 func GetResponseBody(client *http.Client, req *http.Request) ([]byte, error) {
 	res, err := client.Do(req)

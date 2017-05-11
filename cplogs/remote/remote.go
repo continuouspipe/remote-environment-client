@@ -48,6 +48,7 @@ type RemoteCommand struct {
 
 //RemoteCommandSettings contains a subset of the local configuration data that we want to send along with logging information
 type RemoteCommandSettings struct {
+	Username              string `json:"username"`
 	FlowID                string `json:"flow-id"`
 	ClusterIdentifier     string `json:"cluster-identifier"`
 	KubeEnvironmentName   string `json:"kube-environment-name"`
@@ -88,6 +89,7 @@ func NewRemoteCommand(cmd string, args []string) *RemoteCommand {
 		OsArch:      fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH),
 		ToolVersion: config.CurrentVersion,
 		ConfigSettings: RemoteCommandSettings{
+			Username:              config.C.GetStringQ(config.Username),
 			FlowID:                config.C.GetStringQ(config.FlowId),
 			ClusterIdentifier:     config.C.GetStringQ(config.ClusterIdentifier),
 			KubeEnvironmentName:   config.C.GetStringQ(config.KubeEnvironmentName),
