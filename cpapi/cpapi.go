@@ -209,12 +209,12 @@ func (c *CpAPI) SetAPIKey(apiKey string) {
 //GetAPITeams sends a request to the cp api to fetch the list of teams for the user
 func (c CpAPI) GetAPITeams() ([]APITeam, error) {
 	if c.apiKey == "" {
-		return nil, errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
+		return nil, errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
 	u, err := c.getAuthenticatorURL()
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedAuthenticatorURL))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedAuthenticatorURL).String())
 	}
 	u.Path = "/api/teams"
 
@@ -222,7 +222,7 @@ func (c CpAPI) GetAPITeams() ([]APITeam, error) {
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateGetRequest))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateGetRequest).String())
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
@@ -230,7 +230,7 @@ func (c CpAPI) GetAPITeams() ([]APITeam, error) {
 	if elr != nil {
 		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
 	}
 
 	teams := make([]APITeam, 0)
@@ -238,7 +238,7 @@ func (c CpAPI) GetAPITeams() ([]APITeam, error) {
 	if err != nil {
 		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
 		cplogs.V(4).Infof(msg)
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusBadRequest, msg))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msg).String())
 	}
 
 	return teams, nil
@@ -247,12 +247,12 @@ func (c CpAPI) GetAPITeams() ([]APITeam, error) {
 //GetAPIFlows sends a request to the cp api to fetch the list of flows
 func (c CpAPI) GetAPIFlows(project string) ([]APIFlow, error) {
 	if c.apiKey == "" {
-		return nil, errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
+		return nil, errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
 	u.Path = fmt.Sprintf("/teams/%s/flows", project)
 
@@ -260,7 +260,7 @@ func (c CpAPI) GetAPIFlows(project string) ([]APIFlow, error) {
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateGetRequest))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateGetRequest).String())
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
@@ -268,7 +268,7 @@ func (c CpAPI) GetAPIFlows(project string) ([]APIFlow, error) {
 	if elr != nil {
 		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
 	}
 
 	flows := make([]APIFlow, 0)
@@ -276,7 +276,7 @@ func (c CpAPI) GetAPIFlows(project string) ([]APIFlow, error) {
 	if err != nil {
 		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
 		cplogs.V(4).Infof(msg)
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusBadRequest, msg))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msg).String())
 	}
 
 	return flows, nil
@@ -285,12 +285,12 @@ func (c CpAPI) GetAPIFlows(project string) ([]APIFlow, error) {
 //GetAPIUser sends a request to the cp api to fetch the cp user information
 func (c CpAPI) GetAPIUser(user string) (*APIUser, error) {
 	if c.apiKey == "" {
-		return nil, errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
+		return nil, errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
 	u, err := c.getAuthenticatorURL()
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedAuthenticatorURL))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedAuthenticatorURL).String())
 	}
 	u.Path = "/api/user/" + user
 
@@ -298,7 +298,7 @@ func (c CpAPI) GetAPIUser(user string) (*APIUser, error) {
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateGetRequest))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateGetRequest).String())
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
@@ -306,7 +306,7 @@ func (c CpAPI) GetAPIUser(user string) (*APIUser, error) {
 	if elr != nil {
 		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
 	}
 
 	apiUserResponse := &APIUser{}
@@ -314,7 +314,7 @@ func (c CpAPI) GetAPIUser(user string) (*APIUser, error) {
 	if err != nil {
 		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
 		cplogs.V(4).Infof(msg)
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusBadRequest, msg))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msg).String())
 	}
 
 	return apiUserResponse, nil
@@ -323,12 +323,12 @@ func (c CpAPI) GetAPIUser(user string) (*APIUser, error) {
 //GetAPIEnvironments sends a request to the cp api to fetch the cp environments list for the user
 func (c CpAPI) GetAPIEnvironments(flowID string) ([]APIEnvironment, error) {
 	if c.apiKey == "" {
-		return nil, errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
+		return nil, errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
 	u.Path = fmt.Sprintf("/flows/%s/environments", flowID)
 
@@ -336,7 +336,7 @@ func (c CpAPI) GetAPIEnvironments(flowID string) ([]APIEnvironment, error) {
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateGetRequest))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateGetRequest).String())
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
@@ -344,7 +344,7 @@ func (c CpAPI) GetAPIEnvironments(flowID string) ([]APIEnvironment, error) {
 	if elr != nil {
 		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
 	}
 
 	environments := make([]APIEnvironment, 0)
@@ -352,7 +352,7 @@ func (c CpAPI) GetAPIEnvironments(flowID string) ([]APIEnvironment, error) {
 	if err != nil {
 		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
 		cplogs.V(4).Infof(msg)
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusBadRequest, msg))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msg).String())
 	}
 
 	return environments, nil
@@ -361,12 +361,12 @@ func (c CpAPI) GetAPIEnvironments(flowID string) ([]APIEnvironment, error) {
 //GetRemoteEnvironmentStatus sends a request to the cp api to retrieve information about the remote environment
 func (c CpAPI) GetRemoteEnvironmentStatus(flowID string, environmentID string) (*APIRemoteEnvironmentStatus, error) {
 	if c.apiKey == "" {
-		return nil, errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
+		return nil, errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
 	u.Path = fmt.Sprintf("/flows/%s/development-environments/%s/status", flowID, environmentID)
 
@@ -374,7 +374,7 @@ func (c CpAPI) GetRemoteEnvironmentStatus(flowID string, environmentID string) (
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateGetRequest))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateGetRequest).String())
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
@@ -382,7 +382,7 @@ func (c CpAPI) GetRemoteEnvironmentStatus(flowID string, environmentID string) (
 	if elr != nil {
 		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
 	}
 
 	apiRemoteEnvironment := &APIRemoteEnvironmentStatus{}
@@ -390,7 +390,7 @@ func (c CpAPI) GetRemoteEnvironmentStatus(flowID string, environmentID string) (
 	if err != nil {
 		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
 		cplogs.V(4).Infof(msg)
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusBadRequest, msg))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msg).String())
 	}
 
 	return apiRemoteEnvironment, nil
@@ -399,12 +399,12 @@ func (c CpAPI) GetRemoteEnvironmentStatus(flowID string, environmentID string) (
 //RemoteEnvironmentBuild sends a request to the cp api to request to build a new remote environment
 func (c CpAPI) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch string) error {
 	if c.apiKey == "" {
-		return errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
+		return errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
 	u.Path = fmt.Sprintf("/flows/%s/tides", remoteEnvironmentFlowID)
 
@@ -417,7 +417,7 @@ func (c CpAPI) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch 
 
 	req, err := http.NewRequest(http.MethodPost, u.String(), bytes.NewReader(reqBodyJSON))
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreatePostRequest))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreatePostRequest).String())
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
@@ -426,7 +426,7 @@ func (c CpAPI) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch 
 	if elr != nil {
 		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
 	}
 
 	return nil
@@ -435,12 +435,12 @@ func (c CpAPI) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch 
 //CancelRunningTide find the tide id associated with the branch and cancel the tide
 func (c CpAPI) CancelRunningTide(flowID string, remoteEnvironmentID string) error {
 	if c.apiKey == "" {
-		return errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
+		return errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
 	remoteEnv, err := c.GetRemoteEnvironmentStatus(flowID, remoteEnvironmentID)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetRemoteEnvironmentStatus))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetRemoteEnvironmentStatus).String())
 	}
 
 	if remoteEnv.LastTide.Status != TideRunning {
@@ -455,12 +455,12 @@ func (c CpAPI) CancelRunningTide(flowID string, remoteEnvironmentID string) erro
 //CancelTide send a request to the cp api to cancel the tide specified
 func (c CpAPI) CancelTide(tideID string) error {
 	if c.apiKey == "" {
-		return errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
+		return errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
 	u.Path = fmt.Sprintf("/tides/%s/cancel", tideID)
 
@@ -468,7 +468,7 @@ func (c CpAPI) CancelTide(tideID string) error {
 
 	req, err := http.NewRequest(http.MethodPost, u.String(), nil)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreatePostRequest))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreatePostRequest).String())
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
@@ -477,7 +477,7 @@ func (c CpAPI) CancelTide(tideID string) error {
 	if elr != nil {
 		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
 	}
 
 	return nil
@@ -486,12 +486,12 @@ func (c CpAPI) CancelTide(tideID string) error {
 //RemoteEnvironmentDestroy sends a request to the cp api to request to destroy the remote environment
 func (c CpAPI) RemoteEnvironmentDestroy(flowID string, environment string, cluster string) error {
 	if c.apiKey == "" {
-		return errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
+		return errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
 	u.Path = fmt.Sprintf("/flows/%s/environments/%s", flowID, environment)
 	u.RawQuery = fmt.Sprintf("cluster=%s", cluster)
@@ -500,7 +500,7 @@ func (c CpAPI) RemoteEnvironmentDestroy(flowID string, environment string, clust
 
 	req, err := http.NewRequest(http.MethodDelete, u.String(), nil)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateDeleteRequest))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateDeleteRequest).String())
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
@@ -509,7 +509,7 @@ func (c CpAPI) RemoteEnvironmentDestroy(flowID string, environment string, clust
 	if elr != nil {
 		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
 	}
 
 	return nil
@@ -518,17 +518,17 @@ func (c CpAPI) RemoteEnvironmentDestroy(flowID string, environment string, clust
 //RemoteEnvironmentRunningAndExists get the remote environment status and the list of all environments to ensure that the environment actually exists
 func (c CpAPI) RemoteEnvironmentRunningAndExists(flowID string, environmentID string) (bool, error) {
 	if c.apiKey == "" {
-		return false, errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
+		return false, errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
 	remoteEnv, err := c.GetRemoteEnvironmentStatus(flowID, environmentID)
 	if err != nil {
-		return false, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetRemoteEnvironmentStatus))
+		return false, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetRemoteEnvironmentStatus).String())
 	}
 
 	environments, err := c.GetAPIEnvironments(flowID)
 	if err != nil {
-		return false, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetEnvironmentsList))
+		return false, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetEnvironmentsList).String())
 	}
 	for _, environment := range environments {
 		if environment.Identifier == remoteEnv.KubeEnvironmentName {
@@ -541,12 +541,12 @@ func (c CpAPI) RemoteEnvironmentRunningAndExists(flowID string, environmentID st
 //RemoteDevelopmentEnvironmentDestroy send a request to the cp api to destroy the environment
 func (c CpAPI) RemoteDevelopmentEnvironmentDestroy(flowID string, remoteEnvironmentID string) error {
 	if c.apiKey == "" {
-		return errors.Errorf(cperrors.StatusReasonFormat, http.StatusBadRequest, errorAPIKeyNotProvided)
+		return errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
 	u, err := c.getRiverURL()
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToRetrievedRiverURL))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
 	u.Path = fmt.Sprintf("/flows/%s/development-environments/%s", flowID, remoteEnvironmentID)
 
@@ -554,7 +554,7 @@ func (c CpAPI) RemoteDevelopmentEnvironmentDestroy(flowID string, remoteEnvironm
 
 	req, err := http.NewRequest(http.MethodDelete, u.String(), nil)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToCreateDeleteRequest))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateDeleteRequest).String())
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
@@ -563,7 +563,7 @@ func (c CpAPI) RemoteDevelopmentEnvironmentDestroy(flowID string, remoteEnvironm
 	if elr != nil {
 		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errorFailedToGetResponseBody))
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
 	}
 
 	return nil
@@ -572,16 +572,16 @@ func (c CpAPI) RemoteDevelopmentEnvironmentDestroy(flowID string, remoteEnvironm
 func (c CpAPI) getResponseBody(client *http.Client, req *http.Request) ([]byte, error) {
 	res, err := client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, err))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 && res.StatusCode > 202 {
 		errStr := fmt.Sprintf(errorResponseStatusCodeUnsuccessful, res.StatusCode, req.URL.String())
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, errStr))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errStr).String())
 	}
 	resBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, err))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
 	}
 	return resBody, nil
 }
@@ -589,11 +589,11 @@ func (c CpAPI) getResponseBody(client *http.Client, req *http.Request) ([]byte, 
 func (c CpAPI) getAuthenticatorURL() (*url.URL, error) {
 	cpAPIAddr, err := config.C.GetString(config.CpAuthenticatorApiAddr)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, err))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
 	}
 	u, err := url.Parse(cpAPIAddr)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, err))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
 	}
 	return u, nil
 }
@@ -601,11 +601,11 @@ func (c CpAPI) getAuthenticatorURL() (*url.URL, error) {
 func (c CpAPI) getRiverURL() (*url.URL, error) {
 	cpAPIAddr, err := config.C.GetString(config.CpRiverApiAddr)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, err))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
 	}
 	u, err := url.Parse(cpAPIAddr)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf(cperrors.StatusReasonFormat, http.StatusInternalServerError, err))
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
 	}
 	return u, nil
 }

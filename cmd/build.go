@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 
 	"github.com/continuouspipe/remote-environment-client/config"
@@ -40,15 +41,15 @@ find its IP address.`,
 			cmdSession := session.NewCommandSession().Start()
 
 			//validate the configuration file
-			_, err := config.C.Validate()
-			if err != nil {
-				code, reason, stack := cperrors.FindCause(err)
-				cplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(code, reason, stack, *cmdSession))
-				cperrors.ExitWithMessage(err.Error())
+			missingSettings, ok := config.C.Validate()
+			if ok == false {
+				reason := fmt.Sprintf(msgs.InvalidConfigSettings, missingSettings)
+				cplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, "", *cmdSession))
+				cperrors.ExitWithMessage(reason)
 			}
 
 			//call the build handler
-			err = handler.Handle()
+			err := handler.Handle()
 			if err != nil {
 				code, reason, stack := cperrors.FindCause(err)
 				cplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(code, reason, stack, *cmdSession))
