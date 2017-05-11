@@ -8,6 +8,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"k8s.io/kubernetes/pkg/kubectl"
@@ -71,7 +72,7 @@ func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, se
 //Validate checks that the provided checkconnection options are specified.
 func (h *CheckConnectionHandle) Validate() error {
 	if len(strings.Trim(h.Environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	return nil
 }

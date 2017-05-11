@@ -125,21 +125,18 @@ func initLocalConfig() {
 	//create the config file if it does not exist
 	configFileUsed, err := config.C.ConfigFileUsed(config.LocalConfigType)
 	if err != nil {
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	}
 	checkErr(err)
 
 	_, err = os.OpenFile(configFileUsed, os.O_RDWR|os.O_CREATE, 0664)
 	if err != nil {
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	}
 	checkErr(err)
 	//load config file
 	err = config.C.ReadInConfig(config.LocalConfigType)
 	if err != nil {
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	}
 	checkErr(err)
@@ -152,16 +149,11 @@ func initGlobalConfig() {
 	globalConfigFilePath := filepath.Join(globalConfigPath, "config.yml")
 
 	//create the directory
-	err = os.Mkdir(globalConfigPath, 0755)
-	if err != nil {
+	os.Mkdir(globalConfigPath, 0755)
 
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-	}
-	checkErr(err)
 	//create the global config file
 	_, err = os.OpenFile(globalConfigFilePath, os.O_RDWR|os.O_CREATE, 0664)
 	if err != nil {
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	}
 	checkErr(err)
@@ -172,7 +164,6 @@ func initGlobalConfig() {
 	//load config file
 	err = config.C.ReadInConfig(config.GlobalConfigType)
 	if err != nil {
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	}
 	checkErr(err)

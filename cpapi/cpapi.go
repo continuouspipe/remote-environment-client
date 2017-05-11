@@ -1,30 +1,24 @@
 package cpapi
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-
-	"bytes"
 	"io"
+	"net/http"
+
+	"net/url"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	cperrors "github.com/continuouspipe/remote-environment-client/errors"
+	cphttp "github.com/continuouspipe/remote-environment-client/http"
 	"github.com/pkg/errors"
 )
 
 const errorAPIKeyNotProvided = "api key not provided"
 const errorFailedToRetrievedAuthenticatorURL = "failed to retrieve the authenticator url"
 const errorFailedToRetrievedRiverURL = "failed to retrieve the river url"
-const errorFailedToCreateGetRequest = "failed to create a get request"
-const errorFailedToCreatePostRequest = "failed to create a post request"
-const errorFailedToCreateDeleteRequest = "failed to create a delete request"
-const errorResponseStatusCodeUnsuccessful = "failed to get response body, status: %d, url: %s"
-const errorParsingJSONResponse = "failed to unparse json response body %s"
-const errorFailedToGetResponseBody = "failed to get the response body"
 const errorFailedToGetRemoteEnvironmentStatus = "failed to get remote environment status"
 const errorFailedToGetEnvironmentsList = "failed to get the environments list"
 
@@ -212,7 +206,7 @@ func (c CpAPI) GetAPITeams() ([]APITeam, error) {
 		return nil, errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
-	u, err := c.getAuthenticatorURL()
+	u, err := GetAuthenticatorURL()
 	if err != nil {
 		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedAuthenticatorURL).String())
 	}
@@ -222,21 +216,21 @@ func (c CpAPI) GetAPITeams() ([]APITeam, error) {
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateGetRequest).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToCreateGetRequest).String())
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
-	respBody, elr := c.getResponseBody(c.client, req)
-	if elr != nil {
-		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
+	respBody, err := cphttp.GetResponseBody(c.client, req)
+	if err != nil {
+		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
 	}
 
 	teams := make([]APITeam, 0)
 	err = json.Unmarshal(respBody, &teams)
 	if err != nil {
-		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
+		msg := fmt.Sprintf(cphttp.ErrorParsingJSONResponse, respBody)
 		cplogs.V(4).Infof(msg)
 		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msg).String())
 	}
@@ -250,7 +244,7 @@ func (c CpAPI) GetAPIFlows(project string) ([]APIFlow, error) {
 		return nil, errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
-	u, err := c.getRiverURL()
+	u, err := GetRiverURL()
 	if err != nil {
 		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
@@ -260,21 +254,21 @@ func (c CpAPI) GetAPIFlows(project string) ([]APIFlow, error) {
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateGetRequest).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToCreateGetRequest).String())
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
-	respBody, elr := c.getResponseBody(c.client, req)
-	if elr != nil {
-		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
+	respBody, err := cphttp.GetResponseBody(c.client, req)
+	if err != nil {
+		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
 	}
 
 	flows := make([]APIFlow, 0)
 	err = json.Unmarshal(respBody, &flows)
 	if err != nil {
-		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
+		msg := fmt.Sprintf(cphttp.ErrorParsingJSONResponse, respBody)
 		cplogs.V(4).Infof(msg)
 		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msg).String())
 	}
@@ -288,7 +282,7 @@ func (c CpAPI) GetAPIUser(user string) (*APIUser, error) {
 		return nil, errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
-	u, err := c.getAuthenticatorURL()
+	u, err := GetAuthenticatorURL()
 	if err != nil {
 		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedAuthenticatorURL).String())
 	}
@@ -298,21 +292,21 @@ func (c CpAPI) GetAPIUser(user string) (*APIUser, error) {
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateGetRequest).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToCreateGetRequest).String())
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
-	respBody, elr := c.getResponseBody(c.client, req)
-	if elr != nil {
-		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
+	respBody, err := cphttp.GetResponseBody(c.client, req)
+	if err != nil {
+		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
 	}
 
 	apiUserResponse := &APIUser{}
 	err = json.Unmarshal(respBody, apiUserResponse)
 	if err != nil {
-		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
+		msg := fmt.Sprintf(cphttp.ErrorParsingJSONResponse, respBody)
 		cplogs.V(4).Infof(msg)
 		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msg).String())
 	}
@@ -326,7 +320,7 @@ func (c CpAPI) GetAPIEnvironments(flowID string) ([]APIEnvironment, error) {
 		return nil, errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
-	u, err := c.getRiverURL()
+	u, err := GetRiverURL()
 	if err != nil {
 		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
@@ -336,21 +330,21 @@ func (c CpAPI) GetAPIEnvironments(flowID string) ([]APIEnvironment, error) {
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateGetRequest).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToCreateGetRequest).String())
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
-	respBody, elr := c.getResponseBody(c.client, req)
-	if elr != nil {
-		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
+	respBody, err := cphttp.GetResponseBody(c.client, req)
+	if err != nil {
+		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
 	}
 
 	environments := make([]APIEnvironment, 0)
 	err = json.Unmarshal(respBody, &environments)
 	if err != nil {
-		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
+		msg := fmt.Sprintf(cphttp.ErrorParsingJSONResponse, respBody)
 		cplogs.V(4).Infof(msg)
 		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msg).String())
 	}
@@ -364,7 +358,7 @@ func (c CpAPI) GetRemoteEnvironmentStatus(flowID string, environmentID string) (
 		return nil, errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
-	u, err := c.getRiverURL()
+	u, err := GetRiverURL()
 	if err != nil {
 		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
@@ -374,21 +368,21 @@ func (c CpAPI) GetRemoteEnvironmentStatus(flowID string, environmentID string) (
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateGetRequest).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToCreateGetRequest).String())
 	}
 	req.Header.Add("X-Api-Key", c.apiKey)
 
-	respBody, elr := c.getResponseBody(c.client, req)
-	if elr != nil {
-		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
+	respBody, err := cphttp.GetResponseBody(c.client, req)
+	if err != nil {
+		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
 	}
 
 	apiRemoteEnvironment := &APIRemoteEnvironmentStatus{}
 	err = json.Unmarshal(respBody, apiRemoteEnvironment)
 	if err != nil {
-		msg := fmt.Sprintf(errorParsingJSONResponse, respBody)
+		msg := fmt.Sprintf(cphttp.ErrorParsingJSONResponse, respBody)
 		cplogs.V(4).Infof(msg)
 		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msg).String())
 	}
@@ -402,7 +396,7 @@ func (c CpAPI) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch 
 		return errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
-	u, err := c.getRiverURL()
+	u, err := GetRiverURL()
 	if err != nil {
 		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
@@ -412,21 +406,26 @@ func (c CpAPI) RemoteEnvironmentBuild(remoteEnvironmentFlowID string, gitBranch 
 		BranchName string `json:"branch"`
 	}
 	reqBodyJSON, err := json.Marshal(&requestBody{gitBranch})
+	if err != nil {
+		msg := fmt.Sprintf(cphttp.ErrorCreatingJSONRequest, &requestBody{gitBranch})
+		cplogs.V(4).Infof(msg)
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, msg).String())
+	}
 
 	cplogs.V(5).Infof("triggering remote environment build using url %s and payload %s", u.Path, reqBodyJSON)
 
 	req, err := http.NewRequest(http.MethodPost, u.String(), bytes.NewReader(reqBodyJSON))
 	if err != nil {
-		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreatePostRequest).String())
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToCreatePostRequest).String())
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
 
-	_, elr := c.getResponseBody(c.client, req)
-	if elr != nil {
-		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
+	_, err = cphttp.GetResponseBody(c.client, req)
+	if err != nil {
+		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
 	}
 
 	return nil
@@ -458,7 +457,7 @@ func (c CpAPI) CancelTide(tideID string) error {
 		return errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
-	u, err := c.getRiverURL()
+	u, err := GetRiverURL()
 	if err != nil {
 		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
@@ -468,16 +467,16 @@ func (c CpAPI) CancelTide(tideID string) error {
 
 	req, err := http.NewRequest(http.MethodPost, u.String(), nil)
 	if err != nil {
-		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreatePostRequest).String())
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToCreatePostRequest).String())
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
 
-	_, elr := c.getResponseBody(c.client, req)
-	if elr != nil {
-		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
+	_, err = cphttp.GetResponseBody(c.client, req)
+	if err != nil {
+		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
 	}
 
 	return nil
@@ -489,7 +488,7 @@ func (c CpAPI) RemoteEnvironmentDestroy(flowID string, environment string, clust
 		return errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
-	u, err := c.getRiverURL()
+	u, err := GetRiverURL()
 	if err != nil {
 		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
@@ -500,16 +499,16 @@ func (c CpAPI) RemoteEnvironmentDestroy(flowID string, environment string, clust
 
 	req, err := http.NewRequest(http.MethodDelete, u.String(), nil)
 	if err != nil {
-		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateDeleteRequest).String())
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToCreateDeleteRequest).String())
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
 
-	_, elr := c.getResponseBody(c.client, req)
-	if elr != nil {
-		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
+	_, err = cphttp.GetResponseBody(c.client, req)
+	if err != nil {
+		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
 	}
 
 	return nil
@@ -544,7 +543,7 @@ func (c CpAPI) RemoteDevelopmentEnvironmentDestroy(flowID string, remoteEnvironm
 		return errors.Errorf(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, errorAPIKeyNotProvided).String())
 	}
 
-	u, err := c.getRiverURL()
+	u, err := GetRiverURL()
 	if err != nil {
 		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedRiverURL).String())
 	}
@@ -554,60 +553,19 @@ func (c CpAPI) RemoteDevelopmentEnvironmentDestroy(flowID string, remoteEnvironm
 
 	req, err := http.NewRequest(http.MethodDelete, u.String(), nil)
 	if err != nil {
-		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToCreateDeleteRequest).String())
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToCreateDeleteRequest).String())
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Api-Key", c.apiKey)
 
-	_, elr := c.getResponseBody(c.client, req)
-	if elr != nil {
-		cplogs.V(4).Infof(errorFailedToGetResponseBody, u.String())
+	_, err = cphttp.GetResponseBody(c.client, req)
+	if err != nil {
+		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
 		cplogs.Flush()
-		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetResponseBody).String())
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
 	}
 
 	return nil
-}
-
-func (c CpAPI) getResponseBody(client *http.Client, req *http.Request) ([]byte, error) {
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
-	}
-	defer res.Body.Close()
-	if res.StatusCode < 200 && res.StatusCode > 202 {
-		errStr := fmt.Sprintf(errorResponseStatusCodeUnsuccessful, res.StatusCode, req.URL.String())
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errStr).String())
-	}
-	resBody, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
-	}
-	return resBody, nil
-}
-
-func (c CpAPI) getAuthenticatorURL() (*url.URL, error) {
-	cpAPIAddr, err := config.C.GetString(config.CpAuthenticatorApiAddr)
-	if err != nil {
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
-	}
-	u, err := url.Parse(cpAPIAddr)
-	if err != nil {
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
-	}
-	return u, nil
-}
-
-func (c CpAPI) getRiverURL() (*url.URL, error) {
-	cpAPIAddr, err := config.C.GetString(config.CpRiverApiAddr)
-	if err != nil {
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
-	}
-	u, err := url.Parse(cpAPIAddr)
-	if err != nil {
-		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
-	}
-	return u, nil
 }
 
 //PrintPublicEndpoints given a list of public api endpoints it prints them on the given writer
@@ -624,4 +582,28 @@ func PrintPublicEndpoints(writer io.Writer, endpoints []APIPublicEndpoint) {
 			}
 		}
 	}
+}
+
+func GetAuthenticatorURL() (*url.URL, error) {
+	cpAPIAddr, err := config.C.GetString(config.CpAuthenticatorApiAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
+	}
+	u, err := url.Parse(cpAPIAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
+	}
+	return u, nil
+}
+
+func GetRiverURL() (*url.URL, error) {
+	cpAPIAddr, err := config.C.GetString(config.CpRiverApiAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
+	}
+	u, err := url.Parse(cpAPIAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
+	}
+	return u, nil
 }

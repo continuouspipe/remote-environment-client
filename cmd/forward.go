@@ -103,7 +103,7 @@ func (h *ForwardHandle) Validate() error {
 		return fmt.Errorf("at least 1 PORT is required for port-forward")
 	}
 	if len(strings.Trim(h.Environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	if len(strings.Trim(h.Service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")

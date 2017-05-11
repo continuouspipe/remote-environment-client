@@ -18,7 +18,7 @@ import (
 type StatefulErrorMessage struct {
 	Code      int
 	Message   string
-	Format    string `default:"%s: %s"`
+	Format    string `default:"%d: %s"`
 	Separator string `default:": "`
 }
 

@@ -9,6 +9,7 @@ const InteractiveModeSuggestingFlags = "\nThe pod specified will be used this ti
 const PodKilledOrMoved = "The pod may have been killed or moved to a different node."
 const PodKilledOrMovedSuggestingAction = "Check the pod status with `cp-remote pods` and reconnect once the pod is running again."
 const InvalidConfigSettings = "The remote settings file is missing or the require parameters are missing (%v), please run the `cp-remote init` command."
+const EnvironmentSpecifiedEmpty = "The environment specified is empty. Please ensure that the environment specified in the configuration file is not empty or override it with the -e flag."
 
 //List for suggestion messages that are displayed to the user in case of failure
 const SuggestionTriggerBuildFailed = `

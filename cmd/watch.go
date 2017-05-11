@@ -113,7 +113,7 @@ func (h *WatchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *co
 // Validate checks that the provided watch options are specified.
 func (h *WatchHandle) Validate() error {
 	if len(strings.Trim(h.options.environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	if len(strings.Trim(h.options.service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")

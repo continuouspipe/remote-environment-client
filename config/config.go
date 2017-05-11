@@ -97,7 +97,7 @@ func (c *Config) GetString(key string) (string, error) {
 
 //GetStringQ calls GetString returning empty if there key didn't match a config handler
 func (c *Config) GetStringQ(key string) string {
-	if val, err := c.GetString(key); err != nil {
+	if val, err := c.GetString(key); err == nil {
 		return val
 	}
 	return ""

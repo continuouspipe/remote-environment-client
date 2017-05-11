@@ -143,7 +143,7 @@ func (h *execHandle) complete(argsIn []string, conf config.ConfigProvider) error
 // validate checks that the provided bash options are specified.
 func (h *execHandle) validate() error {
 	if len(strings.Trim(h.environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	if len(strings.Trim(h.service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")

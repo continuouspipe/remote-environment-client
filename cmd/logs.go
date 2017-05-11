@@ -112,7 +112,7 @@ func (h *LogsCmdHandle) Complete(cmd *cobra.Command, argsIn []string, settings *
 // Validate checks that the provided exec options are specified.
 func (h *LogsCmdHandle) Validate() error {
 	if len(strings.Trim(h.environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	if len(strings.Trim(h.service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")

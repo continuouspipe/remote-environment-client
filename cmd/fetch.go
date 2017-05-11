@@ -108,7 +108,7 @@ func (h *FetchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *co
 // Validate checks that the provided fetch options are specified.
 func (h *FetchHandle) Validate() error {
 	if len(strings.Trim(h.Environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	if len(strings.Trim(h.Service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")

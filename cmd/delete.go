@@ -10,6 +10,7 @@ import (
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/spf13/cobra"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
@@ -137,7 +138,7 @@ func (h *DeletePodCmdHandle) Complete(cmd *cobra.Command, argsIn []string, setti
 // Validate checks that the provided exec options are specified.
 func (h *DeletePodCmdHandle) Validate() error {
 	if len(strings.Trim(h.options.environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	return nil
 }

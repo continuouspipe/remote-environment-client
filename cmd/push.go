@@ -125,7 +125,7 @@ func (h *PushHandle) Complete(cmd *cobra.Command, argsIn []string, settings *con
 // Validate checks that the provided push options are specified.
 func (h *PushHandle) Validate() error {
 	if len(strings.Trim(h.options.environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	if len(strings.Trim(h.options.service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")

@@ -1,19 +1,30 @@
 //Package cplogs This file contains the code that handle logging information that get sent to an external server
 //We send warning alerts when something that we do not expect happens
 //We send operational metrics for each command such as, command name, arguments, duration, status etc..
-package cplogs
+package remote
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"runtime"
 	"time"
 
-	"net/http"
+	"bytes"
 
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
+	cphttp "github.com/continuouspipe/remote-environment-client/http"
 	"github.com/continuouspipe/remote-environment-client/session"
+	"github.com/pkg/errors"
 )
+
+//ErrorFailedToSendDataToLoggingAPI is used as a log message when the post request to the logging api had failed
+const ErrorFailedToSendDataToLoggingAPI = "failed to send the post request to the logging API"
+
+const errorFailedToRetrievedLoggingAPIURL = "failed to retrieve the logging api url"
 
 //RemoteCommand holds the data that is logged when a command terminates
 type RemoteCommand struct {
@@ -92,6 +103,7 @@ func NewRemoteCommand(cmd string, args []string) *RemoteCommand {
 	}
 }
 
+//EndedOk calls Ended setting the http status OK status
 func (rc *RemoteCommand) EndedOk(cmdSession session.CommandSession) *RemoteCommand {
 	rc.Ended(http.StatusOK, "", "", cmdSession)
 	return rc
@@ -119,10 +131,37 @@ func NewRemoteCommandSender() *RemoteCommandSender {
 
 //Send sends a RemoteCommand to the log proxy url
 func (s RemoteCommandSender) Send(rc RemoteCommand) error {
+	u, err := GetLogProxyAddr()
+	if err != nil {
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedLoggingAPIURL).String())
+	}
+	u.Path = "/logs"
+
+	reqBodyJSON, err := json.Marshal(rc)
+	if err != nil {
+		msg := fmt.Sprintf(cphttp.ErrorCreatingJSONRequest, reqBodyJSON)
+		cplogs.V(4).Infof(msg)
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, msg).String())
+	}
+
+	req, err := http.NewRequest(http.MethodPost, u.String(), bytes.NewReader(reqBodyJSON))
+	if err != nil {
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToCreatePostRequest).String())
+	}
+	req.Header.Add("Content-Type", "application/json")
+
+	client := &http.Client{}
+	_, err = cphttp.GetResponseBody(client, req)
+	if err != nil {
+		cplogs.V(4).Infof(cphttp.ErrorFailedToGetResponseBody, u.String())
+		cplogs.Flush()
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cphttp.ErrorFailedToGetResponseBody).String())
+	}
 	return nil
 }
 
-func (s RemoteCommandSender) getLogProxyURL() (*url.URL, error) {
+//GetLogProxyAddr gets the api address for the cp logging proxy
+func GetLogProxyAddr() (*url.URL, error) {
 	addr, err := config.C.GetString(config.CpLogProxyAddr)
 	if err != nil {
 		return nil, err
