@@ -69,7 +69,7 @@
 
 
 BINARY=cp-remote
-VERSION=0.1.4
+VERSION=0.1.5.beta.1
 
 CONFIG_PKG=github.com/continuouspipe/remote-environment-client/config
 LDFLAGS=-ldflags="-X ${CONFIG_PKG}.CurrentVersion=${VERSION}"
