@@ -22,6 +22,10 @@ func (i *Ignore) LoadFromIgnoreFile() error {
 	if err != nil {
 		return err
 	}
+
+	//Clear the current list
+	i.List = []string{}
+
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		i.List = append(i.List, scanner.Text())
