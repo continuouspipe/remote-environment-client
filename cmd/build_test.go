@@ -13,7 +13,7 @@ func TestRemoteBranchNotPresent(t *testing.T) {
 	//get mocked dependencies
 	triggerBuild := mocks.NewMockInitState()
 	waitForEnvironmentReadyState := mocks.NewMockInitState()
-	apiProvider := mocks.NewMockCpApiProvider()
+	apiProvider := mocks.NewMockCpAPIProvider()
 	spyConfig := mocks.NewSpyConfig()
 
 	//set expectations
@@ -31,7 +31,7 @@ func TestRemoteBranchNotPresent(t *testing.T) {
 		},
 	}
 	apiProvider.On("GetRemoteEnvironmentStatus", "837d92hd-19su1d91", "987654321").Return(r, nil)
-	apiProvider.On("SetApiKey", "some-api-key")
+	apiProvider.On("SetAPIKey", "some-api-key")
 
 	spyConfig.
 		On("Set", config.InitStatus, initStateCompleted).Return(nil).

@@ -30,6 +30,11 @@ func (m *MockPodsFilter) ByStatus(status string) pods.Filter {
 	return args.Get(0).(*MockPodsFilter)
 }
 
+func (m *MockPodsFilter) ByStatusReason(status string) pods.Filter {
+	args := m.Called(status)
+	return args.Get(0).(*MockPodsFilter)
+}
+
 func (m *MockPodsFilter) First() *api.Pod {
 	args := m.Called()
 	return args.Get(0).(*api.Pod)

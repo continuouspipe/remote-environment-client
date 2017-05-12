@@ -28,6 +28,11 @@ func (s *SpyConfig) GetString(key string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
+func (s *SpyConfig) GetStringQ(key string) string {
+	args := s.Called(key)
+	return args.String(0)
+}
+
 func (s *SpyConfig) SetConfigFile(configType config.ConfigType, in string) error {
 	args := s.Called(configType, in)
 	return args.Error(0)
