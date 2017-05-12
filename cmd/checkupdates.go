@@ -23,5 +23,10 @@ type CheckUpdates struct {
 }
 
 func (h *CheckUpdates) Handle(args []string) {
-	checkErr(update.CheckForLatestVersion())
+	err := update.CheckForLatestVersion()
+	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+	}
 }

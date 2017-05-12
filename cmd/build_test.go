@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"io/ioutil"
+	"testing"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/test/mocks"
-	"io/ioutil"
-	"testing"
 )
 
 func TestRemoteBranchNotPresent(t *testing.T) {
@@ -16,12 +17,12 @@ func TestRemoteBranchNotPresent(t *testing.T) {
 	spyConfig := mocks.NewSpyConfig()
 
 	//set expectations
-	r := &cpapi.ApiRemoteEnvironmentStatus{}
-	r.PublicEndpoints = []cpapi.ApiPublicEndpoint{
+	r := &cpapi.APIRemoteEnvironmentStatus{}
+	r.PublicEndpoints = []cpapi.APIPublicEndpoint{
 		{
 			Address: "10.0.0.0",
 			Name:    "web",
-			Ports: []cpapi.ApiPublicEndpointPort{
+			Ports: []cpapi.APIPublicEndpointPort{
 				{
 					Number:   80,
 					Protocol: "tcp",
@@ -35,9 +36,9 @@ func TestRemoteBranchNotPresent(t *testing.T) {
 	spyConfig.
 		On("Set", config.InitStatus, initStateCompleted).Return(nil).
 		On("Save", config.AllConfigTypes).Return(nil).
-		On("GetString", config.ApiKey).Return("some-api-key", nil).
-		On("GetString", config.RemoteEnvironmentId).Return("987654321", nil).
-		On("GetString", config.FlowId).Return("837d92hd-19su1d91", nil)
+		On("GetStringQ", config.ApiKey).Return("some-api-key", nil).
+		On("GetStringQ", config.RemoteEnvironmentId).Return("987654321", nil).
+		On("GetStringQ", config.FlowId).Return("837d92hd-19su1d91", nil)
 
 	triggerBuild.On("Handle").Return(nil)
 	waitForEnvironmentReadyState.On("Handle").Return(nil)

@@ -28,6 +28,7 @@ type ConfigProvider interface {
 	Set(key string, value interface{}) error
 	GetBool(key string) (bool, error)
 	GetString(key string) (string, error)
+	GetStringQ(key string) string
 	SetConfigFile(configType ConfigType, in string) error
 	SetConfigPath(configType ConfigType, in string) error
 	ConfigFileUsed(configType ConfigType) (string, error)
@@ -94,6 +95,14 @@ func (c *Config) GetString(key string) (string, error) {
 	return "", fmt.Errorf("The key specified %s didn't match any of the handled configs.", key)
 }
 
+//GetStringQ calls GetString returning empty if there key didn't match a config handler
+func (c *Config) GetStringQ(key string) string {
+	if val, err := c.GetString(key); err == nil {
+		return val
+	}
+	return ""
+}
+
 //set the config file for the given config type
 func (c *Config) SetConfigFile(configType ConfigType, in string) error {
 	if configType == LocalConfigType {
@@ -156,11 +165,15 @@ func (c *Config) Save(configType ConfigType) error {
 }
 
 //check if all mandatory settings are set for both config types
-func (c Config) Validate() (bool, []string) {
+func (c Config) Validate() (missingSettings []string, ok bool) {
 	local := c.local.GetMissingMandatorySettings()
 	global := c.global.GetMissingMandatorySettings()
-	all := append(local, global...)
-	return len(all) == 0, all
+	missingSettings = append(local, global...)
+
+	if len(missingSettings) != 0 {
+		return missingSettings, false
+	}
+	return missingSettings, true
 }
 
 func init() {

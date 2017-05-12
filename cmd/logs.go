@@ -2,18 +2,19 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/continuouspipe/remote-environment-client/config"
-	"github.com/continuouspipe/remote-environment-client/cplogs"
-	"github.com/continuouspipe/remote-environment-client/kubectlapi"
-	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
-	"github.com/spf13/cobra"
-	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
-	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi"
+	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/spf13/cobra"
+	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
+	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 var (
@@ -111,7 +112,7 @@ func (h *LogsCmdHandle) Complete(cmd *cobra.Command, argsIn []string, settings *
 // Validate checks that the provided exec options are specified.
 func (h *LogsCmdHandle) Validate() error {
 	if len(strings.Trim(h.environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	if len(strings.Trim(h.service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
@@ -128,11 +129,13 @@ func (h *LogsCmdHandle) Handle(args []string, podsFinder pods.Finder, podsFilter
 
 	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.environment)
 	if err != nil {
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 
 	pod := podsFilter.List(*allPods).ByService(h.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service))
 	}
 
@@ -147,6 +150,9 @@ func (h *LogsCmdHandle) Handle(args []string, podsFinder pods.Finder, podsFilter
 	kubeCmdLogs.Flags().Set("follow", strconv.FormatBool(h.follow))
 	kubeCmdLogs.Flags().Set("previous", strconv.FormatBool(h.previous))
 
+	//TODO: Change to use directly the LogsOptions struct and RunLogs() so that we can get the error
+
+	//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	kubeCmdLogs.Run(kubeCmdLogs, []string{pod.GetName()})
 	return nil
 }

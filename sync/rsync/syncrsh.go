@@ -4,14 +4,15 @@ package rsync
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/osapi"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/continuouspipe/remote-environment-client/util/slice"
-	"io"
-	"os"
-	"path/filepath"
 )
 
 func init() {
@@ -74,6 +75,8 @@ func (o RSyncRsh) Sync(paths []string) error {
 
 	paths, err = o.getRelativePathList(paths)
 	if err != nil {
+		//TODO: Wrap the error making it Stateful
+
 		return err
 	}
 
@@ -131,6 +134,8 @@ func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 
 		err := o.executeRsync(lArgs, os.Stdout)
 		if err != nil {
+			//TODO: Wrap the error making it Stateful
+
 			return err
 		}
 	}
@@ -145,7 +150,12 @@ func (o RSyncRsh) syncAllFiles(paths []string, args []string) error {
 		"./",
 		"--:"+o.remoteProjectPath,
 	)
-	return o.executeRsync(args, os.Stdout)
+	err := o.executeRsync(args, os.Stdout)
+	if err != nil {
+		//TODO: Wrap the error making it Stateful
+
+	}
+	return err
 }
 
 func (rsh RSyncRsh) executeRsync(args []string, stdOut io.Writer) error {

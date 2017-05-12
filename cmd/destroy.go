@@ -2,18 +2,19 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/git"
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/spf13/cobra"
-	"io"
-	"os"
 )
 
 func NewDestroyCmd() *cobra.Command {
 	handler := NewDestroyHandle()
-	handler.api = cpapi.NewCpApi()
+	handler.api = cpapi.NewCpAPI()
 	handler.config = config.C
 	handler.stdout = os.Stdout
 	handler.lsRemote = git.NewLsRemote()
@@ -32,7 +33,7 @@ environment, ContinuousPipe will then remove the environment.`,
 }
 
 type DestroyHandle struct {
-	api      cpapi.CpApiProvider
+	api      cpapi.DataProvider
 	config   config.ConfigProvider
 	lsRemote git.LsRemoteExecutor
 	push     git.PushExecutor
@@ -90,10 +91,13 @@ func (h *DestroyHandle) Handle() error {
 	}
 
 	if apiKey != "" && flowId != "" && remoteEnvironmentId != "" {
-		h.api.SetApiKey(apiKey)
+		h.api.SetAPIKey(apiKey)
 		//stop building any flows associated with the git branch
 		err = h.api.CancelRunningTide(flowId, remoteEnvironmentId)
 		if err != nil {
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 
@@ -101,6 +105,9 @@ func (h *DestroyHandle) Handle() error {
 			//delete the remote environment via cp api
 			err = h.api.RemoteEnvironmentDestroy(flowId, environment, cluster)
 			if err != nil {
+
+
+				//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 				return err
 			}
 		}
@@ -110,14 +117,23 @@ func (h *DestroyHandle) Handle() error {
 		//if remote exists delete remote branch
 		remoteExists, err := h.hasRemote(remoteName, gitBranch)
 		if err != nil {
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 
 		if remoteExists == true {
 			_, err = h.push.DeleteRemote(remoteName, gitBranch)
+			if err != nil {
+
+
+				//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+			}
 		}
 	}
 
+	//TODO: Change to return nil
 	return err
 }
 

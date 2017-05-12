@@ -103,7 +103,7 @@ func (h *ForwardHandle) Validate() error {
 		return fmt.Errorf("at least 1 PORT is required for port-forward")
 	}
 	if len(strings.Trim(h.Environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	if len(strings.Trim(h.Service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
@@ -136,6 +136,11 @@ func (h *ForwardHandle) Handle() error {
 
 	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr, h.Environment)
 	kubeCmdPortForward := kubectlcmd.NewCmdPortForward(kubectlcmdutil.NewFactory(clientConfig), os.Stdout, os.Stderr)
+
+	//TODO: Change to use directly the PortForwardOptions struct and RunPortForward() so that we can get the error. We may have to copy paste the unexported struct defaultPortForwarder
+
+
+	//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	kubeCmdPortForward.Run(kubeCmdPortForward, append([]string{pod.GetName()}, h.ports...))
 	return nil
 }

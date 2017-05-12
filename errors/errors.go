@@ -2,38 +2,74 @@ package errors
 
 import (
 	"fmt"
+	"net/http"
 	"os"
+	"reflect"
 	"runtime/debug"
+	"strconv"
+	"strings"
 
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/fatih/color"
+	"github.com/pkg/errors"
 )
 
+//StatefulErrorMessage groups an error code with a message
+type StatefulErrorMessage struct {
+	Code      int
+	Message   string
+	Format    string `default:"%d: %s"`
+	Separator string `default:": "`
+}
+
+//NewStatefulErrorMessage return a StatefulErrorMessage
+func NewStatefulErrorMessage(code int, msg string) *StatefulErrorMessage {
+	sem := &StatefulErrorMessage{Code: code, Message: msg}
+	sem.appyDefaultsFromTags()
+	return sem
+}
+
+//NewStatefulErrorMessageFromString create a StatefulErrorMessage from string
+func NewStatefulErrorMessageFromString(str string) *StatefulErrorMessage {
+	sem := &StatefulErrorMessage{}
+	sem.appyDefaultsFromTags()
+	parts := strings.Split(str, sem.Separator)
+	if len(parts) > 1 {
+		code, err := strconv.Atoi(parts[0])
+		if err != nil {
+			sem.Code = code
+			sem.Message = strings.Join(parts[1:], "")
+			return sem
+		}
+	}
+	return nil
+}
+
+//String converts a stateful error message to string
+func (s StatefulErrorMessage) String() string {
+	return fmt.Sprintf(s.Format, s.Code, s.Message)
+}
+
+func (s *StatefulErrorMessage) appyDefaultsFromTags() {
+	field, ok := reflect.TypeOf(s).Elem().FieldByName("Format")
+	if ok {
+		s.Format = field.Tag.Get("default")
+	}
+	field, ok = reflect.TypeOf(s).Elem().FieldByName("Separator")
+	if ok {
+		s.Separator = field.Tag.Get("default")
+	}
+}
+
+//CheckErr calls ExitWithMessage when there is an error
 func CheckErr(err error) {
 	if err == nil {
 		return
 	}
-
-	switch t := err.(type) {
-	case *ErrorList:
-		if t == nil {
-			return
-		}
-		if len(t.Items()) == 0 {
-			return
-		}
-		ExitWithMessage(err.Error())
-	case ErrorList:
-		if len(t.Items()) == 0 {
-			return
-		}
-		ExitWithMessage(err.Error())
-	default:
-		ExitWithMessage(err.Error())
-	}
-
+	ExitWithMessage(err.Error())
 }
 
+//ExitWithMessage print and write the stacktrace on the logs
 func ExitWithMessage(message string) {
 	color.Set(color.FgRed)
 	fmt.Println(message)
@@ -45,51 +81,12 @@ func ExitWithMessage(message string) {
 	os.Exit(1)
 }
 
-type ErrorListProvider interface {
-	error
-	Add(elems ...error)
-	AddErrorf(format string, a ...interface{})
-	Items() []error
-}
-
-type ErrorList struct {
-	errors []error
-}
-
-func NewErrorList() *ErrorList {
-	return &ErrorList{}
-}
-
-func (el *ErrorList) Add(elems ...error) {
-	el.errors = append(el.errors, elems...)
-}
-
-func (el *ErrorList) AddErrorf(format string, a ...interface{}) {
-	err := fmt.Errorf(format, a...)
-	el.errors = append(el.errors, err)
-}
-
-func (el ErrorList) Items() []error {
-	return el.errors
-}
-
-func (el ErrorList) Error() (err string) {
-	if len(el.errors) <= 0 {
-		return
+//FindCause finds the first error in the chain that has a status code assigned
+func FindCause(err error) (code int, reason string, stack string) {
+	cause := errors.Cause(err)
+	sem := NewStatefulErrorMessageFromString(cause.Error())
+	if sem != nil {
+		return sem.Code, sem.Message, fmt.Sprintf("%+v", err)
 	}
-
-	err = fmt.Sprintf("An error occured: %s", el.errors[0].Error())
-	if len(el.errors) == 1 {
-		return
-	}
-
-	err = err + fmt.Sprintf("\nError stack:\n")
-
-	for key, item := range el.errors {
-		if key == 0 {
-			continue
-		}
-		err = err + fmt.Sprintf("\n[%d] %s", key, item.Error())
-	}
-	return
+	return http.StatusInternalServerError, err.Error(), fmt.Sprintf("%+v", err)
 }

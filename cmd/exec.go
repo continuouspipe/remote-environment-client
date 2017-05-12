@@ -69,7 +69,7 @@ the exec command. The command and its arguments need to follow --`,
 					questioner := cpapi.NewMultipleChoiceCpEntityQuestioner()
 					apiKey, err := settings.GetString(config.ApiKey)
 					checkErr(err)
-					questioner.SetApiKey(apiKey)
+					questioner.SetAPIKey(apiKey)
 					resp := questioner.WhichEntities().Responses()
 					checkErr(questioner.Errors())
 
@@ -143,7 +143,7 @@ func (h *execHandle) complete(argsIn []string, conf config.ConfigProvider) error
 // validate checks that the provided bash options are specified.
 func (h *execHandle) validate() error {
 	if len(strings.Trim(h.environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	if len(strings.Trim(h.service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
@@ -160,11 +160,17 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) erro
 
 	podsList, err := podsFinder.FindAll(user, apiKey, addr, h.environment)
 	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 
 	pod := podsFilter.List(*podsList).ByService(h.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service))
 	}
 
@@ -199,11 +205,20 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) erro
 
 	kubeCmdUtilFactory := kubectlcmdutil.NewFactory(clientConfig)
 	argsLenAtDash := kubeCmdExec.ArgsLenAtDash()
-	kubectlcmdutil.CheckErr(kubeCmdExecOptions.Complete(kubeCmdUtilFactory, kubeCmdExec, h.args, argsLenAtDash))
-	kubectlcmdutil.CheckErr(kubeCmdExecOptions.Validate())
+	err = kubeCmdExecOptions.Complete(kubeCmdUtilFactory, kubeCmdExec, h.args, argsLenAtDash)
+	if err != nil {
+
+		kubectlcmdutil.CheckErr(err)
+	}
+	err = kubeCmdExecOptions.Validate()
+	if err != nil {
+
+		kubectlcmdutil.CheckErr(err)
+	}
 
 	err = kubeCmdExecOptions.Run()
 	if err != nil {
+
 		cplogs.V(5).Infof("The pod may have been killed or moved to a different node. Error %s", err)
 		cplogs.Flush()
 		fmt.Println(msgs.PodKilledOrMoved)
@@ -219,13 +234,13 @@ type interactiveModeHandler interface {
 
 type interactiveModeH struct {
 	config config.ConfigProvider
-	api    cpapi.CpApiProvider
+	api    cpapi.DataProvider
 }
 
 func newInteractiveModeH() *interactiveModeH {
 	p := &interactiveModeH{}
 	p.config = config.C
-	p.api = cpapi.NewCpApi()
+	p.api = cpapi.NewCpAPI()
 	return p
 }
 
@@ -235,10 +250,11 @@ func (h interactiveModeH) findTargetClusterAndApplyToConfig(flowID string, targe
 		return err
 	}
 
-	h.api.SetApiKey(apiKey)
+	h.api.SetAPIKey(apiKey)
 
-	environments, el := h.api.GetApiEnvironments(flowID)
+	environments, el := h.api.GetAPIEnvironments(flowID)
 	if el != nil {
+
 		return el
 	}
 

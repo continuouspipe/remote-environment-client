@@ -5,12 +5,12 @@ package rsync
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/osapi"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
-	"path/filepath"
 )
 
 func init() {
@@ -36,11 +36,6 @@ func (r *RsyncRshFetch) SetOptions(syncOptions options.SyncOptions) {
 }
 
 func (r RsyncRshFetch) Fetch(filePath string) error {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
 	rsh := fmt.Sprintf(`%s %s --context=%s --namespace=%s exec -i %s`, config.AppName, config.KubeCtlName, r.kubeConfigKey, r.environment, r.pod)
 	os.Setenv("RSYNC_RSH", rsh)
 	defer os.Unsetenv("RSYNC_RSH")
@@ -81,7 +76,7 @@ func (r RsyncRshFetch) Fetch(filePath string) error {
 		args = append(args, "--:"+r.remoteProjectPath+filePath)
 	}
 
-	args = append(args, currentDir)
+	args = append(args, cwd)
 
 	cplogs.V(5).Infof("rsync arguments: %s", args)
 	cplogs.Flush()
@@ -92,5 +87,10 @@ func (r RsyncRshFetch) Fetch(filePath string) error {
 	scmd.Stdout = os.Stdout
 	scmd.Stderr = os.Stderr
 
-	return osapi.CommandExecL(scmd, args...)
+	err = osapi.CommandExecL(scmd, args...)
+	if err != nil {
+		//TODO: Wrap the error making it Stateful
+
+	}
+	return err
 }

@@ -7,6 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"io"
+	"os"
+
 	"github.com/briandowns/spinner"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
@@ -17,8 +20,6 @@ import (
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/services"
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/spf13/cobra"
-	"io"
-	"os"
 )
 
 const initStateParseSaveToken = "parse-save-token"
@@ -87,14 +88,14 @@ type InitStrategy interface {
 type initInteractiveHandler struct {
 	config config.ConfigProvider
 	qp     util.QuestionPrompter
-	api    cpapi.CpApiProvider
+	api    cpapi.DataProvider
 	writer io.Writer
 	reset  bool
 }
 
 func NewInitInteractiveHandler(reset bool) *initInteractiveHandler {
 	p := &initInteractiveHandler{}
-	p.api = cpapi.NewCpApi()
+	p.api = cpapi.NewCpAPI()
 	p.config = config.C
 	p.qp = util.NewQuestionPrompt()
 	p.reset = reset
@@ -142,15 +143,19 @@ func (i initInteractiveHandler) Handle() error {
 	}
 
 	if changed == true {
-		i.api.SetApiKey(apiKey)
-		user, err := i.api.GetApiUser(username)
+		i.api.SetAPIKey(apiKey)
+		user, err := i.api.GetAPIUser(username)
 		if err != nil {
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 		if user.Username != username {
 			return fmt.Errorf("The api key provided does not match your the cp username %s.", username)
 		}
-		i.config.Save(config.GlobalConfigType)
+		err = i.config.Save(config.GlobalConfigType)
+		if err != nil {
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+		}
 	}
 
 	fmt.Fprintf(i.writer, "\n# Get started !\n")
@@ -167,13 +172,13 @@ type initHandler struct {
 	remoteName  string
 	reset       bool
 	qp          util.QuestionPrompter
-	api         cpapi.CpApiProvider
+	api         cpapi.DataProvider
 	writer      io.Writer
 }
 
 func NewInitHandler(remoteName string, reset bool) *initHandler {
 	p := &initHandler{}
-	p.api = cpapi.NewCpApi()
+	p.api = cpapi.NewCpAPI()
 	p.config = config.C
 	p.qp = util.NewQuestionPrompt()
 	p.remoteName = remoteName
@@ -209,7 +214,12 @@ func (i *initHandler) Complete(argsIn []string) error {
 		}
 		i.token = string(decodedToken)
 		i.config.Set(config.InitToken, inputToken)
-		i.config.Save(config.AllConfigTypes)
+		err = i.config.Save(config.AllConfigTypes)
+		if err != nil {
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+		}
 	} else {
 		return fmt.Errorf("Malformed token. Please go to https://continuouspipe.io/ to obtain a valid token")
 	}
@@ -222,7 +232,12 @@ func (i *initHandler) Complete(argsIn []string) error {
 	}
 
 	i.config.Set(config.RemoteName, i.remoteName)
-	i.config.Save(config.AllConfigTypes)
+	err = i.config.Save(config.AllConfigTypes)
+	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+	}
 
 	return nil
 }
@@ -284,7 +299,7 @@ func (i initHandler) Handle() error {
 
 	switch currentStatus {
 	case "", initStateParseSaveToken:
-		initState = &parseSaveTokenInfo{i.config, i.token, cpapi.NewCpApi()}
+		initState = &parseSaveTokenInfo{i.config, i.token, cpapi.NewCpAPI()}
 	case initStateTriggerBuild:
 		initState = newTriggerBuild()
 	case initStateWaitEnvironmentReady:
@@ -321,7 +336,7 @@ func (i initHandler) Handle() error {
 		return err
 	}
 
-	i.api.SetApiKey(apiKey)
+	i.api.SetAPIKey(apiKey)
 
 	remoteEnv, err := i.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if err != nil {
@@ -339,7 +354,7 @@ func (i initHandler) Handle() error {
 type parseSaveTokenInfo struct {
 	config config.ConfigProvider
 	token  string
-	api    cpapi.CpApiProvider
+	api    cpapi.DataProvider
 }
 
 func (p parseSaveTokenInfo) Next() initialization.InitState {
@@ -352,8 +367,13 @@ func (p parseSaveTokenInfo) Name() string {
 
 func (p parseSaveTokenInfo) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
-	p.config.Save(config.AllConfigTypes)
+	err := p.config.Save(config.AllConfigTypes)
+	if err != nil {
 
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+		return err
+	}
 	//we expect the token to have: api-key, remote-environment-id, project, cp-username, git-branch
 	splitToken := strings.Split(p.token, ",")
 	apiKey := splitToken[0]
@@ -368,10 +388,13 @@ func (p parseSaveTokenInfo) Handle() error {
 	cplogs.V(5).Infof("gitBranch: %s", gitBranch)
 
 	//check the status of the build on CP to determine if we need to force push or not
-	p.api.SetApiKey(apiKey)
+	p.api.SetAPIKey(apiKey)
 	cplogs.V(5).Infof("fetching remote environment info for user: %s", cpUsername)
-	_, err := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	_, err = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		cplogs.Flush()
 		return err
 	}
@@ -383,7 +406,12 @@ func (p parseSaveTokenInfo) Handle() error {
 	p.config.Set(config.FlowId, flowId)
 	p.config.Set(config.RemoteBranch, gitBranch)
 	p.config.Set(config.RemoteEnvironmentId, remoteEnvId)
-	p.config.Save(config.AllConfigTypes)
+	el := p.config.Save(config.AllConfigTypes)
+	if el != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+	}
 	cplogs.V(5).Infof("saved parsed token info for user: %s", cpUsername)
 	cplogs.Flush()
 	return nil
@@ -391,7 +419,7 @@ func (p parseSaveTokenInfo) Handle() error {
 
 type triggerBuild struct {
 	config   config.ConfigProvider
-	api      cpapi.CpApiProvider
+	api      cpapi.DataProvider
 	commit   git.CommitExecutor
 	lsRemote git.LsRemoteExecutor
 	push     git.PushExecutor
@@ -403,7 +431,7 @@ type triggerBuild struct {
 func newTriggerBuild() *triggerBuild {
 	return &triggerBuild{
 		config.C,
-		cpapi.NewCpApi(),
+		cpapi.NewCpAPI(),
 		git.NewCommit(),
 		git.NewLsRemote(),
 		git.NewPush(),
@@ -423,8 +451,13 @@ func (p triggerBuild) Name() string {
 
 func (p triggerBuild) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
-	p.config.Save(config.AllConfigTypes)
+	err := p.config.Save(config.AllConfigTypes)
+	if err != nil {
 
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+		return err
+	}
 	apiKey, err := p.config.GetString(config.ApiKey)
 	if err != nil {
 		return err
@@ -450,14 +483,20 @@ func (p triggerBuild) Handle() error {
 		return err
 	}
 
-	p.api.SetApiKey(apiKey)
+	p.api.SetAPIKey(apiKey)
 	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if el != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return el
 	}
 
 	envExists, elr := p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
 	if elr != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return elr
 	}
 
@@ -490,10 +529,16 @@ func (p triggerBuild) Handle() error {
 
 		err := p.pushLocalBranchToRemote(remoteName, gitBranch)
 		if err != nil {
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 		err = p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 		if err != nil {
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 		fmt.Fprintf(p.writer, "\n# Environment is building...\n")
@@ -526,7 +571,7 @@ func (p triggerBuild) hasRemote(remoteName string, gitBranch string) (bool, erro
 
 type waitEnvironmentReady struct {
 	config config.ConfigProvider
-	api    cpapi.CpApiProvider
+	api    cpapi.DataProvider
 	ticker *time.Ticker
 	writer io.Writer
 }
@@ -534,7 +579,7 @@ type waitEnvironmentReady struct {
 func newWaitEnvironmentReady() *waitEnvironmentReady {
 	return &waitEnvironmentReady{
 		config.C,
-		cpapi.NewCpApi(),
+		cpapi.NewCpAPI(),
 		time.NewTicker(time.Second * remoteEnvironmentReadinessProbePeriodSeconds),
 		os.Stdout,
 	}
@@ -550,8 +595,13 @@ func (p waitEnvironmentReady) Name() string {
 
 func (p waitEnvironmentReady) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
-	p.config.Save(config.AllConfigTypes)
+	err := p.config.Save(config.AllConfigTypes)
+	if err != nil {
 
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+		return err
+	}
 	apiKey, err := p.config.GetString(config.ApiKey)
 	if err != nil {
 		return err
@@ -569,16 +619,22 @@ func (p waitEnvironmentReady) Handle() error {
 		return err
 	}
 
-	p.api.SetApiKey(apiKey)
-	var remoteEnv *cpapi.ApiRemoteEnvironmentStatus
+	p.api.SetAPIKey(apiKey)
+	var remoteEnv *cpapi.APIRemoteEnvironmentStatus
 
 	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if el != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return el
 	}
 
 	envExists, elr := p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
 	if elr != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return elr
 	}
 
@@ -586,12 +642,15 @@ func (p waitEnvironmentReady) Handle() error {
 		fmt.Fprintln(p.writer, "The build had previously failed, retrying..")
 		err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 		if err != nil {
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 	}
 
 	fmt.Fprintln(p.writer, "ContinuousPipe is now building your developer environment. You can view the logs of your first tide here:")
-	fmt.Fprintf(p.writer, "https://ui.continuouspipe.io/project/%s/%s/%s/logs\n", remoteEnv.LastTide.Team.Slug, remoteEnv.LastTide.FlowUuid, remoteEnv.LastTide.Uuid)
+	fmt.Fprintf(p.writer, "https://ui.continuouspipe.io/project/%s/%s/%s/logs\n", remoteEnv.LastTide.Team.Slug, remoteEnv.LastTide.FlowUUID, remoteEnv.LastTide.UUID)
 
 	s := spinner.New(spinner.CharSets[34], 100*time.Millisecond)
 	s.Prefix = "Waiting for the environment to be ready "
@@ -604,6 +663,8 @@ WAIT_LOOP:
 
 		remoteEnv, el = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 		if el != nil {
+
+
 			break
 		}
 
@@ -618,10 +679,20 @@ WAIT_LOOP:
 			cplogs.V(5).Infof("re-trying triggering build for the remote environment")
 			cplogs.Flush()
 			err = p.api.RemoteEnvironmentBuild(flowId, gitBranch)
+			if err != nil {
+
+
+				//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+			}
 			break
 
 		case cpapi.RemoteEnvironmentTideFailed:
 			err = fmt.Errorf("remote environment id %s creation has failed. To see more information about the error go to https://ui.continuouspipe.io/", remoteEnvId)
+			if err != nil {
+
+
+				//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+			}
 			break WAIT_LOOP
 
 		case cpapi.RemoteEnvironmentRunning:
@@ -635,6 +706,9 @@ WAIT_LOOP:
 	//if there has been an error return it
 	if err != nil {
 		s.Stop()
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 
@@ -647,6 +721,9 @@ WAIT_LOOP:
 		envCreated, elr = p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
 		if elr != nil {
 			s.Stop()
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return elr
 		}
 
@@ -665,7 +742,7 @@ WAIT_LOOP:
 		err = fmt.Errorf(
 			"\nContinuousPipe could not build your developer environment. Please check the logs of your first tide here:\n"+
 				"https://ui.continuouspipe.io/project/%s/%s/%s/logs\n"+
-				"If there are any changes required to the continuous-pipe.yml file, push them to the repository and retry with cp-remote init [token] --reset.\n", remoteEnv.LastTide.Team.Slug, remoteEnv.LastTide.FlowUuid, remoteEnv.LastTide.Uuid)
+				"If there are any changes required to the continuous-pipe.yml file, push them to the repository and retry with cp-remote init [token] --reset.\n", remoteEnv.LastTide.Team.Slug, remoteEnv.LastTide.FlowUUID, remoteEnv.LastTide.UUID)
 	}
 
 	s.Stop()
@@ -674,7 +751,7 @@ WAIT_LOOP:
 
 type applyEnvironmentSettings struct {
 	config             config.ConfigProvider
-	api                cpapi.CpApiProvider
+	api                cpapi.DataProvider
 	kubeCtlInitializer kubectlapi.KubeCtlInitializer
 	writer             io.Writer
 }
@@ -682,7 +759,7 @@ type applyEnvironmentSettings struct {
 func newApplyEnvironmentSettings() *applyEnvironmentSettings {
 	return &applyEnvironmentSettings{
 		config.C,
-		cpapi.NewCpApi(),
+		cpapi.NewCpAPI(),
 		kubectlapi.NewKubeCtlInit(),
 		os.Stdout,
 	}
@@ -698,7 +775,13 @@ func (p applyEnvironmentSettings) Name() string {
 
 func (p applyEnvironmentSettings) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
-	p.config.Save(config.AllConfigTypes)
+	err := p.config.Save(config.AllConfigTypes)
+	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+		return err
+	}
 
 	apiKey, err := p.config.GetString(config.ApiKey)
 	if err != nil {
@@ -713,10 +796,13 @@ func (p applyEnvironmentSettings) Handle() error {
 		return err
 	}
 
-	p.api.SetApiKey(apiKey)
+	p.api.SetAPIKey(apiKey)
 
 	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if el != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return el
 	}
 
@@ -724,16 +810,23 @@ func (p applyEnvironmentSettings) Handle() error {
 	//the environment has been built, so save locally the settings received from the server
 	p.config.Set(config.ClusterIdentifier, remoteEnv.ClusterIdentifier)
 	p.config.Set(config.KubeEnvironmentName, remoteEnv.KubeEnvironmentName)
-	p.config.Save(config.AllConfigTypes)
+	err = p.config.Save(config.AllConfigTypes)
+	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+		return err
+	}
 	cplogs.V(5).Infoln("saved remote environment info")
 	cplogs.Flush()
 
 	err = p.applySettingsToCubeCtlConfig()
 	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
-	p.config.Save(config.AllConfigTypes)
-	cplogs.Flush()
 	return nil
 }
 
@@ -745,6 +838,9 @@ func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 
 	err = p.kubeCtlInitializer.Init(environment)
 	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 	return nil
@@ -777,8 +873,13 @@ func (p applyDefaultService) Name() string {
 
 func (p applyDefaultService) Handle() error {
 	p.config.Set(config.InitStatus, p.Name())
-	p.config.Save(config.AllConfigTypes)
+	err := p.config.Save(config.AllConfigTypes)
+	if err != nil {
 
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+		return err
+	}
 	address, username, apiKey, err := p.kubeCtlInitializer.GetSettings()
 	if err != nil {
 		return err
@@ -791,6 +892,9 @@ func (p applyDefaultService) Handle() error {
 
 	list, err := p.ks.FindAll(username, apiKey, address, environment)
 	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 
@@ -802,7 +906,13 @@ func (p applyDefaultService) Handle() error {
 	if len(list.Items) == 1 {
 		cplogs.V(5).Infoln("Only 1 service found, setting that one as default.")
 		p.config.Set(list.Items[0].GetName(), config.Service)
-		p.config.Save(config.AllConfigTypes)
+		err = p.config.Save(config.AllConfigTypes)
+		if err != nil {
+
+
+			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+			return err
+		}
 		return nil
 	}
 
@@ -826,10 +936,19 @@ func (p applyDefaultService) Handle() error {
 	})
 	key, err := strconv.Atoi(serviceKey)
 	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 	serviceName := list.Items[key].GetName()
 	p.config.Set(config.Service, serviceName)
-	p.config.Save(config.AllConfigTypes)
+	err = p.config.Save(config.AllConfigTypes)
+	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+		return err
+	}
 	return nil
 }

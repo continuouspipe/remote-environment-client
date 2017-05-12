@@ -10,6 +10,7 @@ import (
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/spf13/cobra"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
@@ -137,7 +138,7 @@ func (h *DeletePodCmdHandle) Complete(cmd *cobra.Command, argsIn []string, setti
 // Validate checks that the provided exec options are specified.
 func (h *DeletePodCmdHandle) Validate() error {
 	if len(strings.Trim(h.options.environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	return nil
 }
@@ -161,6 +162,9 @@ func (h *DeletePodCmdHandle) Handle(args []string) error {
 	kubeCmdDelete.Flags().Set("selector", h.options.selector)
 	kubeCmdDelete.Flags().Set("timeout", h.options.timeout.String())
 
+	//TODO: Run doesn't return the error, extract the content of NewCmdDelete().Run() and call directly k8s.io/kubernetes/pkg/kubectl/cmd/delete.go::RunDelete()
+
+	//TODO: Print native kubectl response using CheckErr() in "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	kubeCmdDelete.Run(kubeCmdDelete, h.argsIn)
 	return nil
 }

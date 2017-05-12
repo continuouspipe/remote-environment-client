@@ -1,5 +1,5 @@
-hash: 64b2d1f473418a23c9fa2b3c4f1a945e912b77abe6c708ba86eedfb9e04556d4
-updated: 2017-04-24T17:23:12.145741617+01:00
+hash: 423c714f1961820278513373c6772df68ab5178d0676588d975917ed5319abe3
+updated: 2017-05-10T13:26:36.013163082+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -98,6 +98,8 @@ imports:
   version: babee2ae61e03a44a2bdffe421055226e8168958
 - name: github.com/fsnotify/fsnotify
   version: f12c6236fe7b5cf6bcf30e5935d08cb079d78334
+- name: github.com/getsentry/raven-go
+  version: b68337dbf03e7fbb53d9fd9b63fd09b28e8f13f7
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-openapi/jsonpointer
@@ -203,7 +205,7 @@ imports:
 - name: github.com/pelletier/go-toml
   version: 0049ab3dc4c4c70a9eee23087437b69c0dde2130
 - name: github.com/pkg/errors
-  version: a22138067af1c4942683050411a841ade67fe1eb
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/pkg/sftp
   version: 4d0e916071f68db74f8a73926335f809396d6b42
 - name: github.com/pmezard/go-difflib
@@ -222,6 +224,8 @@ imports:
   version: bf295275fb1ee4e347c09330ed9a3c76cc19895a
   subpackages:
   - selfupdate
+- name: github.com/satori/go.uuid
+  version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shurcooL/sanitized_anchor_name
   version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
 - name: github.com/Sirupsen/logrus

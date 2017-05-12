@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/continuouspipe/remote-environment-client/errors"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/continuouspipe/remote-environment-client/util"
+	"github.com/pkg/errors"
 )
 
 //MultipleChoiceCpEntityOption holds an option that will be presented to the user
@@ -27,29 +27,28 @@ type MultipleChoiceCpEntityAnswer struct {
 //to choose from and requests to select a single one
 type MultipleChoiceCpEntityQuestioner struct {
 	answers         MultipleChoiceCpEntityAnswer
-	api             CpApiProvider
-	errors          errors.ErrorListProvider
-	apiEnvironments []ApiEnvironment
+	api             DataProvider
+	apiEnvironments []APIEnvironment
 	qp              util.QuestionPrompter
+	err             error
 }
 
 //NewMultipleChoiceCpEntityQuestioner returns a *MultipleChoiceCpEntityQuestioner struct
 func NewMultipleChoiceCpEntityQuestioner() *MultipleChoiceCpEntityQuestioner {
 	q := &MultipleChoiceCpEntityQuestioner{}
-	q.api = NewCpApi()
-	q.errors = errors.NewErrorList()
+	q.api = NewCpAPI()
 	q.qp = util.NewQuestionPrompt()
 	return q
 }
 
-//SetApiKey sets the cp api key
-func (q *MultipleChoiceCpEntityQuestioner) SetApiKey(apiKey string) {
-	q.api.SetApiKey(apiKey)
+//SetAPIKey sets the cp api key
+func (q *MultipleChoiceCpEntityQuestioner) SetAPIKey(apiKey string) {
+	q.api.SetAPIKey(apiKey)
 }
 
-//SetApiKey sets the cp api key
-func (q *MultipleChoiceCpEntityQuestioner) Errors() errors.ErrorListProvider {
-	return q.errors
+//SetAPIKey sets the cp api key
+func (q *MultipleChoiceCpEntityQuestioner) Errors() error {
+	return q.err
 }
 
 //WhichEntities triggers an api request to the cp api based on the arguments and presents to the user a list of options to choose from, it then stores the user response
@@ -59,9 +58,9 @@ func (q MultipleChoiceCpEntityQuestioner) WhichEntities() MultipleChoiceCpEntity
 
 func (q MultipleChoiceCpEntityQuestioner) whichProject() MultipleChoiceCpEntityQuestioner {
 	var optionList []MultipleChoiceCpEntityOption
-	apiTeams, err := q.api.GetApiTeams()
+	apiTeams, err := q.api.GetAPITeams()
 	if err != nil {
-		q.errors.Add(err)
+		q.err = errors.Wrap(err, q.err.Error())
 	}
 	for _, apiTeam := range apiTeams {
 		optionList = append(optionList, MultipleChoiceCpEntityOption{
@@ -71,7 +70,7 @@ func (q MultipleChoiceCpEntityQuestioner) whichProject() MultipleChoiceCpEntityQ
 	}
 
 	if len(optionList) == 0 {
-		q.errors.AddErrorf(msgs.ProjectsNotFound)
+		q.err = errors.Wrap(q.err, msgs.ProjectsNotFound)
 		return q
 	}
 
@@ -85,19 +84,19 @@ func (q MultipleChoiceCpEntityQuestioner) whichFlow() MultipleChoiceCpEntityQues
 	}
 
 	var optionList []MultipleChoiceCpEntityOption
-	apiFlows, err := q.api.GetApiFlows(q.answers.Project.Value)
+	apiFlows, err := q.api.GetAPIFlows(q.answers.Project.Value)
 	if err != nil {
-		q.errors.Add(err)
+		q.err = errors.Wrap(err, q.err.Error())
 	}
 	for _, apiFlow := range apiFlows {
 		optionList = append(optionList, MultipleChoiceCpEntityOption{
 			Name:  apiFlow.Repository.Name,
-			Value: apiFlow.Uuid,
+			Value: apiFlow.UUID,
 		})
 	}
 
 	if len(optionList) == 0 {
-		q.errors.AddErrorf(msgs.FlowsNotFound)
+		q.err = errors.Wrap(q.err, msgs.FlowsNotFound)
 		return q
 	}
 
@@ -113,9 +112,9 @@ func (q MultipleChoiceCpEntityQuestioner) whichEnvironment() MultipleChoiceCpEnt
 	var optionList []MultipleChoiceCpEntityOption
 	if len(q.apiEnvironments) == 0 {
 		var err error
-		q.apiEnvironments, err = q.api.GetApiEnvironments(q.answers.Flow.Value)
+		q.apiEnvironments, err = q.api.GetAPIEnvironments(q.answers.Flow.Value)
 		if err != nil {
-			q.errors.Add(err)
+			q.err = errors.Wrap(err, q.err.Error())
 		}
 	}
 
@@ -127,7 +126,7 @@ func (q MultipleChoiceCpEntityQuestioner) whichEnvironment() MultipleChoiceCpEnt
 	}
 
 	if len(optionList) == 0 {
-		q.errors.AddErrorf(msgs.EnvironmentsNotFound)
+		q.err = errors.Wrap(q.err, msgs.EnvironmentsNotFound)
 		return q
 	}
 
@@ -143,12 +142,12 @@ func (q MultipleChoiceCpEntityQuestioner) whichPod() MultipleChoiceCpEntityQuest
 	var optionList []MultipleChoiceCpEntityOption
 	if len(q.apiEnvironments) == 0 {
 		var err error
-		q.apiEnvironments, err = q.api.GetApiEnvironments(q.answers.Flow.Value)
+		q.apiEnvironments, err = q.api.GetAPIEnvironments(q.answers.Flow.Value)
 		if err != nil {
-			q.errors.Add(err)
+			q.err = errors.Wrap(err, q.err.Error())
 		}
 	}
-	var targetEnv *ApiEnvironment
+	var targetEnv *APIEnvironment
 	for _, apiEnvironment := range q.apiEnvironments {
 		if apiEnvironment.Identifier == q.answers.Environment.Value {
 			targetEnv = &apiEnvironment
@@ -165,7 +164,7 @@ func (q MultipleChoiceCpEntityQuestioner) whichPod() MultipleChoiceCpEntityQuest
 	}
 
 	if len(optionList) == 0 {
-		q.errors.AddErrorf(msgs.RunningPodNotFound)
+		q.err = errors.Wrap(q.err, msgs.RunningPodNotFound)
 		return q
 	}
 
@@ -175,7 +174,7 @@ func (q MultipleChoiceCpEntityQuestioner) whichPod() MultipleChoiceCpEntityQuest
 
 func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []MultipleChoiceCpEntityOption) MultipleChoiceCpEntityOption {
 	if len(optionList) == 0 {
-		q.errors.AddErrorf("List of option is empty")
+		q.err = errors.Wrap(q.err, "List of option is empty")
 		return MultipleChoiceCpEntityOption{}
 	}
 	if len(optionList) == 1 {
@@ -214,7 +213,7 @@ func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []Multip
 			}
 		}
 		if keySelectedAsInt == -1 {
-			q.errors.Add(err)
+			q.err = errors.Wrap(err, q.err.Error())
 		}
 	}
 	return optionList[keySelectedAsInt]

@@ -24,7 +24,7 @@ func NewWatchCmd() *cobra.Command {
 	handler := &WatchHandle{}
 	handler.qp = util.NewQuestionPrompt()
 	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
-	handler.api = cpapi.NewCpApi()
+	handler.api = cpapi.NewCpAPI()
 	handler.config = settings
 	handler.writer = os.Stdout
 
@@ -77,7 +77,7 @@ type WatchHandle struct {
 	Stdout      io.Writer
 	syncer      sync.Syncer
 	kubeCtlInit kubectlapi.KubeCtlInitializer
-	api         cpapi.CpApiProvider
+	api         cpapi.DataProvider
 	config      config.ConfigProvider
 	writer      io.Writer
 	qp          util.QuestionPrompter
@@ -113,7 +113,7 @@ func (h *WatchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *co
 // Validate checks that the provided watch options are specified.
 func (h *WatchHandle) Validate() error {
 	if len(strings.Trim(h.options.environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	if len(strings.Trim(h.options.service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
@@ -153,11 +153,15 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 
 	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.options.environment)
 	if err != nil {
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 
 	pod := podsFilter.List(*allPods).ByService(h.options.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.options.service))
 	}
 
@@ -175,9 +179,11 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 		return err
 	}
 
-	h.api.SetApiKey(apiKey)
+	h.api.SetAPIKey(apiKey)
 	remoteEnv, el := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if el != nil {
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return el
 	}
 	cpapi.PrintPublicEndpoints(h.Stdout, remoteEnv.PublicEndpoints)
@@ -199,5 +205,10 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 
 	observer := sync.GetSyncOnEventObserver(h.syncer)
 
-	return dirMonitor.AnyEventCall(cwd, observer)
+	err = dirMonitor.AnyEventCall(cwd, observer)
+	if err != nil {
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+	}
+	return err
 }

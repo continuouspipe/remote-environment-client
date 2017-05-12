@@ -236,3 +236,9 @@ import:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
   - third_party/forked/golang/template
+- package: github.com/getsentry/raven-go
+  version: b68337dbf03e7fbb53d9fd9b63fd09b28e8f13f7
+- package: github.com/satori/go.uuid
+  version: ~1.1.0
+- package: github.com/pkg/errors
+  version: ~0.8.0

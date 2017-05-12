@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/continuouspipe/remote-environment-client/benchmark"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
@@ -11,9 +14,6 @@ import (
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/spf13/cobra"
-	"io"
-	"os"
-	"strings"
 )
 
 var fetchExample = fmt.Sprintf(`
@@ -47,9 +47,6 @@ with the default container specified during setup but you can specify another co
 
 			fmt.Println("Fetch in progress")
 
-			b := benchmark.NewCmdBenchmark()
-			b.Start("fetch")
-
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
 			fetcher := sync.GetFetcher()
@@ -58,8 +55,6 @@ with the default container specified during setup but you can specify another co
 			checkErr(handler.Validate())
 			checkErr(handler.Handle(args, podsFinder, podsFilter, fetcher))
 
-			_, err := b.StopAndLog()
-			checkErr(err)
 			fmt.Printf("Fetch complete, files and folders retrieved has been logged in %s\n", cplogs.GetLogInfoFile())
 			cplogs.Flush()
 		},
@@ -113,7 +108,7 @@ func (h *FetchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *co
 // Validate checks that the provided fetch options are specified.
 func (h *FetchHandle) Validate() error {
 	if len(strings.Trim(h.Environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	if len(strings.Trim(h.Service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
@@ -133,11 +128,17 @@ func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter p
 
 	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.Environment)
 	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 
 	pod := podsFilter.List(*allPods).ByService(h.Service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.Service))
 	}
 

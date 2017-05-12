@@ -2,22 +2,22 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/continuouspipe/remote-environment-client/benchmark"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
-	msgs "github.com/continuouspipe/remote-environment-client/messages"
 )
 
 var pushSyncExample = `
@@ -60,9 +60,6 @@ Note that this will delete any files/folders in the remote container that are no
 
 			fmt.Println("Push in progress")
 
-			benchmrk := benchmark.NewCmdBenchmark()
-			benchmrk.Start("push")
-
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
 			syncer := sync.GetSyncer()
@@ -71,7 +68,6 @@ Note that this will delete any files/folders in the remote container that are no
 			checkErr(handler.Validate())
 			checkErr(handler.Handle(args, podsFinder, podsFilter, syncer))
 
-			_, err = benchmrk.StopAndLog()
 			checkErr(err)
 			cplogs.Flush()
 		},
@@ -129,7 +125,7 @@ func (h *PushHandle) Complete(cmd *cobra.Command, argsIn []string, settings *con
 // Validate checks that the provided push options are specified.
 func (h *PushHandle) Validate() error {
 	if len(strings.Trim(h.options.environment, " ")) == 0 {
-		return fmt.Errorf("the environment specified is invalid")
+		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
 	}
 	if len(strings.Trim(h.options.service, " ")) == 0 {
 		return fmt.Errorf("the service specified is invalid")
@@ -165,11 +161,17 @@ func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 
 	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.options.environment)
 	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
 
 	pod := podsFilter.List(*allPods).ByService(h.options.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.options.service))
 	}
 
@@ -195,6 +197,11 @@ func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 	}
 
 	err = syncer.Sync(paths)
+	if err != nil {
+
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+	}
 	fmt.Fprintf(h.writer, "Push complete, the files and folders that has been sent can be found in the logs %s\n", cplogs.GetLogInfoFile())
 	return err
 }

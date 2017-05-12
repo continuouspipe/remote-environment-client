@@ -8,6 +8,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/continuouspipe/remote-environment-client/errors"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
 	"github.com/fatih/color"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -123,12 +124,22 @@ func initLocalConfig() {
 
 	//create the config file if it does not exist
 	configFileUsed, err := config.C.ConfigFileUsed(config.LocalConfigType)
+	if err != nil {
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+	}
 	checkErr(err)
 
 	_, err = os.OpenFile(configFileUsed, os.O_RDWR|os.O_CREATE, 0664)
+	if err != nil {
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+	}
 	checkErr(err)
 	//load config file
-	checkErr(config.C.ReadInConfig(config.LocalConfigType))
+	err = config.C.ReadInConfig(config.LocalConfigType)
+	if err != nil {
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+	}
+	checkErr(err)
 }
 
 func initGlobalConfig() {
@@ -138,17 +149,24 @@ func initGlobalConfig() {
 	globalConfigFilePath := filepath.Join(globalConfigPath, "config.yml")
 
 	//create the directory
-	_ = os.Mkdir(globalConfigPath, 0755)
+	os.Mkdir(globalConfigPath, 0755)
 
 	//create the global config file
 	_, err = os.OpenFile(globalConfigFilePath, os.O_RDWR|os.O_CREATE, 0664)
+	if err != nil {
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+	}
 	checkErr(err)
 
 	//set directory and file path in config
 	config.C.SetConfigFile(config.GlobalConfigType, globalConfigFilePath)
 
 	//load config file
-	checkErr(config.C.ReadInConfig(config.GlobalConfigType))
+	err = config.C.ReadInConfig(config.GlobalConfigType)
+	if err != nil {
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+	}
+	checkErr(err)
 }
 
 func checkLegacyApplicationFile() {
@@ -162,16 +180,19 @@ func addApplicationFilesToGitIgnore() {
 	gitIgnore := config.NewIgnore()
 	gitIgnore.File = config.GitIgnore
 	logFile, err := config.C.ConfigFileUsed(config.LocalConfigType)
+	if err != nil {
+
+		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+	}
 	checkErr(err)
 	gitIgnore.AddToIgnore("/" + filepath.Base(logFile))
 	gitIgnore.AddToIgnore(cplogs.LogDirName)
 }
 
 func validateConfig() {
-	valid, missing := config.C.Validate()
-	if valid == false {
-		errors.ExitWithMessage(fmt.Sprintf("The remote settings file is missing or the require parameters are missing (%v), please run the init command.", missing))
-
+	missing, ok := config.C.Validate()
+	if ok == false {
+		errors.ExitWithMessage(fmt.Sprintf(msgs.InvalidConfigSettings, missing))
 	}
 }
 
