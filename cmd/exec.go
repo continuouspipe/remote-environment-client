@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"runtime"
 	"strings"
@@ -10,93 +11,53 @@ import (
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	remotecplogs "github.com/continuouspipe/remote-environment-client/cplogs/remote"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/continuouspipe/remote-environment-client/session"
 	"github.com/fatih/color"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
-var execExample = fmt.Sprintf(`
-# execute -l -all on the web pod
-%[1]s ex -- ls -all
-
-# execute -l -all on the web pod overriding the project-key and remote-branch
-%[1]s ex -e techup-dev-user -s web -- ls -all
-`, config.AppName)
+//ExecCmdName is the name identifier for the exec command
+const ExecCmdName = "exec"
 
 //NewExecCmd return a cobra command struct pointer which on Run, if required it prepares the config so we can reach the pod and
 //then uses a command handler to execute the command specified in the arguments
 func NewExecCmd() *cobra.Command {
-	settings := config.C
 	handler := newExecHandle()
 
 	var interactive bool
 	var flowID string
 
 	bashcmd := &cobra.Command{
-		Use:     "exec",
+		Use:     ExecCmdName,
 		Aliases: []string{"ex"},
-		Short:   "Execute a command on a container",
-		Long: `To execute a command on a container without first getting a bash session use
-the exec command. The command and its arguments need to follow --`,
-		Example: execExample,
+		Short:   msgs.ExecCommandShortDescription,
+		Long:    msgs.ExecCommandLongDescription,
+		Example: fmt.Sprintf(msgs.ExecCommandExampleDescription, config.AppName),
 		Run: func(cmd *cobra.Command, args []string) {
-			podsFinder := pods.NewKubePodsFind()
-			podsFilter := pods.NewKubePodsFilter()
+			remoteCommand := remotecplogs.NewRemoteCommand(ExecCmdName, args)
+			cmdSession := session.NewCommandSession().Start()
 
-			defaultEnvironment, err := settings.GetString(config.KubeEnvironmentName)
-			checkErr(err)
-			defaultService, err := settings.GetString(config.Service)
-			checkErr(err)
+			suggestion, err, isKubeError := RunExec(handler, interactive, flowID, args)
 
-			if interactive {
-				cplogs.V(5).Infoln("exec in interactive mode")
-				//make sure config has an api key and a cp user set
-				initInteractiveH := NewInitInteractiveHandler(false)
-				initInteractiveH.SetWriter(ioutil.Discard)
-				err := initInteractiveH.Complete(args)
-				checkErr(err)
-				err = initInteractiveH.Validate()
-				checkErr(err)
-				err = initInteractiveH.Handle()
-				checkErr(err)
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cmdSession, err)
 
-				if flowID == "" && handler.environment == "" && handler.service == "" {
-					//guide the user to choose the right pod they want to target
-					questioner := cpapi.NewMultipleChoiceCpEntityQuestioner()
-					apiKey, err := settings.GetString(config.ApiKey)
-					checkErr(err)
-					questioner.SetAPIKey(apiKey)
-					resp := questioner.WhichEntities().Responses()
-					checkErr(questioner.Errors())
-
-					handler.environment = resp.Environment.Value
-					handler.service = resp.Pod.Value
-					flowID = resp.Flow.Value
-
-					suggestedFlags := color.GreenString("-i -e %s -f %s -s %s", handler.environment, resp.Flow.Value, resp.Pod.Value)
-					fmt.Printf(msgs.InteractiveModeSuggestingFlags, suggestedFlags)
-				}
-
-				//alter the configuration so that we connect to the flow and environment specified by the user
-				err = newInteractiveModeH().findTargetClusterAndApplyToConfig(flowID, handler.environment)
-				checkErr(err)
-			} else {
-				//apply default values
-				if handler.environment == "" {
-					handler.environment = defaultEnvironment
-				}
-				if handler.service == "" {
-					handler.service = defaultService
+				if isKubeError {
+					fmt.Println(suggestion)
+					kubectlcmdutil.CheckErr(err)
+				} else {
+					cperrors.ExitWithMessage(suggestion)
 				}
 			}
-
-			checkErr(handler.complete(args, settings))
-			checkErr(handler.validate())
-			checkErr(handler.handle(podsFinder, podsFilter))
+			remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cmdSession))
 		},
 	}
 
@@ -107,6 +68,77 @@ the exec command. The command and its arguments need to follow --`,
 	bashcmd.PersistentFlags().StringVarP(&flowID, config.FlowId, "f", "", "The flow to use")
 
 	return bashcmd
+}
+
+func RunExec(handler *execHandle, interactive bool, flowID string, args []string) (suggestion string, err error, isKubeError bool) {
+	settings := config.C
+
+	podsFinder := pods.NewKubePodsFind()
+	podsFilter := pods.NewKubePodsFilter()
+
+	defaultEnvironment := settings.GetStringQ(config.KubeEnvironmentName)
+	defaultService := settings.GetStringQ(config.Service)
+
+	if interactive {
+		cplogs.V(5).Infoln("exec in interactive mode")
+		//make sure config has an api key and a cp user set
+		initInteractiveH := NewInitInteractiveHandler(false)
+		initInteractiveH.SetWriter(ioutil.Discard)
+		err := initInteractiveH.Complete(args)
+		if err != nil {
+			return "", err, false
+		}
+		err = initInteractiveH.Validate()
+		if err != nil {
+			return "", err, false
+		}
+		err = initInteractiveH.Handle()
+		if err != nil {
+			return err.Error(), err, false
+		}
+
+		if flowID == "" && handler.environment == "" && handler.service == "" {
+			//guide the user to choose the right pod they want to target
+			questioner := cpapi.NewMultipleChoiceCpEntityQuestioner()
+			questioner.SetAPIKey(settings.GetStringQ(config.ApiKey))
+			_, flow, environment, pod, suggestion, err := questioner.WhichEntities()
+			if err != nil {
+				return suggestion, err, false
+			}
+
+			handler.environment = environment.Identifier
+			handler.service = pod.Name
+			flowID = flow.Repository.Name
+
+			suggestedFlags := color.GreenString("-i -e %s -f %s -s %s", environment.Identifier, flow.Repository.Name, pod.Name)
+			fmt.Printf(msgs.InteractiveModeSuggestingFlags, suggestedFlags)
+		}
+
+		//alter the configuration so that we connect to the flow and environment specified by the user
+		suggestion, err = newInteractiveModeH().findTargetClusterAndApplyToConfig(flowID, handler.environment)
+		if err != nil {
+			return suggestion, err, false
+		}
+	} else {
+		//apply default values
+		if handler.environment == "" {
+			handler.environment = defaultEnvironment
+		}
+		if handler.service == "" {
+			handler.service = defaultService
+		}
+	}
+
+	handler.complete(args, settings)
+	err = handler.validate()
+	if err != nil {
+		return err.Error(), err, false
+	}
+	suggestion, err, isKubeError = handler.handle(podsFinder, podsFilter)
+	if err != nil {
+		return suggestion, err, isKubeError
+	}
+	return "", nil, false
 }
 
 type execHandle struct {
@@ -125,53 +157,43 @@ func newExecHandle() *execHandle {
 }
 
 // complete verifies command line arguments and loads data from the command environment
-func (h *execHandle) complete(argsIn []string, conf config.ConfigProvider) error {
+func (h *execHandle) complete(argsIn []string, conf config.ConfigProvider) {
 	h.args = argsIn
 	h.config = conf
-	var err error
 	if h.environment == "" {
-		h.environment, err = conf.GetString(config.KubeEnvironmentName)
-		checkErr(err)
+		h.environment = conf.GetStringQ(config.KubeEnvironmentName)
 	}
 	if h.service == "" {
-		h.service, err = conf.GetString(config.Service)
-		checkErr(err)
+		h.service = conf.GetStringQ(config.Service)
 	}
-	return nil
 }
 
 // validate checks that the provided bash options are specified.
 func (h *execHandle) validate() error {
 	if len(strings.Trim(h.environment, " ")) == 0 {
-		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentSpecifiedEmpty).String())
 	}
 	if len(strings.Trim(h.service, " ")) == 0 {
-		return fmt.Errorf("the service specified is invalid")
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.ServiceSpecifiedEmpty).String())
 	}
 	return nil
 }
 
 // handle opens a bash console against a pod.
-func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) error {
+func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) (suggestion string, err error, isKubeError bool) {
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
-		return nil
+		return fmt.Sprintf(msgs.SuggestionGetSettingsError, session.CurrentSession.SessionID), err, false
 	}
 
 	podsList, err := podsFinder.FindAll(user, apiKey, addr, h.environment)
 	if err != nil {
-
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.SuggestionFindPodsFailed, session.CurrentSession.SessionID), err, false
 	}
 
 	pod := podsFilter.List(*podsList).ByService(h.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
-
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service))
+		return fmt.Sprintf(msgs.SuggestionRunningPodNotFound, h.environment, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service)).String()), false
 	}
 
 	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr, h.environment)
@@ -207,25 +229,20 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) erro
 	argsLenAtDash := kubeCmdExec.ArgsLenAtDash()
 	err = kubeCmdExecOptions.Complete(kubeCmdUtilFactory, kubeCmdExec, h.args, argsLenAtDash)
 	if err != nil {
-
-		kubectlcmdutil.CheckErr(err)
+		return "", errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, err.Error()).String()), true
 	}
 	err = kubeCmdExecOptions.Validate()
 	if err != nil {
-
-		kubectlcmdutil.CheckErr(err)
+		return "", errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, err.Error()).String()), true
 	}
 
 	err = kubeCmdExecOptions.Run()
 	if err != nil {
-
 		cplogs.V(5).Infof("The pod may have been killed or moved to a different node. Error %s", err)
 		cplogs.Flush()
-		fmt.Println(msgs.PodKilledOrMoved)
-		fmt.Println(msgs.PodKilledOrMovedSuggestingAction)
+		return fmt.Sprintf(msgs.SuggestionExecRunFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String()), true
 	}
-
-	return nil
+	return "", nil, false
 }
 
 type interactiveModeHandler interface {
@@ -244,18 +261,12 @@ func newInteractiveModeH() *interactiveModeH {
 	return p
 }
 
-func (h interactiveModeH) findTargetClusterAndApplyToConfig(flowID string, targetEnvironment string) error {
-	apiKey, err := h.config.GetString(config.ApiKey)
+func (h interactiveModeH) findTargetClusterAndApplyToConfig(flowID string, targetEnvironment string) (suggestion string, err error) {
+	h.api.SetAPIKey(h.config.GetStringQ(config.ApiKey))
+
+	environments, err := h.api.GetAPIEnvironments(flowID)
 	if err != nil {
-		return err
-	}
-
-	h.api.SetAPIKey(apiKey)
-
-	environments, el := h.api.GetAPIEnvironments(flowID)
-	if el != nil {
-
-		return el
+		return fmt.Sprintf(msgs.SuggestionGetApiEnvironmentsFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cpapi.ErrorFailedToGetEnvironmentsList).String())
 	}
 
 	clusterIdentifier := ""
@@ -266,14 +277,16 @@ func (h interactiveModeH) findTargetClusterAndApplyToConfig(flowID string, targe
 	}
 
 	if clusterIdentifier == "" {
-		return fmt.Errorf("The specified environment %s has not been found on the flow %s. Please check that you have inserted the correct flowID and environment at https://ui.continuouspipe.io/project/")
+		return fmt.Sprintf(msgs.SuggestionEnvironmentListEmpty, flowID, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentsNotFound).String())
 	}
 
-	//set the not persistent config information (do not save the local config in interactive mode)
+	//set the not persistent config information (**DO SAVE BY AND DO NOT CALL h.config.Save()** as we are in interactive mode)
 	h.config.Set(config.CpKubeProxyEnabled, true)
 	h.config.Set(config.FlowId, flowID)
-	cplogs.V(5).Infof("interactive mode: flow set to %s", flowID)
 	h.config.Set(config.ClusterIdentifier, clusterIdentifier)
+
+	cplogs.V(5).Infof("interactive mode: flow set to %s", flowID)
 	cplogs.V(5).Infof("interactive mode: cluster found and is set to %s", clusterIdentifier)
-	return nil
+	cplogs.Flush()
+	return "", nil
 }
