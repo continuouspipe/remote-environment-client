@@ -53,10 +53,18 @@ func NewBuildCmd() *cobra.Command {
 			suggestion, err := handler.Handle()
 			if err != nil {
 				code, reason, stack := cperrors.FindCause(err)
-				remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(code, reason, stack, *cs))
+				err := remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(code, reason, stack, *cs))
+				if err != nil {
+					cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+					cplogs.Flush()
+				}
 				cperrors.ExitWithMessage(suggestion)
 			}
-			remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cs))
+			err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cs))
+			if err != nil {
+				cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+				cplogs.Flush()
+			}
 		},
 	}
 	return command
@@ -99,7 +107,7 @@ func (h *BuildHandle) Handle() (suggestion string, err error) {
 		return fmt.Sprintf(msgs.SuggestionGetEnvironmentStatusFailed, session.CurrentSession.SessionID), err
 	}
 
-	fmt.Fprintf(h.stdout, msgs.GetStarted)
+	fmt.Fprintf(h.stdout, fmt.Sprintf("%s\n", msgs.GetStarted))
 	cpapi.PrintPublicEndpoints(h.stdout, remoteEnv.PublicEndpoints)
 	fmt.Fprintf(h.stdout, msgs.CheckDocumentation)
 

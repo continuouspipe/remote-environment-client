@@ -7,6 +7,7 @@ import (
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 	remotecplogs "github.com/continuouspipe/remote-environment-client/cplogs/remote"
 	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/git"
@@ -39,11 +40,19 @@ func NewDestroyCmd() *cobra.Command {
 			suggestion, err := handler.Handle()
 			if err != nil {
 				code, reason, stack := cperrors.FindCause(err)
-				remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(code, reason, stack, *cs))
+				err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(code, reason, stack, *cs))
+				if err != nil {
+					cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+					cplogs.Flush()
+				}
 				cperrors.ExitWithMessage(suggestion)
 			}
 
-			remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cs))
+			err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cs))
+			if err != nil {
+				cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+				cplogs.Flush()
+			}
 		},
 	}
 	return command
