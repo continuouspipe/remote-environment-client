@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/spf13/cobra"
 )
@@ -23,9 +24,12 @@ Interactive Mode:
 	# bash into a different environment and service in a different flow
 	%[2]s`, config.AppName, bashInteractiveFullExample)
 
+//BashCmdName is the name identifier for the exec command
+const BashCmdName = "bash"
+
 func NewBashCmd() *cobra.Command {
 	bashcmd := NewExecCmd()
-	bashcmd.Use = "bash"
+	bashcmd.Use = BashCmdName
 	bashcmd.Aliases = []string{"ba"}
 	bashcmd.Short = "Open a bash session in the remote environment container"
 	bashcmd.Long = `This will remotely connect to a bash session onto the default container specified

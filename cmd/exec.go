@@ -187,7 +187,7 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) (sug
 
 	pod := podsFilter.List(*podsList).ByService(h.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
-		return fmt.Sprintf(msgs.SuggestionRunningPodNotFound, h.environment, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service)).String())
+		return fmt.Sprintf(msgs.SuggestionRunningPodNotFound, h.service, h.environment, config.AppName, "bash", session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service)).String())
 	}
 
 	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr, h.environment)
@@ -260,7 +260,7 @@ func (h interactiveModeH) findTargetClusterAndApplyToConfig(flowID string, targe
 
 	environments, err := h.api.GetAPIEnvironments(flowID)
 	if err != nil {
-		return fmt.Sprintf(msgs.SuggestionGetApiEnvironmentsFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cpapi.ErrorFailedToGetEnvironmentsList).String())
+		return fmt.Sprintf(msgs.SuggestionGetApiEnvironmentsFailed, flowID, config.AppName, ExecCmdName, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, cpapi.ErrorFailedToGetEnvironmentsList).String())
 	}
 
 	clusterIdentifier := ""
@@ -271,7 +271,7 @@ func (h interactiveModeH) findTargetClusterAndApplyToConfig(flowID string, targe
 	}
 
 	if clusterIdentifier == "" {
-		return fmt.Sprintf(msgs.SuggestionEnvironmentListEmpty, flowID, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentsNotFound).String())
+		return fmt.Sprintf(msgs.SuggestionEnvironmentListEmpty, targetEnvironment, flowID, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentsNotFound).String())
 	}
 
 	//set the not persistent config information (**DO SAVE BY AND DO NOT CALL h.config.Save()** as we are in interactive mode)

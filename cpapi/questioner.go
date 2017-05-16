@@ -127,7 +127,7 @@ func (q MultipleChoiceCpEntityQuestioner) whichEnvironment(flowID string) (envir
 
 	apiEnvironments, err := q.api.GetAPIEnvironments(flowID)
 	if err != nil {
-		return APIEnvironment{}, fmt.Sprintf(msgs.SuggestionGetApiEnvironmentsFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, ErrorFailedToGetEnvironmentsList).String())
+		return APIEnvironment{}, fmt.Sprintf(msgs.SuggestionGetApiEnvironmentsFailedUsingQuestioner, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, ErrorFailedToGetEnvironmentsList).String())
 	}
 
 	for _, apiEnvironment := range apiEnvironments {
@@ -139,7 +139,7 @@ func (q MultipleChoiceCpEntityQuestioner) whichEnvironment(flowID string) (envir
 	}
 
 	if len(optionList) == 0 {
-		return APIEnvironment{}, fmt.Sprintf(msgs.SuggestionEnvironmentListEmpty, flowID, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentsNotFound).String())
+		return APIEnvironment{}, fmt.Sprintf(msgs.SuggestionEnvironmentListEmptyUsingQuestioner, flowID, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentsNotFound).String())
 	}
 
 	opt, err := q.ask("environment", optionList)
@@ -162,7 +162,7 @@ func (q *MultipleChoiceCpEntityQuestioner) whichPod(environment APIEnvironment) 
 	}
 
 	if len(optionList) == 0 {
-		return APIComponent{}, fmt.Sprintf(msgs.SuggestionRunningPodNotFound, environment.Identifier, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.RunningPodNotFound).String())
+		return APIComponent{}, fmt.Sprintf(msgs.SuggestionPodsListEmpty, environment.Identifier, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.RunningPodNotFound).String())
 	}
 
 	opt, err := q.ask("pod", optionList)
