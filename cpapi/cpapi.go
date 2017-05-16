@@ -20,7 +20,7 @@ const errorAPIKeyNotProvided = "api key not provided"
 const errorFailedToRetrievedAuthenticatorURL = "failed to retrieve the authenticator url"
 const errorFailedToRetrievedRiverURL = "failed to retrieve the river url"
 const errorFailedToGetRemoteEnvironmentStatus = "failed to get remote environment status"
-const errorFailedToGetEnvironmentsList = "failed to get the environments list"
+const ErrorFailedToGetEnvironmentsList = "failed to get the environments list"
 
 //DataProvider collects all cp api methods
 type DataProvider interface {
@@ -527,7 +527,7 @@ func (c CpAPI) RemoteEnvironmentRunningAndExists(flowID string, environmentID st
 
 	environments, err := c.GetAPIEnvironments(flowID)
 	if err != nil {
-		return false, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetEnvironmentsList).String())
+		return false, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, ErrorFailedToGetEnvironmentsList).String())
 	}
 	for _, environment := range environments {
 		if environment.Identifier == remoteEnv.KubeEnvironmentName {

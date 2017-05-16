@@ -177,3 +177,14 @@ func GetLogProxyAddr() (*url.URL, error) {
 	}
 	return u, nil
 }
+
+func EndSessionAndSendErrorCause(rc *RemoteCommand, s *session.CommandSession, err error) {
+	code, reason, stack := cperrors.FindCause(err)
+	err = NewRemoteCommandSender().Send(*rc.Ended(code, reason, stack, *s))
+	if err != nil {
+		if err != nil {
+			cplogs.V(4).Infof(ErrorFailedToSendDataToLoggingAPI)
+			cplogs.Flush()
+		}
+	}
+}

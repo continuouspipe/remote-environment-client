@@ -217,7 +217,6 @@ func (i *initHandler) Complete(argsIn []string) error {
 		err = i.config.Save(config.AllConfigTypes)
 		if err != nil {
 
-
 			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		}
 	} else {
@@ -234,7 +233,6 @@ func (i *initHandler) Complete(argsIn []string) error {
 	i.config.Set(config.RemoteName, i.remoteName)
 	err = i.config.Save(config.AllConfigTypes)
 	if err != nil {
-
 
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	}
@@ -370,7 +368,6 @@ func (p parseSaveTokenInfo) Handle() error {
 	err := p.config.Save(config.AllConfigTypes)
 	if err != nil {
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
@@ -393,7 +390,6 @@ func (p parseSaveTokenInfo) Handle() error {
 	_, err = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if err != nil {
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		cplogs.Flush()
 		return err
@@ -408,7 +404,6 @@ func (p parseSaveTokenInfo) Handle() error {
 	p.config.Set(config.RemoteEnvironmentId, remoteEnvId)
 	el := p.config.Save(config.AllConfigTypes)
 	if el != nil {
-
 
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 	}
@@ -454,7 +449,6 @@ func (p triggerBuild) Handle() error {
 	err := p.config.Save(config.AllConfigTypes)
 	if err != nil {
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
@@ -487,14 +481,12 @@ func (p triggerBuild) Handle() error {
 	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if el != nil {
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return el
 	}
 
 	envExists, elr := p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
 	if elr != nil {
-
 
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return elr
@@ -530,13 +522,11 @@ func (p triggerBuild) Handle() error {
 		err := p.pushLocalBranchToRemote(remoteName, gitBranch)
 		if err != nil {
 
-
 			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
 		}
 		err = p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 		if err != nil {
-
 
 			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
@@ -598,7 +588,6 @@ func (p waitEnvironmentReady) Handle() error {
 	err := p.config.Save(config.AllConfigTypes)
 	if err != nil {
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
@@ -625,14 +614,12 @@ func (p waitEnvironmentReady) Handle() error {
 	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if el != nil {
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return el
 	}
 
 	envExists, elr := p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
 	if elr != nil {
-
 
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return elr
@@ -642,7 +629,6 @@ func (p waitEnvironmentReady) Handle() error {
 		fmt.Fprintln(p.writer, "The build had previously failed, retrying..")
 		err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 		if err != nil {
-
 
 			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
@@ -664,7 +650,6 @@ WAIT_LOOP:
 		remoteEnv, el = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 		if el != nil {
 
-
 			break
 		}
 
@@ -681,7 +666,6 @@ WAIT_LOOP:
 			err = p.api.RemoteEnvironmentBuild(flowId, gitBranch)
 			if err != nil {
 
-
 				//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			}
 			break
@@ -689,7 +673,6 @@ WAIT_LOOP:
 		case cpapi.RemoteEnvironmentTideFailed:
 			err = fmt.Errorf("remote environment id %s creation has failed. To see more information about the error go to https://ui.continuouspipe.io/", remoteEnvId)
 			if err != nil {
-
 
 				//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			}
@@ -707,7 +690,6 @@ WAIT_LOOP:
 	if err != nil {
 		s.Stop()
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
@@ -721,7 +703,6 @@ WAIT_LOOP:
 		envCreated, elr = p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
 		if elr != nil {
 			s.Stop()
-
 
 			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return elr
@@ -778,7 +759,6 @@ func (p applyEnvironmentSettings) Handle() error {
 	err := p.config.Save(config.AllConfigTypes)
 	if err != nil {
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
@@ -801,7 +781,6 @@ func (p applyEnvironmentSettings) Handle() error {
 	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
 	if el != nil {
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return el
 	}
@@ -813,7 +792,6 @@ func (p applyEnvironmentSettings) Handle() error {
 	err = p.config.Save(config.AllConfigTypes)
 	if err != nil {
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
@@ -822,7 +800,6 @@ func (p applyEnvironmentSettings) Handle() error {
 
 	err = p.applySettingsToCubeCtlConfig()
 	if err != nil {
-
 
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
@@ -838,7 +815,6 @@ func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 
 	err = p.kubeCtlInitializer.Init(environment)
 	if err != nil {
-
 
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
@@ -876,7 +852,6 @@ func (p applyDefaultService) Handle() error {
 	err := p.config.Save(config.AllConfigTypes)
 	if err != nil {
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
@@ -893,7 +868,6 @@ func (p applyDefaultService) Handle() error {
 	list, err := p.ks.FindAll(username, apiKey, address, environment)
 	if err != nil {
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
@@ -908,7 +882,6 @@ func (p applyDefaultService) Handle() error {
 		p.config.Set(list.Items[0].GetName(), config.Service)
 		err = p.config.Save(config.AllConfigTypes)
 		if err != nil {
-
 
 			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 			return err
@@ -937,7 +910,6 @@ func (p applyDefaultService) Handle() error {
 	key, err := strconv.Atoi(serviceKey)
 	if err != nil {
 
-
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err
 	}
@@ -945,7 +917,6 @@ func (p applyDefaultService) Handle() error {
 	p.config.Set(config.Service, serviceName)
 	err = p.config.Save(config.AllConfigTypes)
 	if err != nil {
-
 
 		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
 		return err

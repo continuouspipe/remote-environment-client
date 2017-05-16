@@ -2,17 +2,25 @@ package cpapi
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/continuouspipe/remote-environment-client/session"
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/pkg/errors"
 )
 
+const errorFailedToGetFlowList = "failed to get the flow list"
+const errorFailedToGetTeamList = "failed to get the teams list"
+const questionerMultiSelectError = "error in the questioner multi select logic"
+
 //MultipleChoiceCpEntityOption holds an option that will be presented to the user
 type MultipleChoiceCpEntityOption struct {
-	Value string
-	Name  string
+	Value  string
+	Name   string
+	Object interface{}
 }
 
 //MultipleChoiceCpEntityAnswer for each entity holds the option selected by the user
@@ -26,11 +34,8 @@ type MultipleChoiceCpEntityAnswer struct {
 //MultipleChoiceCpEntityQuestioner presents the user with a list of option for cp entities (project, flows, environments, pods)
 //to choose from and requests to select a single one
 type MultipleChoiceCpEntityQuestioner struct {
-	answers         MultipleChoiceCpEntityAnswer
-	api             DataProvider
-	apiEnvironments []APIEnvironment
-	qp              util.QuestionPrompter
-	err             error
+	api DataProvider
+	qp  util.QuestionPrompter
 }
 
 //NewMultipleChoiceCpEntityQuestioner returns a *MultipleChoiceCpEntityQuestioner struct
@@ -46,139 +51,133 @@ func (q *MultipleChoiceCpEntityQuestioner) SetAPIKey(apiKey string) {
 	q.api.SetAPIKey(apiKey)
 }
 
-//SetAPIKey sets the cp api key
-func (q *MultipleChoiceCpEntityQuestioner) Errors() error {
-	return q.err
-}
-
 //WhichEntities triggers an api request to the cp api based on the arguments and presents to the user a list of options to choose from, it then stores the user response
-func (q MultipleChoiceCpEntityQuestioner) WhichEntities() MultipleChoiceCpEntityQuestioner {
-	return q.whichProject().whichFlow().whichEnvironment().whichPod()
+func (q *MultipleChoiceCpEntityQuestioner) WhichEntities() (project APITeam, flow APIFlow, environment APIEnvironment, pod APIComponent, suggestion string, err error) {
+	project, suggestion, err = q.whichProject()
+	if err != nil {
+		return
+	}
+	flow, suggestion, err = q.whichFlow(project.Slug)
+	if err != nil {
+		return
+	}
+	environment, suggestion, err = q.whichEnvironment(flow.UUID)
+	if err != nil {
+		return
+	}
+	pod, suggestion, err = q.whichPod(environment)
+	if err != nil {
+		return
+	}
+	return
 }
 
-func (q MultipleChoiceCpEntityQuestioner) whichProject() MultipleChoiceCpEntityQuestioner {
+func (q MultipleChoiceCpEntityQuestioner) whichProject() (apiTeam APITeam, suggestion string, err error) {
 	var optionList []MultipleChoiceCpEntityOption
 	apiTeams, err := q.api.GetAPITeams()
 	if err != nil {
-		q.err = errors.Wrap(err, q.err.Error())
+		return APITeam{}, fmt.Sprintf(msgs.SuggestionGetAPITeamsFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetTeamList).String())
 	}
 	for _, apiTeam := range apiTeams {
 		optionList = append(optionList, MultipleChoiceCpEntityOption{
-			Name:  apiTeam.Slug,
-			Value: apiTeam.Slug,
+			Name:   apiTeam.Slug,
+			Value:  apiTeam.Slug,
+			Object: apiTeam,
 		})
 	}
 
 	if len(optionList) == 0 {
-		q.err = errors.Wrap(q.err, msgs.ProjectsNotFound)
-		return q
+		return APITeam{}, fmt.Sprintf(msgs.SuggestionProjectsListEmpty, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.ProjectsNotFound).String())
 	}
 
-	q.answers.Project = q.ask("project", optionList)
-	return q
+	opt, err := q.ask("project", optionList)
+	if err != nil {
+		return APITeam{}, fmt.Sprintf(msgs.SuggestionQuestionerMultiSelectError, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, questionerMultiSelectError).String())
+	}
+	return opt.Object.(APITeam), "", nil
 }
 
-func (q MultipleChoiceCpEntityQuestioner) whichFlow() MultipleChoiceCpEntityQuestioner {
-	if q.answers.Project.Value == "" {
-		return q
-	}
-
+func (q MultipleChoiceCpEntityQuestioner) whichFlow(projectID string) (apiFlow APIFlow, suggestion string, err error) {
 	var optionList []MultipleChoiceCpEntityOption
-	apiFlows, err := q.api.GetAPIFlows(q.answers.Project.Value)
+	apiFlows, err := q.api.GetAPIFlows(projectID)
 	if err != nil {
-		q.err = errors.Wrap(err, q.err.Error())
+		return APIFlow{}, fmt.Sprintf(msgs.SuggestionGetFlowListFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToGetFlowList).String())
 	}
 	for _, apiFlow := range apiFlows {
 		optionList = append(optionList, MultipleChoiceCpEntityOption{
-			Name:  apiFlow.Repository.Name,
-			Value: apiFlow.UUID,
+			Name:   apiFlow.Repository.Name,
+			Value:  apiFlow.UUID,
+			Object: apiFlow,
 		})
 	}
 
 	if len(optionList) == 0 {
-		q.err = errors.Wrap(q.err, msgs.FlowsNotFound)
-		return q
+		return APIFlow{}, fmt.Sprintf(msgs.SuggestionFlowListEmpty, projectID, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.FlowsNotFound).String())
 	}
 
-	q.answers.Flow = q.ask("flow", optionList)
-	return q
+	opt, err := q.ask("flow", optionList)
+	if err != nil {
+		return APIFlow{}, fmt.Sprintf(msgs.SuggestionQuestionerMultiSelectError, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, questionerMultiSelectError).String())
+	}
+	return opt.Object.(APIFlow), "", nil
 }
 
-func (q MultipleChoiceCpEntityQuestioner) whichEnvironment() MultipleChoiceCpEntityQuestioner {
-	if q.answers.Flow.Value == "" {
-		return q
-	}
-
+func (q MultipleChoiceCpEntityQuestioner) whichEnvironment(flowID string) (environment APIEnvironment, suggestion string, err error) {
 	var optionList []MultipleChoiceCpEntityOption
-	if len(q.apiEnvironments) == 0 {
-		var err error
-		q.apiEnvironments, err = q.api.GetAPIEnvironments(q.answers.Flow.Value)
-		if err != nil {
-			q.err = errors.Wrap(err, q.err.Error())
-		}
+
+	apiEnvironments, err := q.api.GetAPIEnvironments(flowID)
+	if err != nil {
+		return APIEnvironment{}, fmt.Sprintf(msgs.SuggestionGetApiEnvironmentsFailedUsingQuestioner, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, ErrorFailedToGetEnvironmentsList).String())
 	}
 
-	for _, apiEnvironment := range q.apiEnvironments {
+	for _, apiEnvironment := range apiEnvironments {
 		optionList = append(optionList, MultipleChoiceCpEntityOption{
-			Name:  apiEnvironment.Identifier,
-			Value: apiEnvironment.Identifier,
+			Name:   apiEnvironment.Identifier,
+			Value:  apiEnvironment.Identifier,
+			Object: apiEnvironment,
 		})
 	}
 
 	if len(optionList) == 0 {
-		q.err = errors.Wrap(q.err, msgs.EnvironmentsNotFound)
-		return q
+		return APIEnvironment{}, fmt.Sprintf(msgs.SuggestionEnvironmentListEmptyUsingQuestioner, flowID, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentsNotFound).String())
 	}
 
-	q.answers.Environment = q.ask("environment", optionList)
-	return q
+	opt, err := q.ask("environment", optionList)
+	if err != nil {
+		return APIEnvironment{}, fmt.Sprintf(msgs.SuggestionQuestionerMultiSelectError, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, questionerMultiSelectError).String())
+	}
+
+	return opt.Object.(APIEnvironment), "", nil
 }
 
-func (q MultipleChoiceCpEntityQuestioner) whichPod() MultipleChoiceCpEntityQuestioner {
-	if q.answers.Flow.Value == "" {
-		return q
-	}
-
+func (q *MultipleChoiceCpEntityQuestioner) whichPod(environment APIEnvironment) (pod APIComponent, suggestion string, err error) {
 	var optionList []MultipleChoiceCpEntityOption
-	if len(q.apiEnvironments) == 0 {
-		var err error
-		q.apiEnvironments, err = q.api.GetAPIEnvironments(q.answers.Flow.Value)
-		if err != nil {
-			q.err = errors.Wrap(err, q.err.Error())
-		}
-	}
-	var targetEnv *APIEnvironment
-	for _, apiEnvironment := range q.apiEnvironments {
-		if apiEnvironment.Identifier == q.answers.Environment.Value {
-			targetEnv = &apiEnvironment
-			break
-		}
-	}
-	if targetEnv != nil {
-		for _, pod := range targetEnv.Components {
-			optionList = append(optionList, MultipleChoiceCpEntityOption{
-				Name:  pod.Name,
-				Value: pod.Name,
-			})
-		}
+
+	for _, pod := range environment.Components {
+		optionList = append(optionList, MultipleChoiceCpEntityOption{
+			Name:   pod.Name,
+			Value:  pod.Name,
+			Object: pod,
+		})
 	}
 
 	if len(optionList) == 0 {
-		q.err = errors.Wrap(q.err, msgs.RunningPodNotFound)
-		return q
+		return APIComponent{}, fmt.Sprintf(msgs.SuggestionPodsListEmpty, environment.Identifier, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.RunningPodNotFound).String())
 	}
 
-	q.answers.Pod = q.ask("pod", optionList)
-	return q
+	opt, err := q.ask("pod", optionList)
+	if err != nil {
+		return APIComponent{}, fmt.Sprintf(msgs.SuggestionQuestionerMultiSelectError, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, questionerMultiSelectError).String())
+	}
+	return opt.Object.(APIComponent), "", nil
 }
 
-func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []MultipleChoiceCpEntityOption) MultipleChoiceCpEntityOption {
+func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []MultipleChoiceCpEntityOption) (option MultipleChoiceCpEntityOption, err error) {
 	if len(optionList) == 0 {
-		q.err = errors.Wrap(q.err, "List of option is empty")
-		return MultipleChoiceCpEntityOption{}
+		return MultipleChoiceCpEntityOption{}, errors.Wrap(err, "List of option is empty")
 	}
 	if len(optionList) == 1 {
-		return optionList[0]
+		return optionList[0], nil
 	}
 
 	printedOptions := ""
@@ -213,13 +212,8 @@ func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []Multip
 			}
 		}
 		if keySelectedAsInt == -1 {
-			q.err = errors.Wrap(err, q.err.Error())
+			return MultipleChoiceCpEntityOption{}, errors.New("invalid option key selected")
 		}
 	}
-	return optionList[keySelectedAsInt]
-}
-
-//Responses returns the struct containing the answer selected by the user
-func (q MultipleChoiceCpEntityQuestioner) Responses() MultipleChoiceCpEntityAnswer {
-	return q.answers
+	return optionList[keySelectedAsInt], nil
 }

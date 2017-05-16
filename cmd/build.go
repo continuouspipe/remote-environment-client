@@ -42,22 +42,14 @@ func NewBuildCmd() *cobra.Command {
 			if ok == false {
 				reason := fmt.Sprintf(msgs.InvalidConfigSettings, missingSettings)
 				err := remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, "", *cs))
-				if err != nil {
-					cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
-					cplogs.Flush()
-				}
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
 				cperrors.ExitWithMessage(reason)
 			}
 
 			//call the build handler
 			suggestion, err := handler.Handle()
 			if err != nil {
-				code, reason, stack := cperrors.FindCause(err)
-				err := remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(code, reason, stack, *cs))
-				if err != nil {
-					cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
-					cplogs.Flush()
-				}
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
 				cperrors.ExitWithMessage(suggestion)
 			}
 			err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cs))
@@ -109,7 +101,7 @@ func (h *BuildHandle) Handle() (suggestion string, err error) {
 
 	fmt.Fprintf(h.stdout, fmt.Sprintf("%s\n", msgs.GetStarted))
 	cpapi.PrintPublicEndpoints(h.stdout, remoteEnv.PublicEndpoints)
-	fmt.Fprintf(h.stdout, msgs.CheckDocumentation)
+	fmt.Fprintf(h.stdout, "\n\n%s\n", msgs.CheckDocumentation)
 
 	return "", nil
 }
