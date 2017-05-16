@@ -133,6 +133,9 @@ func NewRemoteCommandSender() *RemoteCommandSender {
 
 //Send sends a RemoteCommand to the log proxy url
 func (s RemoteCommandSender) Send(rc RemoteCommand) error {
+	cplogs.V(5).Infof("sending command metrics for command %s", rc.Command)
+	cplogs.Flush()
+
 	u, err := GetLogProxyAddr()
 	if err != nil {
 		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errorFailedToRetrievedLoggingAPIURL).String())

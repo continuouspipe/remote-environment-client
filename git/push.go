@@ -3,7 +3,13 @@
 // e.g. git push "$(remote_name)" --delete "$(remote_branch)"
 package git
 
-import "github.com/continuouspipe/remote-environment-client/osapi"
+import (
+	"net/http"
+
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
+	"github.com/continuouspipe/remote-environment-client/osapi"
+	"github.com/pkg/errors"
+)
 
 type PushExecutor interface {
 	Push(localBranch string, remoteName string, remoteBranch string) (string, error)
@@ -23,7 +29,11 @@ func (g *push) Push(localBranch string, remoteName string, remoteBranch string) 
 		remoteName,
 		localBranch + ":" + remoteBranch,
 	}
-	return osapi.CommandExec(getGitScmd(), args...)
+	res, err := osapi.CommandExec(getGitScmd(), args...)
+	if err != nil {
+		return res, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "git error when force pushing to remote development branch").String())
+	}
+	return res, nil
 }
 
 func (g *push) DeleteRemote(remoteName string, remoteBranch string) (string, error) {
@@ -33,5 +43,9 @@ func (g *push) DeleteRemote(remoteName string, remoteBranch string) (string, err
 		"--delete",
 		remoteBranch,
 	}
-	return osapi.CommandExec(getGitScmd(), args...)
+	res, err := osapi.CommandExec(getGitScmd(), args...)
+	if err != nil {
+		return res, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "git error when deleting the remote development branch").String())
+	}
+	return res, nil
 }

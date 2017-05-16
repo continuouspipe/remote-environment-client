@@ -31,20 +31,17 @@ func NewBuildCmd() *cobra.Command {
 	command := &cobra.Command{
 		Use:     BuildCmdName,
 		Aliases: []string{"bu"},
-		Short:   "Create/Update the remote environment",
-		Long: `The build command will push changes the branch you have checked out locally to your remote
-environment branch. ContinuousPipe will then build the environment. You can use the
-https://ui.continuouspipe.io/ to see when the environment has finished building and to
-find its IP address.`,
+		Short:   msgs.BuildCommandShortDescription,
+		Long:    msgs.BuildCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
 			remoteCommand := remotecplogs.NewRemoteCommand(BuildCmdName, args)
-			cmdSession := session.NewCommandSession().Start()
+			cs := session.NewCommandSession().Start()
 
 			//validate the configuration file
 			missingSettings, ok := config.C.Validate()
 			if ok == false {
 				reason := fmt.Sprintf(msgs.InvalidConfigSettings, missingSettings)
-				err := remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, "", *cmdSession))
+				err := remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, "", *cs))
 				if err != nil {
 					cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
 					cplogs.Flush()
@@ -53,13 +50,21 @@ find its IP address.`,
 			}
 
 			//call the build handler
-			err, suggestion := handler.Handle()
+			suggestion, err := handler.Handle()
 			if err != nil {
 				code, reason, stack := cperrors.FindCause(err)
-				remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(code, reason, stack, *cmdSession))
+				err := remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(code, reason, stack, *cs))
+				if err != nil {
+					cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+					cplogs.Flush()
+				}
 				cperrors.ExitWithMessage(suggestion)
 			}
-			remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cmdSession))
+			err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cs))
+			if err != nil {
+				cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+				cplogs.Flush()
+			}
 		},
 	}
 	return command
@@ -75,20 +80,20 @@ type BuildHandle struct {
 }
 
 //Handle performs the 2 init stages that trigger that build and wait for the environment to be ready
-func (h *BuildHandle) Handle() (err error, suggestion string) {
+func (h *BuildHandle) Handle() (suggestion string, err error) {
 	err = h.triggerBuild.Handle()
 	if err != nil {
-		return err, fmt.Sprintf(msgs.SuggestionTriggerBuildFailed, session.CurrentSession.SessionID)
+		return fmt.Sprintf(msgs.SuggestionTriggerBuildFailed, session.CurrentSession.SessionID), err
 	}
 	err = h.waitForEnvironmentReady.Handle()
 	if err != nil {
-		return err, fmt.Sprintf(msgs.SuggestionWaitForEnvironmentReadyFailed, session.CurrentSession.SessionID)
+		return fmt.Sprintf(msgs.SuggestionWaitForEnvironmentReadyFailed, session.CurrentSession.SessionID), err
 	}
 
 	h.config.Set(config.InitStatus, initStateCompleted)
 	err = h.config.Save(config.AllConfigTypes)
 	if err != nil {
-		return err, fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID)
+		return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), err
 	}
 
 	apiKey := h.config.GetStringQ(config.ApiKey)
@@ -99,13 +104,12 @@ func (h *BuildHandle) Handle() (err error, suggestion string) {
 
 	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowID, remoteEnvID)
 	if err != nil {
-		return err, fmt.Sprintf(msgs.SuggestionGetEnvironmentStatusFailed, session.CurrentSession.SessionID)
+		return fmt.Sprintf(msgs.SuggestionGetEnvironmentStatusFailed, session.CurrentSession.SessionID), err
 	}
 
-	fmt.Fprintf(h.stdout, "\n\n# Get started !\n")
-	fmt.Fprintln(h.stdout, "You can now run `cp-remote watch` to watch your local changes with the deployed environment ! Your deployed environment can be found at this address:")
-	fmt.Fprintf(h.stdout, "\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
+	fmt.Fprintf(h.stdout, fmt.Sprintf("%s\n", msgs.GetStarted))
 	cpapi.PrintPublicEndpoints(h.stdout, remoteEnv.PublicEndpoints)
+	fmt.Fprintf(h.stdout, msgs.CheckDocumentation)
 
-	return nil, ""
+	return "", nil
 }
