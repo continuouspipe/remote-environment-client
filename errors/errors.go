@@ -9,9 +9,10 @@ import (
 	"strconv"
 	"strings"
 
+	"regexp"
+
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"github.com/fatih/color"
-	"github.com/pkg/errors"
 )
 
 //StatefulErrorMessage groups an error code with a message
@@ -86,10 +87,49 @@ func ExitWithMessage(message string) {
 
 //FindCause finds the first error in the chain that has a status code assigned
 func FindCause(err error) (code int, reason string, stack string) {
-	cause := errors.Cause(err)
-	sem := NewStatefulErrorMessageFromString(cause.Error())
-	if sem != nil {
-		return sem.Code, sem.Message, fmt.Sprintf("%+v", err)
+	cause := StatefulCause(err)
+
+	if cause != nil {
+		sem := NewStatefulErrorMessageFromString(cause.Error())
+		if sem != nil {
+			return sem.Code, sem.Message, fmt.Sprintf("%+v", err)
+		}
 	}
+
 	return http.StatusInternalServerError, err.Error(), fmt.Sprintf("%+v", err)
+}
+
+// StatefulCause attempts to find the cause of the error that has a state associated, if it finds it returns it, otherwise returns the cause itself
+func StatefulCause(err error) error {
+	type causer interface {
+		Cause() error
+	}
+
+	var lastCause error
+	var statefulCause error
+
+	for err != nil {
+		cause, ok := err.(causer)
+		if !ok {
+			break
+		}
+		err = cause.Cause()
+
+		r, compErr := regexp.Compile(`\d+:`)
+		if compErr != nil {
+			break
+		}
+		if r.MatchString(err.Error()) {
+			statefulCause = err
+		} else {
+			lastCause = err
+		}
+	}
+	if statefulCause != nil {
+		return statefulCause
+	}
+	if lastCause != nil {
+		return lastCause
+	}
+	return err
 }
