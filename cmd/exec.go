@@ -45,18 +45,12 @@ func NewExecCmd() *cobra.Command {
 			remoteCommand := remotecplogs.NewRemoteCommand(ExecCmdName, args)
 			cmdSession := session.NewCommandSession().Start()
 
-			suggestion, err, isKubeError := RunExec(handler, interactive, flowID, args)
-
+			suggestion, err := RunExec(handler, interactive, flowID, args)
 			if err != nil {
 				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cmdSession, err)
-
-				if isKubeError {
-					fmt.Println(suggestion)
-					kubectlcmdutil.CheckErr(err)
-				} else {
-					cperrors.ExitWithMessage(suggestion)
-				}
+				cperrors.ExitWithMessage(suggestion)
 			}
+
 			remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cmdSession))
 		},
 	}
@@ -70,7 +64,7 @@ func NewExecCmd() *cobra.Command {
 	return bashcmd
 }
 
-func RunExec(handler *execHandle, interactive bool, flowID string, args []string) (suggestion string, err error, isKubeError bool) {
+func RunExec(handler *execHandle, interactive bool, flowID string, args []string) (suggestion string, err error) {
 	settings := config.C
 
 	podsFinder := pods.NewKubePodsFind()
@@ -86,15 +80,15 @@ func RunExec(handler *execHandle, interactive bool, flowID string, args []string
 		initInteractiveH.SetWriter(ioutil.Discard)
 		err := initInteractiveH.Complete(args)
 		if err != nil {
-			return "", err, false
+			return "", err
 		}
 		err = initInteractiveH.Validate()
 		if err != nil {
-			return "", err, false
+			return "", err
 		}
 		err = initInteractiveH.Handle()
 		if err != nil {
-			return err.Error(), err, false
+			return err.Error(), err
 		}
 
 		if flowID == "" && handler.environment == "" && handler.service == "" {
@@ -103,21 +97,21 @@ func RunExec(handler *execHandle, interactive bool, flowID string, args []string
 			questioner.SetAPIKey(settings.GetStringQ(config.ApiKey))
 			_, flow, environment, pod, suggestion, err := questioner.WhichEntities()
 			if err != nil {
-				return suggestion, err, false
+				return suggestion, err
 			}
 
 			handler.environment = environment.Identifier
 			handler.service = pod.Name
-			flowID = flow.Repository.Name
+			flowID = flow.UUID
 
-			suggestedFlags := color.GreenString("-i -e %s -f %s -s %s", environment.Identifier, flow.Repository.Name, pod.Name)
+			suggestedFlags := color.GreenString("-i -e %s -f %s -s %s", environment.Identifier, flow.UUID, pod.Name)
 			fmt.Printf(msgs.InteractiveModeSuggestingFlags, suggestedFlags)
 		}
 
 		//alter the configuration so that we connect to the flow and environment specified by the user
 		suggestion, err = newInteractiveModeH().findTargetClusterAndApplyToConfig(flowID, handler.environment)
 		if err != nil {
-			return suggestion, err, false
+			return suggestion, err
 		}
 	} else {
 		//apply default values
@@ -132,13 +126,13 @@ func RunExec(handler *execHandle, interactive bool, flowID string, args []string
 	handler.complete(args, settings)
 	err = handler.validate()
 	if err != nil {
-		return err.Error(), err, false
+		return err.Error(), err
 	}
-	suggestion, err, isKubeError = handler.handle(podsFinder, podsFilter)
+	suggestion, err = handler.handle(podsFinder, podsFilter)
 	if err != nil {
-		return suggestion, err, isKubeError
+		return suggestion, err
 	}
-	return "", nil, false
+	return "", nil
 }
 
 type execHandle struct {
@@ -180,20 +174,20 @@ func (h *execHandle) validate() error {
 }
 
 // handle opens a bash console against a pod.
-func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) (suggestion string, err error, isKubeError bool) {
+func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) (suggestion string, err error) {
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
-		return fmt.Sprintf(msgs.SuggestionGetSettingsError, session.CurrentSession.SessionID), err, false
+		return fmt.Sprintf(msgs.SuggestionGetSettingsError, session.CurrentSession.SessionID), err
 	}
 
 	podsList, err := podsFinder.FindAll(user, apiKey, addr, h.environment)
 	if err != nil {
-		return fmt.Sprintf(msgs.SuggestionFindPodsFailed, session.CurrentSession.SessionID), err, false
+		return fmt.Sprintf(msgs.SuggestionFindPodsFailed, session.CurrentSession.SessionID), err
 	}
 
 	pod := podsFilter.List(*podsList).ByService(h.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
-		return fmt.Sprintf(msgs.SuggestionRunningPodNotFound, h.environment, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service)).String()), false
+		return fmt.Sprintf(msgs.SuggestionRunningPodNotFound, h.environment, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.service)).String())
 	}
 
 	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr, h.environment)
@@ -229,20 +223,20 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) (sug
 	argsLenAtDash := kubeCmdExec.ArgsLenAtDash()
 	err = kubeCmdExecOptions.Complete(kubeCmdUtilFactory, kubeCmdExec, h.args, argsLenAtDash)
 	if err != nil {
-		return "", errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, err.Error()).String()), true
+		return "", errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, err.Error()).String())
 	}
 	err = kubeCmdExecOptions.Validate()
 	if err != nil {
-		return "", errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, err.Error()).String()), true
+		return "", errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, err.Error()).String())
 	}
 
 	err = kubeCmdExecOptions.Run()
 	if err != nil {
 		cplogs.V(5).Infof("The pod may have been killed or moved to a different node. Error %s", err)
 		cplogs.Flush()
-		return fmt.Sprintf(msgs.SuggestionExecRunFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String()), true
+		return fmt.Sprintf(msgs.SuggestionExecRunFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, err.Error()).String())
 	}
-	return "", nil, false
+	return "", nil
 }
 
 type interactiveModeHandler interface {
