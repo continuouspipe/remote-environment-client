@@ -5,14 +5,14 @@ const ProjectsNotFound = `No projects were found. Please ensure that you have at
 const FlowsNotFound = `No flows were found. Please ensure that the project has at least one flow.`
 const EnvironmentsNotFound = `No environments were found. Please ensure that the flow has at least one environment.`
 const RunningPodNotFound = `No running pods were found. Please ensure that the environment has at least one running pod.`
-const InteractiveModeSuggestingFlags = `\nThe pod specified will be used this time. Next time, if you want to connect directly to the same pod, you can also use the flag values '%s'.\n`
+const InteractiveModeSuggestingFlags = `The pod specified will be used this time.
+Next time, if you want to connect directly to the same pod, you can also use the flag values '%s'.`
 const InvalidConfigSettings = `The remote settings file is missing or the require parameters are missing (%v), please run the 'cp-remote init' command.`
 const EnvironmentSpecifiedEmpty = `The environment specified is empty. Please ensure that the environment specified in the configuration file is not empty or override it with the -e flag.`
 const ItWillDeleteGitBranchAndRemoteEnvironment = `This will delete the remote Git branch and remote environment. Do you want to proceed? %s`
 const YesNoOptions = `(yes/no)`
 const InvalidAnswerForYesNo = `Your answer needs to be either 'yes' or 'no'. Your answer was '%s'.`
 const ServiceSpecifiedEmpty = "The service name specified is an empty string. Please ensure that the service specified in the configuration file is not empty or override it with the -s flag."
-
 //List of Command Description Messages
 const BuildCommandShortDescription = `Create/update the remote environment.`
 const BuildCommandLongDescription = `The build command will push any local Git commits to your remote Git branch. ContinuousPipe will then build the environment. You can use the ContinuousPipe console (https://ui.continuouspipe.io/) to see when the environment has finished building and to find its URL.`
@@ -87,6 +87,7 @@ If the issue persists please contact support specifying the session number %s.`
 
 const SuggestionEnvironmentListEmpty = `We could not find the environment %s inside the flow %s using the ContinuousPipe API.
 Please verify that the project contains the environment specified at https://ui.continuouspipe.io/
+Please try running "%s %s -i" which will guide you to the right pod and let you know the correct flags.
 If the issue persists please contact support specifying the session number %s.`
 
 const SuggestionRunningPodNotFound = `We could not find any running pods starting with %[1]s for the environment %[2]s from the ContinuousPipe API.
@@ -122,4 +123,4 @@ If the issue persists please contact support specifying the session number %s.`
 const GetStarted = `
 # Get started!
 You can now run 'cp-remote watch' to automatically sync your local changes with the deployed environment. Your deployed environment can be found at this address:`
-const CheckDocumentation = `\n\nPlease check the documentation at https://docs.continuouspipe.io/remote-development/.\n`
+const CheckDocumentation = `Please check the documentation at https://docs.continuouspipe.io/remote-development/.`

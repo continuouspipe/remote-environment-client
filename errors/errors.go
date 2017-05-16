@@ -37,10 +37,13 @@ func NewStatefulErrorMessageFromString(str string) *StatefulErrorMessage {
 	if len(parts) > 1 {
 		code, err := strconv.Atoi(parts[0])
 		if err != nil {
-			sem.Code = code
-			sem.Message = strings.Join(parts[1:], "")
-			return sem
+			cplogs.V(5).Infof("error code convertion failed, error %s", err)
+			cplogs.Flush()
+			return nil
 		}
+		sem.Code = code
+		sem.Message = strings.Join(parts[1:], "")
+		return sem
 	}
 	return nil
 }

@@ -51,7 +51,11 @@ func NewExecCmd() *cobra.Command {
 				cperrors.ExitWithMessage(suggestion)
 			}
 
-			remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cmdSession))
+			err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cmdSession))
+			if err != nil {
+				cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+				cplogs.Flush()
+			}
 		},
 	}
 
@@ -105,7 +109,7 @@ func RunExec(handler *execHandle, interactive bool, flowID string, args []string
 			flowID = flow.UUID
 
 			suggestedFlags := color.GreenString("-i -e %s -f %s -s %s", environment.Identifier, flow.UUID, pod.Name)
-			fmt.Printf(msgs.InteractiveModeSuggestingFlags, suggestedFlags)
+			fmt.Printf(fmt.Sprintf("\n\n%s\n", msgs.InteractiveModeSuggestingFlags), suggestedFlags)
 		}
 
 		//alter the configuration so that we connect to the flow and environment specified by the user
@@ -271,7 +275,7 @@ func (h interactiveModeH) findTargetClusterAndApplyToConfig(flowID string, targe
 	}
 
 	if clusterIdentifier == "" {
-		return fmt.Sprintf(msgs.SuggestionEnvironmentListEmpty, targetEnvironment, flowID, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentsNotFound).String())
+		return fmt.Sprintf(msgs.SuggestionEnvironmentListEmpty, targetEnvironment, flowID, config.AppName, ExecCmdName, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentsNotFound).String())
 	}
 
 	//set the not persistent config information (**DO SAVE BY AND DO NOT CALL h.config.Save()** as we are in interactive mode)

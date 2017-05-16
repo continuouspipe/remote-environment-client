@@ -41,10 +41,7 @@ func NewDestroyCmd() *cobra.Command {
 			if err != nil {
 				code, reason, stack := cperrors.FindCause(err)
 				err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(code, reason, stack, *cs))
-				if err != nil {
-					cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
-					cplogs.Flush()
-				}
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
 				cperrors.ExitWithMessage(suggestion)
 			}
 
