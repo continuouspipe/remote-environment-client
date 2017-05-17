@@ -21,6 +21,10 @@ Default Mode:
 
 Interactive Mode:
 
+	# bash into a different environment (without knowing which one yet)
+	%[1]s bash --interactive
+	%[1]s bash -i
+
 	# bash into a different environment and service in a different flow
 	%[2]s`, config.AppName, bashInteractiveFullExample)
 

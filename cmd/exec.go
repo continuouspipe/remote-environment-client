@@ -59,7 +59,7 @@ func NewExecCmd() *cobra.Command {
 		},
 	}
 
-	bashcmd.PersistentFlags().BoolVarP(&interactive, "interactive", "i", false, "Interactive mode requires the flags: --environment --service --flow to be specified")
+	bashcmd.PersistentFlags().BoolVarP(&interactive, "interactive", "i", false, "Interactive mode allows to target a different environment")
 
 	bashcmd.PersistentFlags().StringVarP(&handler.environment, config.KubeEnvironmentName, "e", "", "The full remote environment name")
 	bashcmd.PersistentFlags().StringVarP(&handler.service, config.Service, "s", "", "The service to use (e.g.: web, mysql)")

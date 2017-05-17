@@ -26,7 +26,10 @@ const ExecCommandExampleDescription = `
 %[1]s exec -- ls -all
 
 # execute -ls -all on the web pod overriding the environment id
-%[1]s exec -e techup-dev-user -s web -- ls -all`
+%[1]s exec -e techup-dev-user -s web -- ls -all
+
+# execute -ls -all on a different environment (without knowing which one yet)
+%[1]s exec --interactive -- ls -all`
 
 //List for suggestion messages that are displayed to the user in case of failure
 const SuggestionTriggerBuildFailed = `Triggering the build has failed.
