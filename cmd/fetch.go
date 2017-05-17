@@ -3,25 +3,25 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	remotecplogs "github.com/continuouspipe/remote-environment-client/cplogs/remote"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/continuouspipe/remote-environment-client/session"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
-var fetchExample = fmt.Sprintf(`
-# fetch files and folders from the remote pod
-%[1]s fe
-# fetch files and folders to the remote pod specifying the environment
-%[1]s fe -e techup-dev-user -s web
-`, config.AppName)
+const FetchCmdName = "fetch"
 
 func NewFetchCmd() *cobra.Command {
 	settings := config.C
@@ -30,32 +30,51 @@ func NewFetchCmd() *cobra.Command {
 	handler.writer = os.Stdout
 
 	command := &cobra.Command{
-		Use:     "fetch",
+		Use:     FetchCmdName,
 		Aliases: []string{"fe"},
-		Short:   "Fetches remote changes to the local filesystem",
-		Example: fetchExample,
-		Long: `When the remote environment is rebuilt it may contain changes that you do not
-have on the local filesystem. For example, for a PHP project part of building the remote
-environment could be installing the vendors using composer. Any new or updated vendors would
-be on the remote environment but not on the local filesystem which would cause issues, such as
-autocomplete in your IDE not working correctly.
-
-The fetch command will copy changes from the remote to the local filesystem. This will resync
-with the default container specified during setup but you can specify another container.`,
+		Short:   msgs.FetchCommandShortDescription,
+		Example: fmt.Sprintf(msgs.FetchCommandExampleDescription, config.AppName),
+		Long:    msgs.FetchCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			validateConfig()
+			remoteCommand := remotecplogs.NewRemoteCommand(ExecCmdName, args)
+			cmdSession := session.NewCommandSession().Start()
 
-			fmt.Println("Fetch in progress")
+			//validate the configuration file
+			missingSettings, ok := config.C.Validate()
+			if ok == false {
+				reason := fmt.Sprintf(msgs.InvalidConfigSettings, missingSettings)
+				err := remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, "", *cmdSession))
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cmdSession, err)
+				cperrors.ExitWithMessage(reason)
+			}
+
+			fmt.Println(msgs.FetchInProgress)
 
 			podsFinder := pods.NewKubePodsFind()
 			podsFilter := pods.NewKubePodsFilter()
 			fetcher := sync.GetFetcher()
 
-			checkErr(handler.Complete(cmd, args, settings))
-			checkErr(handler.Validate())
-			checkErr(handler.Handle(args, podsFinder, podsFilter, fetcher))
+			handler.Complete(cmd, args, settings)
 
-			fmt.Printf("Fetch complete, files and folders retrieved has been logged in %s\n", cplogs.GetLogInfoFile())
+			err := handler.Validate()
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cmdSession, err)
+				cperrors.ExitWithMessage(err.Error())
+			}
+
+			suggestion, err := handler.Handle(args, podsFinder, podsFilter, fetcher)
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cmdSession, err)
+				cperrors.ExitWithMessage(suggestion)
+			}
+
+			err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cmdSession))
+			if err != nil {
+				cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+				cplogs.Flush()
+			}
+
+			fmt.Println(msgs.FetchCompleted)
 			cplogs.Flush()
 		},
 	}
@@ -87,59 +106,48 @@ type FetchHandle struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *FetchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
+func (h *FetchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) {
 	h.Command = cmd
-
-	var err error
 	if h.Environment == "" {
-		h.Environment, err = settings.GetString(config.KubeEnvironmentName)
-		checkErr(err)
+		h.Environment = settings.GetStringQ(config.KubeEnvironmentName)
 	}
 	if h.Service == "" {
-		h.Service, err = settings.GetString(config.Service)
-		checkErr(err)
+		h.Service = settings.GetStringQ(config.Service)
 	}
 	if strings.HasSuffix(h.RemoteProjectPath, "/") == false {
 		h.RemoteProjectPath = h.RemoteProjectPath + "/"
 	}
-	return nil
 }
 
 // Validate checks that the provided fetch options are specified.
 func (h *FetchHandle) Validate() error {
 	if len(strings.Trim(h.Environment, " ")) == 0 {
-		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentSpecifiedEmpty).String())
 	}
 	if len(strings.Trim(h.Service, " ")) == 0 {
-		return fmt.Errorf("the service specified is invalid")
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.ServiceSpecifiedEmpty).String())
 	}
 	if strings.HasPrefix(h.RemoteProjectPath, "/") == false {
-		return fmt.Errorf("please specify an absolute path for your --remote-project-path")
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.RemoteProjectPathEmpty).String())
 	}
 	return nil
 }
 
 // Copies all the files and folders from the remote development environment into the current directory
-func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, fetcher sync.Fetcher) error {
+func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, fetcher sync.Fetcher) (suggestion string, err error) {
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
-		return nil
+		return fmt.Sprintf(msgs.SuggestionGetSettingsError, session.CurrentSession.SessionID), err
 	}
 
 	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.Environment)
 	if err != nil {
-
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.SuggestionFindPodsFailed, session.CurrentSession.SessionID), err
 	}
 
 	pod := podsFilter.List(*allPods).ByService(h.Service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
-
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.Service))
+		return fmt.Sprintf(msgs.SuggestionRunningPodNotFound, h.Service, h.Environment, config.AppName, "bash", session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.Service)).String())
 	}
 
 	if h.dryRun {
@@ -154,5 +162,9 @@ func (h *FetchHandle) Handle(args []string, podsFinder pods.Finder, podsFilter p
 	syncOptions.RemoteProjectPath = h.RemoteProjectPath
 	syncOptions.DryRun = h.dryRun
 	fetcher.SetOptions(syncOptions)
-	return fetcher.Fetch(h.File)
+	err = fetcher.Fetch(h.File)
+	if err != nil {
+		return fmt.Sprintf(msgs.SuggestionFetchFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "error while running rsync").String())
+	}
+	return "", nil
 }
