@@ -3,21 +3,29 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
+	remotecplogs "github.com/continuouspipe/remote-environment-client/cplogs/remote"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/continuouspipe/remote-environment-client/session"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/continuouspipe/remote-environment-client/util"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
+
+const WatchCmdName = "watch"
 
 func NewWatchCmd() *cobra.Command {
 	settings := config.C
@@ -29,29 +37,34 @@ func NewWatchCmd() *cobra.Command {
 	handler.writer = os.Stdout
 
 	command := &cobra.Command{
-		Use:     "watch",
+		Use:     WatchCmdName,
 		Aliases: []string{"wa"},
-		Short:   "Watch local changes and synchronize with the remote environment",
-		Long: `The watch command will sync changes you make locally to a container that's part
-of the remote environment. This will use the default container specified during
-setup but you can specify another container to sync with.`,
+		Short:   msgs.WatchCommandShortDescription,
+		Long:    msgs.WatchCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			dirMonitor := monitor.GetOsDirectoryMonitor()
-			validateConfig()
+			remoteCommand := remotecplogs.NewRemoteCommand(WatchCmdName, args)
+			cs := session.NewCommandSession().Start()
 
-			exclusion := monitor.NewExclusion()
-			_, err := exclusion.WriteDefaultExclusionsToFile()
-			checkErr(err)
+			//validate the configuration file
+			missingSettings, ok := config.C.Validate()
+			if ok == false {
+				reason := fmt.Sprintf(msgs.InvalidConfigSettings, missingSettings)
+				err := remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, "", *cs))
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(reason)
+			}
 
-			podsFinder := pods.NewKubePodsFind()
-			podsFilter := pods.NewKubePodsFilter()
+			suggestion, err := RunWatch(handler, args, settings)
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(suggestion)
+			}
 
-			handler.Stdout = os.Stdout
-			handler.syncer = sync.GetSyncer()
-
-			checkErr(handler.Complete(cmd, args, settings))
-			checkErr(handler.Validate())
-			checkErr(handler.Handle(dirMonitor, podsFinder, podsFilter))
+			err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cs))
+			if err != nil {
+				cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+				cplogs.Flush()
+			}
 		},
 	}
 
@@ -72,8 +85,37 @@ setup but you can specify another container to sync with.`,
 	return command
 }
 
+func RunWatch(handler *WatchHandle, args []string, settings *config.Config) (reason string, err error) {
+	dirMonitor := monitor.GetOsDirectoryMonitor()
+
+	exclusion := monitor.NewExclusion()
+	_, err = exclusion.WriteDefaultExclusionsToFile()
+	if err != nil {
+		return fmt.Sprintf(msgs.SuggestionWriteDefaultExclusionFileFailed, monitor.CustomExclusionsFile, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "write to the default exclusion file before push has failed").String())
+	}
+
+	podsFinder := pods.NewKubePodsFind()
+	podsFilter := pods.NewKubePodsFilter()
+
+	handler.Stdout = os.Stdout
+	handler.syncer = sync.GetSyncer()
+
+	handler.Complete(args, settings)
+
+	suggestion, err := handler.Validate()
+	if err != nil {
+		return suggestion, err
+	}
+
+	suggestion, err = handler.Handle(dirMonitor, podsFinder, podsFilter)
+	if err != nil {
+		return suggestion, err
+	}
+
+	return "", nil
+}
+
 type WatchHandle struct {
-	Command     *cobra.Command
 	Stdout      io.Writer
 	syncer      sync.Syncer
 	kubeCtlInit kubectlapi.KubeCtlInitializer
@@ -92,47 +134,41 @@ type watchCmdOptions struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *WatchHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
-	h.Command = cmd
-
-	var err error
+func (h *WatchHandle) Complete(argsIn []string, settings *config.Config) {
 	if h.options.environment == "" {
-		h.options.environment, err = settings.GetString(config.KubeEnvironmentName)
-		checkErr(err)
+		h.options.environment = settings.GetStringQ(config.KubeEnvironmentName)
 	}
 	if h.options.service == "" {
-		h.options.service, err = settings.GetString(config.Service)
-		checkErr(err)
+		h.options.service = settings.GetStringQ(config.Service)
 	}
 	if strings.HasSuffix(h.options.remoteProjectPath, "/") == false {
 		h.options.remoteProjectPath = h.options.remoteProjectPath + "/"
 	}
-	return nil
 }
 
 // Validate checks that the provided watch options are specified.
-func (h *WatchHandle) Validate() error {
+func (h *WatchHandle) Validate() (suggestion string, err error) {
 	if len(strings.Trim(h.options.environment, " ")) == 0 {
-		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
+		return msgs.EnvironmentSpecifiedEmpty, errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentSpecifiedEmpty).String())
 	}
 	if len(strings.Trim(h.options.service, " ")) == 0 {
-		return fmt.Errorf("the service specified is invalid")
+		return msgs.ServiceSpecifiedEmpty, errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.ServiceSpecifiedEmpty).String())
 	}
 	if h.options.latency <= 100 {
-		return fmt.Errorf("please specify a latency of at least 100 milli-seconds")
+		return msgs.LatencyValueTooSmall, errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.LatencyValueTooSmall).String())
 	}
 	if strings.HasPrefix(h.options.remoteProjectPath, "/") == false {
-		return fmt.Errorf("please specify an absolute path for your --remote-project-path")
+		return msgs.RemoteProjectPathEmpty, errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.RemoteProjectPathEmpty).String())
 	}
-	return nil
+	return "", nil
 }
 
-func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) error {
+func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pods.Finder, podsFilter pods.Filter) (suggestion string, err error) {
 	if h.options.delete {
 		if h.options.yall == false {
 			answer := deleteFlagWarning(h.qp)
 			if answer == "no" {
-				return nil
+				return "", nil
 			}
 		}
 		fmt.Fprintln(h.writer, "Delete mode enabled.")
@@ -148,43 +184,31 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
-		return nil
+		return fmt.Sprintf(msgs.SuggestionGetSettingsError, session.CurrentSession.SessionID), err
 	}
 
 	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.options.environment)
 	if err != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.SuggestionFindPodsFailed, session.CurrentSession.SessionID), err
 	}
 
 	pod := podsFilter.List(*allPods).ByService(h.options.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.options.service))
+		return fmt.Sprintf(msgs.SuggestionRunningPodNotFound, h.options.service, h.options.environment, config.AppName, "bash", session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.options.service)).String())
 	}
 
-	remoteEnvId, err := h.config.GetString(config.RemoteEnvironmentId)
-	if err != nil {
-		return err
-	}
-	flowId, err := h.config.GetString(config.FlowId)
-	if err != nil {
-		return err
-	}
+	remoteEnvId := h.config.GetStringQ(config.RemoteEnvironmentId)
+	flowId := h.config.GetStringQ(config.FlowId)
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return fmt.Sprintf(msgs.PleaseContactSupport, session.CurrentSession.SessionID), err
 	}
 
 	h.api.SetAPIKey(apiKey)
-	remoteEnv, el := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
-	if el != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return el
+	remoteEnv, err := h.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	if err != nil {
+		return fmt.Sprintf(msgs.SuggestionGetEnvironmentStatusFailed, session.CurrentSession.SessionID), err
 	}
 	cpapi.PrintPublicEndpoints(h.Stdout, remoteEnv.PublicEndpoints)
 
@@ -207,8 +231,7 @@ func (h *WatchHandle) Handle(dirMonitor monitor.DirectoryMonitor, podsFinder pod
 
 	err = dirMonitor.AnyEventCall(cwd, observer)
 	if err != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+		return fmt.Sprintf(msgs.SuggestionDirectoryMonitorFailed, session.CurrentSession.SessionID), err
 	}
-	return err
+	return "", nil
 }
