@@ -33,7 +33,7 @@ const ExecCommandExampleDescription = `
 
 # execute -ls -all on a different environment (without knowing which one yet)
 %[1]s exec --interactive -- ls -all`
-const FetchCommandShortDescription = `Transfers file changes on the remote environment to the local filesystem.`
+const FetchCommandShortDescription = `Transfers file changes from the remote environment to the local filesystem.`
 const FetchCommandLongDescription = `When the remote environment is rebuilt it may contain changes that you do not have on the local filesystem. For example, for a PHP project part of building the remote environment could be installing the vendors using composer. Any new or updated vendors would be on the remote environment but not on the local filesystem which would cause issues, such as autocomplete in your IDE not working correctly. The fetch command will copy changes from the remote to the local filesystem. This will resync with the default container specified during setup but you can specify another container.`
 const FetchCommandExampleDescription = `
 # fetch files and folders from the remote pod
