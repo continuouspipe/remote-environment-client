@@ -16,6 +16,7 @@ const ServiceSpecifiedEmpty = `The service name specified is an empty string. Pl
 const RemoteProjectPathEmpty = `The remote project path is an empty string. Please ensure that the remote project path specified with the --remote-project-path flag is a valid path.`
 const FetchInProgress = `Fetch in progress.`
 const FetchCompleted = `Fetch completed.`
+const PushInProgress = `Push in progress`
 
 //List of Command Description Messages
 const BuildCommandShortDescription = `Create/update the remote environment.`
@@ -33,6 +34,7 @@ const ExecCommandExampleDescription = `
 
 # execute -ls -all on a different environment (without knowing which one yet)
 %[1]s exec --interactive -- ls -all`
+
 const FetchCommandShortDescription = `Transfers file changes from the remote environment to the local filesystem.`
 const FetchCommandLongDescription = `When the remote environment is rebuilt it may contain changes that you do not have on the local filesystem. For example, for a PHP project part of building the remote environment could be installing the vendors using composer. Any new or updated vendors would be on the remote environment but not on the local filesystem which would cause issues, such as autocomplete in your IDE not working correctly. The fetch command will copy changes from the remote to the local filesystem. This will resync with the default container specified during setup but you can specify another container.`
 const FetchCommandExampleDescription = `
@@ -41,6 +43,19 @@ const FetchCommandExampleDescription = `
 # fetch files and folders from the remote pod specifying the environment and pod
 %[1]s fetch -e techup-dev-user -s web
 `
+const PushCmdExampleDescription = `
+# push files and folders to the remote pod
+%[1]s %[2]s
+
+# push files and folders to the remote pod specifying the environment
+%[1]s %[2]s -e techup-dev-user -s web
+`
+const SyncCommandShortDescription = `Sync local changes to the remote filesystem (alias for push)`
+const SyncCommandLongDescription = `The sync command will copy changes from the local to the remote filesystem.
+Note that this will delete any files/folders in the remote container that are not present locally.`
+const PushCommandShortDescription = `Push local changes to the remote filesystem`
+const PushCommandLongDescription = `The push command will copy changes from the local to the remote filesystem.
+Note that this will delete any files/folders in the remote container that are not present locally.`
 
 //List for suggestion messages that are displayed to the user in case of failure
 const SuggestionTriggerBuildFailed = `Triggering the build has failed.
@@ -119,6 +134,15 @@ const SuggestionEnvironmentListEmptyUsingQuestioner = `No environments wer found
 Please verify that the project has at least one environment in the ContinuousPipe console (https://ui.continuouspipe.io/).
 If the issue persists please contact support specifying the session number '%s'.`
 
+const SuggestionWriteDefaultExclusionFileFailed = `Something went wrong when saving the default exclusion patterns in the %[1]s file.
+This issue is usually caused by wrong file permissions.
+Please verify that the file %[1]s can be written by cp-remote and then re-try.
+If the issue persists please contact support specifying the session number '%[2]s'.`
+
+const SuggestionFailedToDetermineTheAbsPath = `Something went wrong when pushing the file %s.
+Please try by pushing all files or push a different file.
+If the issue persists please contact support specifying the session number %s`
+
 //Application logic errors (unlikely to happen)
 const SuggestionQuestionerMultiSelectError = `Something went wrong in the application multi selector logic.
 Please contact support specifying the session number '%s'.`
@@ -138,7 +162,12 @@ If the issue persists please contact support specifying the session number '%s'.
 
 const SuggestionFetchFailed = `Something went wrong during the fetch command execution.
 This issue is usually caused by a temporary unavailability of the cluster, a network issue or because the pod was deleted or moved to a different node.
-Check the pod status with 'cp-remote pods' and reconnect once the pod is running again.
+Check the pod status with 'cp-remote pods' and re-try once the pod is running again.
+If the issue persists please contact support specifying the session number '%s'.`
+
+const SuggestionPushFailed = `Something went wrong during the push command execution.
+This issue is usually caused by a temporary unavailability of the cluster, a network issue or because the pod was deleted or moved to a different node.
+Check the pod status with 'cp-remote pods' and re-try once the pod is running again.
 If the issue persists please contact support specifying the session number '%s'.`
 
 const GetStarted = `
