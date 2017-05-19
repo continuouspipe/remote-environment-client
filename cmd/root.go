@@ -63,7 +63,20 @@ You will need the following:
  * rsync and git installed locally
 
 Note: if the GitHub repository is not the origin of your checked out project then you will
-need to add a remote for that repository.`,
+need to add a remote for that repository.
+
+Shared analytics, diagnostics, and usage information with ContinuousPipe
+
+In order to detect and fix errors as soon as possible, ContinuousPipe receives information for each command that get executed.
+We will receive:
+ * command name including arguments (excluding the init token)
+ * the duration
+ * the success/failure code
+ * os and system architecture (linux, windows or darwin)
+ * cp remote version
+ * some configuration settings (username, flow id, cluster id, kubernete environment, remote branch and name, service name, kubernetes cluster address and user
+ * error stack
+ * ignore file content, and ignore fetch file content`,
 }
 
 func Execute() {
