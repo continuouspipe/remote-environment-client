@@ -21,7 +21,6 @@ const FetchCompleted = `Fetch completed.`
 const PushInProgress = `Push in progress`
 const LatencyValueTooSmall = `Please specify a latency of at least 100 milli-seconds.`
 
-//List of Command Description Messages
 const BuildCommandShortDescription = `Create/update the remote environment.`
 const BuildCommandLongDescription = `The build command will push any local Git commits to your remote Git branch. ContinuousPipe will then build the environment. You can use the ContinuousPipe console (https://ui.continuouspipe.io/) to see when the environment has finished building and to find its URL.`
 const DestroyCommandShortDescription = `Destroy the remote environment.`
@@ -64,7 +63,6 @@ const WatchCommandLongDescription = `The watch command will sync changes you mak
 of the remote environment. This will use the default container specified during
 setup but you can specify another container to sync with.`
 
-//List for suggestion messages that are displayed to the user in case of failure
 const SuggestionTriggerBuildFailed = `Triggering the build has failed.
 Please make sure Git has permission to push to the remote repository and is set up correctly, then retry.
 If the issue persists please contact support specifying the session number '%s'.`
@@ -145,7 +143,6 @@ const SuggestionFailedToDetermineTheAbsPath = `Something went wrong when pushing
 Please try pushing a different file or pushing all files.
 If the issue persists please contact support specifying the session number %s`
 
-//Application logic errors (unlikely to happen)
 const SuggestionWriteDefaultExclusionFileFailed = `Something went wrong when saving the default exclusion patterns for the file '%[1]s'.
 This issue is usually caused by incorrect file permissions.
 Please verify that the file '%[1]s' can be written to the local filesystem and then re-try.
