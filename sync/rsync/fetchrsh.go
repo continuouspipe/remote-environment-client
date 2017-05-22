@@ -7,10 +7,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"net/http"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/osapi"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -57,7 +61,7 @@ func (r RsyncRshFetch) Fetch(filePath string) error {
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "cannot fetch without knowing the cwd").String())
 	}
 	if _, err := os.Stat(FetchExcluded); err == nil {
 		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+string(filepath.Separator)+FetchExcluded))
@@ -89,8 +93,7 @@ func (r RsyncRshFetch) Fetch(filePath string) error {
 
 	err = osapi.CommandExecL(scmd, args...)
 	if err != nil {
-		//TODO: Wrap the error making it Stateful
-
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "executing rsync command has failed").String())
 	}
 	return err
 }
