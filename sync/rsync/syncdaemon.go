@@ -3,16 +3,20 @@ package rsync
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/osapi"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/continuouspipe/remote-environment-client/util/slice"
-	"io"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"runtime"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -54,15 +58,13 @@ func (r *RSyncDaemon) Sync(paths []string) error {
 
 	err := r.remoteRsync.StartDaemonOnRandomPort()
 	if err != nil {
-		//TODO: Wrap the error making it Stateful
-
-		return err
+		errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "start daemon on random port failed").String())
 	}
 	defer r.remoteRsync.KillDaemon(pidFile)
 
 	stopChan, err := r.remoteRsync.StartPortForwardOnRandomPort()
 	if err != nil {
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "start port forward on random port failed").String())
 	}
 	defer r.remoteRsync.StopPortForward(stopChan)
 
@@ -85,8 +87,9 @@ func (r *RSyncDaemon) Sync(paths []string) error {
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "getting the current directory failed and is required for syncing").String())
 	}
+	//check if sync fetch excluded file exists, if it doesn't, don't return an error
 	if _, err := os.Stat(SyncFetchExcluded); err == nil {
 		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncFetchExcluded))
 	}
@@ -95,23 +98,30 @@ func (r *RSyncDaemon) Sync(paths []string) error {
 
 	paths, err = r.getRelativePathList(paths)
 	if err != nil {
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "error when gettin the relative path list").String())
 	}
 
 	allPathsExists, notExistingPaths := r.allPathsExists(paths)
 	if !allPathsExists {
 		cplogs.V(5).Infof("detected not existing path/s %s. We will do a generic rsync rather that an individual one", notExistingPaths)
+		cplogs.Flush()
 	}
 
 	if len(paths) > 0 && len(paths) <= r.individualFileSyncThreshold && allPathsExists {
 		cplogs.V(5).Infof("individual file sync, files to sync %d, threshold: %d", len(paths), r.individualFileSyncThreshold)
+		cplogs.Flush()
 		err = r.syncIndividualFiles(paths, args)
+		if err != nil {
+			return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "error when syncing individual files").String())
+		}
 	} else {
 		err = r.syncAllFiles(paths, args)
+		if err != nil {
+			return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "error when syncing all files").String())
+		}
 	}
 
-	cplogs.Flush()
-	return err
+	return nil
 }
 
 func (o RSyncDaemon) allPathsExists(paths []string) (res bool, notExisting []string) {
@@ -131,7 +141,7 @@ func (o RSyncDaemon) syncIndividualFiles(paths []string, args []string) error {
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "getting the current directory failed and is required for syncing").String())
 	}
 
 	//this is a workaround to the issue with --delete throwing an error if the local file has been deleted
@@ -156,7 +166,9 @@ func (o RSyncDaemon) syncIndividualFiles(paths []string, args []string) error {
 		fmt.Println(path)
 		err := o.executeRsync(lArgs, ioutil.Discard)
 		if err != nil {
-			return err
+			errMsg := fmt.Sprintf("rsync failed to execute using arguments %s", lArgs)
+			cplogs.V(4).Infof(errMsg)
+			return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errMsg).String())
 		}
 	}
 	return nil
@@ -176,12 +188,12 @@ func (o RSyncDaemon) syncAllFiles(paths []string, args []string) error {
 func (o RSyncDaemon) getRelativePathList(paths []string) ([]string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "getting the current directory failed and is required for syncing").String())
 	}
 	for key, path := range paths {
 		relPath, err := filepath.Rel(cwd, path)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf("getting the relative path using cwd %s and path %s failed", cwd, path)).String())
 		}
 
 		if runtime.GOOS == "windows" {

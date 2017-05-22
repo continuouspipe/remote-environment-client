@@ -117,9 +117,11 @@ func (r RsyncDaemonFetch) Fetch(filePath string) error {
 	if err != nil {
 		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "getting the current directory failed and is required for fetching").String())
 	}
+	//check if fetch excluded file exists, if it doesn't, don't return an error
 	if _, err := os.Stat(FetchExcluded); err == nil {
 		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+FetchExcluded))
 	}
+	//check if sync fetch excluded file exists, if it doesn't, don't return an error
 	if _, err := os.Stat(SyncFetchExcluded); err == nil {
 		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncFetchExcluded))
 	}
