@@ -227,11 +227,11 @@ func (h *execHandle) handle(podsFinder pods.Finder, podsFilter pods.Filter) (sug
 	argsLenAtDash := kubeCmdExec.ArgsLenAtDash()
 	err = kubeCmdExecOptions.Complete(kubeCmdUtilFactory, kubeCmdExec, h.args, argsLenAtDash)
 	if err != nil {
-		return "", errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, err.Error()).String())
+		return err.Error(), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, err.Error()).String())
 	}
 	err = kubeCmdExecOptions.Validate()
 	if err != nil {
-		return "", errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, err.Error()).String())
+		return err.Error(), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, err.Error()).String())
 	}
 
 	err = kubeCmdExecOptions.Run()

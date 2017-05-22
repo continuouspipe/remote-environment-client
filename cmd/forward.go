@@ -2,56 +2,48 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/continuouspipe/remote-environment-client/session"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"k8s.io/kubernetes/pkg/client/unversioned/portforward"
+	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 var (
-	portforwardExample = fmt.Sprintf(`
-		# Listen on ports 5000 and 6000 locally, forwarding data to/from ports 5000 and 6000 in the pod
-		%[1]s forward 5000 6000
-
-		# Listen on port 8888 locally, forwarding to 5000 in the pod
-		%[1]s forward 8888:5000
-
-		# Listen on a random port locally, forwarding to 5000 in the pod
-		%[1]s forward :5000
-
-		# Listen on a random port locally, forwarding to 5000 in the pod
-		%[1]s forward 0:5000
-
-		# Overriding the project-key and remote-branch
-		%[1]s forward -e techup-dev-user -s mysql 5000
-		`, config.AppName)
+	portforwardExample = fmt.Sprintf(msgs.PortFowardCommandExampleDescription, config.AppName)
 )
+
+const ForwardCmdName = "forward"
 
 func NewForwardCmd() *cobra.Command {
 	settings := config.C
 	handler := &ForwardHandle{}
 	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 	command := &cobra.Command{
-		Use:     "forward",
+		Use:     ForwardCmdName,
 		Aliases: []string{"fo"},
-		Short:   "Forward a port to a container",
-		Long: `The forward command will set up port forwarding from the local environment
-to a container on the remote environment that has a port exposed. This is useful for tasks
-such as connecting to a database using a local client. You need to specify the container and
-the port number to forward.`,
+		Short:   msgs.PortForwardCommandShortDescription,
+		Long:    msgs.PortForwardCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
 			validateConfig()
 
-			checkErr(handler.Complete(cmd, args, settings))
-			checkErr(handler.Validate())
-			checkErr(handler.Handle())
+			handler.Complete(cmd, args, settings)
+			handler.Validate()
+			handler.Handle()
 		},
 		Example: portforwardExample,
 	}
@@ -84,14 +76,11 @@ func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settings *
 	h.podsFinder = pods.NewKubePodsFind()
 	h.podsFilter = pods.NewKubePodsFilter()
 
-	var err error
 	if h.Environment == "" {
-		h.Environment, err = settings.GetString(config.KubeEnvironmentName)
-		checkErr(err)
+		h.Environment = settings.GetStringQ(config.KubeEnvironmentName)
 	}
 	if h.Service == "" {
-		h.Service, err = settings.GetString(config.Service)
-		checkErr(err)
+		h.Service = settings.GetStringQ(config.Service)
 	}
 
 	return nil
@@ -111,24 +100,20 @@ func (h *ForwardHandle) Validate() error {
 	return nil
 }
 
-func (h *ForwardHandle) Handle() error {
+func (h *ForwardHandle) Handle() (suggestion string, err error) {
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
-		return nil
+		return fmt.Sprintf(msgs.SuggestionGetSettingsError, session.CurrentSession.SessionID), err
 	}
 
 	allPods, err := h.podsFinder.FindAll(user, apiKey, addr, h.Environment)
 	if err != nil {
-		return err
-	}
-	if err != nil {
-		cplogs.V(5).Infof("pods not found for environment %s", h.Environment)
-		return err
+		return fmt.Sprintf(msgs.SuggestionFindPodsFailed, session.CurrentSession.SessionID), err
 	}
 
 	pod := h.podsFilter.List(*allPods).ByService(h.Service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
-		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.Service))
+		return fmt.Sprintf(msgs.SuggestionRunningPodNotFound, h.Service, h.Environment, config.AppName, "bash", session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.Service)).String())
 	}
 
 	cplogs.V(5).Infof("setting up forwarding for target pod %s and ports %s", pod.GetName(), h.ports)
@@ -137,10 +122,38 @@ func (h *ForwardHandle) Handle() error {
 	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr, h.Environment)
 	kubeCmdPortForward := kubectlcmd.NewCmdPortForward(kubectlcmdutil.NewFactory(clientConfig), os.Stdout, os.Stderr)
 
-	//TODO: Change to use directly the PortForwardOptions struct and RunPortForward() so that we can get the error. We may have to copy paste the unexported struct defaultPortForwarder
+	opts := &kubectlcmd.PortForwardOptions{
+		PortForwarder: &defaultPortForwarder{
+			cmdOut: os.Stdout,
+			cmdErr: os.Stderr,
+		},
+	}
 
+	if err := opts.Complete(kubectlcmdutil.NewFactory(clientConfig), kubeCmdPortForward, append([]string{pod.GetName()}, h.ports...), os.Stdout, os.Stderr); err != nil {
+		return err.Error(), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "kubernetes lib returned an error completing port forward options").String())
+	}
+	if err := opts.Validate(); err != nil {
+		return err.Error(), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "kubernetes lib returned an error validating port forward options").String())
+	}
+	if err := opts.RunPortForward(); err != nil {
+		return err.Error(), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "kubernetes lib returned an error executing port forward options").String())
+	}
 
-	//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-	kubeCmdPortForward.Run(kubeCmdPortForward, append([]string{pod.GetName()}, h.ports...))
-	return nil
+	return "", nil
+}
+
+type defaultPortForwarder struct {
+	cmdOut, cmdErr io.Writer
+}
+
+func (f *defaultPortForwarder) ForwardPorts(method string, url *url.URL, opts kubectlcmd.PortForwardOptions) error {
+	dialer, err := remotecommand.NewExecutor(opts.Config, method, url)
+	if err != nil {
+		return err
+	}
+	fw, err := portforward.New(dialer, opts.Ports, opts.StopChannel, opts.ReadyChannel, f.cmdOut, f.cmdErr)
+	if err != nil {
+		return err
+	}
+	return fw.ForwardPorts()
 }

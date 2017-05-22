@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"runtime"
 
 	"github.com/continuouspipe/remote-environment-client/config"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/util"
+	"github.com/pkg/errors"
 	"github.com/sanbornm/go-selfupdate/selfupdate"
 )
 
@@ -33,12 +36,11 @@ func NewSelfUpdater() *selfupdate.Updater {
 
 // CheckForLatestVersion looks is there is a new version available, if there is one it will ask the user if he would like to upgrade
 func CheckForLatestVersion() error {
-
 	selfUpdater := NewSelfUpdater()
 
 	err := fetchInfo(selfUpdater)
 	if err != nil {
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "error when fetching info").String())
 	}
 
 	if selfUpdater.Info.Version == selfUpdater.CurrentVersion {
@@ -60,14 +62,15 @@ func CheckForLatestVersion() error {
 //borrowed from the selfupdate package, downloads the json information and popualtes the updater.Info field
 func fetchInfo(u *selfupdate.Updater) error {
 	platform := runtime.GOOS + "-" + runtime.GOARCH
-	r, err := fetch(u, u.ApiURL+url.QueryEscape(u.CmdName)+"/"+url.QueryEscape(platform)+".json")
+	urlPath := u.ApiURL + url.QueryEscape(u.CmdName) + "/" + url.QueryEscape(platform) + ".json"
+	r, err := fetch(u, urlPath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf("failed fetching json manifesto from url %s", urlPath)).String())
 	}
 	defer r.Close()
 	err = json.NewDecoder(r).Decode(&u.Info)
 	if err != nil {
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "error decoding json response").String())
 	}
 
 	return nil
@@ -82,11 +85,11 @@ func fetch(u *selfupdate.Updater, url string) (io.ReadCloser, error) {
 
 	readCloser, err := u.Requester.Fetch(url)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "requester failed to fetch").String())
 	}
 
 	if readCloser == nil {
-		return nil, fmt.Errorf("Fetch was expected to return non-nil ReadCloser")
+		return nil, errors.New(cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "Fetch was expected to return non-nil ReadCloser").String())
 	}
 
 	return readCloser, nil

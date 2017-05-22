@@ -60,6 +60,26 @@ const PushCommandLongDescription = `The push command will copy changes from the 
 Note: this will delete any files/folders in the remote environment that are not present locally.`
 const WatchCommandShortDescription = `Watch local changes and synchronize with the remote environment.`
 const WatchCommandLongDescription = `The watch command will sync changes from the local filesystem to the remote environment. The default container (specified during setup) will be used but you can specify another container to sync with using the -s flag.`
+const PortForwardCommandShortDescription = `Forward a port to a container`
+const PortForwardCommandLongDescription = `The forward command will set up port forwarding from the local environment
+to a container on the remote environment that has a port exposed. This is useful for tasks
+such as connecting to a database using a local client. You need to specify the container and
+the port number to forward.`
+const PortFowardCommandExampleDescription = `
+# Listen on ports 5000 and 6000 locally, forwarding data to/from ports 5000 and 6000 in the pod
+%[1]s forward 5000 6000
+
+# Listen on port 8888 locally, forwarding to 5000 in the pod
+%[1]s forward 8888:5000
+
+# Listen on a random port locally, forwarding to 5000 in the pod
+%[1]s forward :5000
+
+# Listen on a random port locally, forwarding to 5000 in the pod
+%[1]s forward 0:5000
+
+# Overriding the project-key and remote-branch
+%[1]s forward -e techup-dev-user -s mysql 5000`
 
 const SuggestionTriggerBuildFailed = `Triggering the build has failed.
 Please make sure Git has permission to push to the remote repository and is set up correctly, then retry.
@@ -137,15 +157,21 @@ const SuggestionEnvironmentListEmptyUsingQuestioner = `No environments wer found
 Please verify that the project has at least one environment in the ContinuousPipe console (https://ui.continuouspipe.io/).
 If the issue persists please contact support specifying the session number '%s'.`
 
-const SuggestionFailedToDetermineTheAbsPath = `Something went wrong when pushing the file '%s'.
-Please try pushing a different file or pushing all files.
-If the issue persists please contact support specifying the session number %s`
-
 const SuggestionWriteDefaultExclusionFileFailed = `Something went wrong when saving the default exclusion patterns for the file '%[1]s'.
 This issue is usually caused by incorrect file permissions.
 Please verify that the file '%[1]s' can be written to the local filesystem and then re-try.
 If the issue persists please contact support specifying the session number '%[2]s'.`
 
+const SuggestionFailedToDetermineTheAbsPath = `Something went wrong when pushing the file '%s'.
+Please try pushing a different file or pushing all files.
+If the issue persists please contact support specifying the session number %s`
+
+const SuggestionCheckForLatestVersionFailed = `Something went wrong when fetching or upgrading to the latest version of the cp-remote tool
+This issue is usually caused by a network connectivity issue.
+Please try an alternative upgrade method at https://docs.continuouspipe.io/remote-development/getting-started/
+If you have further queries please contact support specifying the session number %s`
+
+//Application logic errors (unlikely to happen)
 const SuggestionQuestionerMultiSelectError = `Something went wrong in the application multi selector logic.
 Please contact support specifying the session number '%s'.`
 
