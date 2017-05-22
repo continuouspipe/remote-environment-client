@@ -47,15 +47,15 @@ const PushCmdExampleDescription = `
 # push files and folders to the remote pod
 %[1]s %[2]s
 
-# push files and folders to the remote pod specifying the environment
+# push files and folders to the remote pod specifying the environment and pod
 %[1]s %[2]s -e techup-dev-user -s web
 `
-const SyncCommandShortDescription = `Sync local changes to the remote filesystem (alias for push)`
-const SyncCommandLongDescription = `The sync command will copy changes from the local to the remote filesystem.
-Note that this will delete any files/folders in the remote container that are not present locally.`
-const PushCommandShortDescription = `Push local changes to the remote filesystem`
-const PushCommandLongDescription = `The push command will copy changes from the local to the remote filesystem.
-Note that this will delete any files/folders in the remote container that are not present locally.`
+const SyncCommandShortDescription = `Sync local changes to the remote filesystem (alias for push).`
+const SyncCommandLongDescription = `The sync command will copy changes from the local filesystem to the remote environment.
+Note: this will delete any files/folders in the remote environment that are not present locally.`
+const PushCommandShortDescription = `Push local changes to the remote filesystem.`
+const PushCommandLongDescription = `The push command will copy changes from the local filesystem to the remote environment.
+Note: this will delete any files/folders in the remote environment that are not present locally.`
 
 //List for suggestion messages that are displayed to the user in case of failure
 const SuggestionTriggerBuildFailed = `Triggering the build has failed.
@@ -134,13 +134,13 @@ const SuggestionEnvironmentListEmptyUsingQuestioner = `No environments wer found
 Please verify that the project has at least one environment in the ContinuousPipe console (https://ui.continuouspipe.io/).
 If the issue persists please contact support specifying the session number '%s'.`
 
-const SuggestionWriteDefaultExclusionFileFailed = `Something went wrong when saving the default exclusion patterns in the %[1]s file.
-This issue is usually caused by wrong file permissions.
-Please verify that the file %[1]s can be written by cp-remote and then re-try.
+const SuggestionWriteDefaultExclusionFileFailed = `Something went wrong when saving the default exclusion patterns for the file '%[1]s'.
+This issue is usually caused by incorrect file permissions.
+Please verify that the file '%[1]s' can be written to the local filesystem and then re-try.
 If the issue persists please contact support specifying the session number '%[2]s'.`
 
-const SuggestionFailedToDetermineTheAbsPath = `Something went wrong when pushing the file %s.
-Please try by pushing all files or push a different file.
+const SuggestionFailedToDetermineTheAbsPath = `Something went wrong when pushing the file '%s'.
+Please try pushing a different file or pushing all files.
 If the issue persists please contact support specifying the session number %s`
 
 //Application logic errors (unlikely to happen)
