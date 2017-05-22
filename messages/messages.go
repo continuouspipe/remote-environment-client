@@ -1,6 +1,6 @@
 package messages
 
-const PleaseContactSupport = `Something went wrong in the application logic.
+const PleaseContactSupport = `Something went wrong in the cp-remote tool application logic.
 Please contact support specifying the session number '%s'.`
 const NoActivePodsFoundForSpecifiedServiceName = `No running pods were found for the specified service name '%s'.`
 const ProjectsNotFound = `No projects were found. Please ensure that you have at least one project set up in ContinuousPipe.`
@@ -58,10 +58,8 @@ Note: this will delete any files/folders in the remote environment that are not 
 const PushCommandShortDescription = `Push local changes to the remote filesystem.`
 const PushCommandLongDescription = `The push command will copy changes from the local filesystem to the remote environment.
 Note: this will delete any files/folders in the remote environment that are not present locally.`
-const WatchCommandShortDescription = `Watch local changes and synchronize with the remote environment`
-const WatchCommandLongDescription = `The watch command will sync changes you make locally to a container that's part
-of the remote environment. This will use the default container specified during
-setup but you can specify another container to sync with.`
+const WatchCommandShortDescription = `Watch local changes and synchronize with the remote environment.`
+const WatchCommandLongDescription = `The watch command will sync changes from the local filesystem to the remote environment. The default container (specified during setup) will be used but you can specify another container to sync with using the -s flag.`
 
 const SuggestionTriggerBuildFailed = `Triggering the build has failed.
 Please make sure Git has permission to push to the remote repository and is set up correctly, then retry.
