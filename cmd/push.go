@@ -3,37 +3,38 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	remotecplogs "github.com/continuouspipe/remote-environment-client/cplogs/remote"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/continuouspipe/remote-environment-client/session"
 	"github.com/continuouspipe/remote-environment-client/sync"
 	"github.com/continuouspipe/remote-environment-client/sync/monitor"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/continuouspipe/remote-environment-client/util"
 	"github.com/fatih/color"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
-var pushSyncExample = `
-# push files and folders to the remote pod
-%[1]s %[2]s
-
-# push files and folders to the remote pod specifying the environment
-%[1]s %[2]s -e techup-dev-user -s web
-`
+const SyncCmdName = "sync"
+const PushCmdName = "push"
 
 func NewSyncCmd() *cobra.Command {
 	pu := NewPushCmd()
-	pu.Use = "sync"
-	pu.Short = "Sync local changes to the remote filesystem (alias for push)"
+	pu.Use = SyncCmdName
+	pu.Short = msgs.SyncCommandShortDescription
+	pu.Long = msgs.SyncCommandLongDescription
 	pu.Aliases = []string{"sy"}
-	pu.Example = fmt.Sprintf(pushSyncExample, config.AppName, "sync")
+	pu.Example = fmt.Sprintf(msgs.PushCmdExampleDescription, config.AppName, "sync")
 	return pu
 }
 
@@ -45,31 +46,35 @@ func NewPushCmd() *cobra.Command {
 	handler.writer = os.Stdout
 
 	command := &cobra.Command{
-		Use:     "push",
+		Use:     PushCmdName,
 		Aliases: []string{"pu"},
-		Short:   "Push local changes to the remote filesystem",
-		Example: fmt.Sprintf(pushSyncExample, config.AppName, "push"),
-		Long: `The push command will copy changes from the local to the remote filesystem.
-Note that this will delete any files/folders in the remote container that are not present locally.`,
+		Short:   msgs.PushCommandShortDescription,
+		Example: fmt.Sprintf(msgs.PushCmdExampleDescription, config.AppName, "push"),
+		Long:    msgs.PushCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			validateConfig()
+			remoteCommand := remotecplogs.NewRemoteCommand(PushCmdName, args)
+			cs := session.NewCommandSession().Start()
 
-			exclusion := monitor.NewExclusion()
-			_, err := exclusion.WriteDefaultExclusionsToFile()
-			checkErr(err)
+			//validate the configuration file
+			missingSettings, ok := config.C.Validate()
+			if ok == false {
+				reason := fmt.Sprintf(msgs.InvalidConfigSettings, missingSettings)
+				err := remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, "", *cs))
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(reason)
+			}
 
-			fmt.Println("Push in progress")
+			suggestion, err := RunPush(handler, args, settings)
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(suggestion)
+			}
 
-			podsFinder := pods.NewKubePodsFind()
-			podsFilter := pods.NewKubePodsFilter()
-			syncer := sync.GetSyncer()
-
-			checkErr(handler.Complete(cmd, args, settings))
-			checkErr(handler.Validate())
-			checkErr(handler.Handle(args, podsFinder, podsFilter, syncer))
-
-			checkErr(err)
-			cplogs.Flush()
+			err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cs))
+			if err != nil {
+				cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+				cplogs.Flush()
+			}
 		},
 	}
 
@@ -90,8 +95,34 @@ Note that this will delete any files/folders in the remote container that are no
 	return command
 }
 
+func RunPush(handler *PushHandle, args []string, settings *config.Config) (suggestion string, err error) {
+	exclusion := monitor.NewExclusion()
+	_, err = exclusion.WriteDefaultExclusionsToFile()
+	if err != nil {
+		return fmt.Sprintf(msgs.SuggestionWriteDefaultExclusionFileFailed, monitor.CustomExclusionsFile, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "write to the default exclusion file before push has failed").String())
+	}
+
+	fmt.Fprintln(handler.writer, msgs.PushInProgress)
+
+	podsFinder := pods.NewKubePodsFind()
+	podsFilter := pods.NewKubePodsFilter()
+	syncer := sync.GetSyncer()
+
+	handler.Complete(args, settings)
+
+	err = handler.Validate()
+	if err != nil {
+		return err.Error(), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "error when validating the options before push").String())
+	}
+
+	suggestion, err = handler.Handle(args, podsFinder, podsFilter, syncer)
+	if err != nil {
+		return suggestion, err
+	}
+	return "", nil
+}
+
 type PushHandle struct {
-	Command     *cobra.Command
 	kubeCtlInit kubectlapi.KubeCtlInitializer
 	writer      io.Writer
 	qp          util.QuestionPrompter
@@ -104,45 +135,39 @@ type pushCmdOptions struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *PushHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
-	h.Command = cmd
-
-	var err error
+func (h *PushHandle) Complete(argsIn []string, settings *config.Config) {
 	if h.options.environment == "" {
-		h.options.environment, err = settings.GetString(config.KubeEnvironmentName)
-		checkErr(err)
+		h.options.environment = settings.GetStringQ(config.KubeEnvironmentName)
 	}
 	if h.options.service == "" {
-		h.options.service, err = settings.GetString(config.Service)
-		checkErr(err)
+		h.options.service = settings.GetStringQ(config.Service)
 	}
 	if strings.HasSuffix(h.options.remoteProjectPath, "/") == false {
 		h.options.remoteProjectPath = h.options.remoteProjectPath + "/"
 	}
-	return nil
 }
 
 // Validate checks that the provided push options are specified.
 func (h *PushHandle) Validate() error {
 	if len(strings.Trim(h.options.environment, " ")) == 0 {
-		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentSpecifiedEmpty).String())
 	}
 	if len(strings.Trim(h.options.service, " ")) == 0 {
-		return fmt.Errorf("the service specified is invalid")
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.ServiceSpecifiedEmpty).String())
 	}
 	if strings.HasPrefix(h.options.remoteProjectPath, "/") == false {
-		return fmt.Errorf("please specify an absolute path for your --remote-project-path")
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.RemoteProjectPathEmpty).String())
 	}
 	return nil
 }
 
 // Copies all the files and folders from the current directory into the remote container
-func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, syncer sync.Syncer) error {
+func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter pods.Filter, syncer sync.Syncer) (suggestion string, err error) {
 	if h.options.delete {
 		if h.options.yall == false {
 			answer := deleteFlagWarning(h.qp)
 			if answer == "no" {
-				return nil
+				return "", nil
 			}
 		}
 		fmt.Fprintln(h.writer, "Delete mode enabled.")
@@ -156,23 +181,17 @@ func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
-		return nil
+		return fmt.Sprintf(msgs.SuggestionGetSettingsError, session.CurrentSession.SessionID), err
 	}
 
 	allPods, err := podsFinder.FindAll(user, apiKey, addr, h.options.environment)
 	if err != nil {
-
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.SuggestionFindPodsFailed, session.CurrentSession.SessionID), err
 	}
 
 	pod := podsFilter.List(*allPods).ByService(h.options.service).ByStatus("Running").ByStatusReason("Running").First()
 	if pod == nil {
-
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return fmt.Errorf(fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.options.service))
+		return fmt.Sprintf(msgs.SuggestionRunningPodNotFound, h.options.service, h.options.environment, config.AppName, PushCmdName, session.CurrentSession.SessionID), errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, fmt.Sprintf(msgs.NoActivePodsFoundForSpecifiedServiceName, h.options.service)).String())
 	}
 
 	syncOptions := options.SyncOptions{}
@@ -191,19 +210,17 @@ func (h *PushHandle) Handle(args []string, podsFinder pods.Finder, podsFilter po
 	if h.options.file != "" {
 		absFilePath, err := filepath.Abs(h.options.file)
 		if err != nil {
-			return err
+			return fmt.Sprintf(msgs.SuggestionFailedToDetermineTheAbsPath, h.options.file, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf("error when taking the absolute path for the file %s", h.options.file)).String())
 		}
 		paths = append(paths, absFilePath)
 	}
 
 	err = syncer.Sync(paths)
 	if err != nil {
-
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+		return fmt.Sprintf(msgs.SuggestionPushFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "error while running rsync").String())
 	}
 	fmt.Fprintf(h.writer, "Push complete, the files and folders that has been sent can be found in the logs %s\n", cplogs.GetLogInfoFile())
-	return err
+	return "", nil
 }
 
 func deleteFlagWarning(qp util.QuestionPrompter) string {
