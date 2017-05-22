@@ -174,7 +174,7 @@ func (q *MultipleChoiceCpEntityQuestioner) whichPod(environment APIEnvironment) 
 
 func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []MultipleChoiceCpEntityOption) (option MultipleChoiceCpEntityOption, err error) {
 	if len(optionList) == 0 {
-		return MultipleChoiceCpEntityOption{}, errors.Wrap(err, "List of option is empty")
+		return MultipleChoiceCpEntityOption{}, errors.Wrap(err, "List of options is empty")
 	}
 	if len(optionList) == 1 {
 		return optionList[0], nil
@@ -187,7 +187,7 @@ func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []Multip
 
 	question := fmt.Sprintf("Which %s would you like to use?\n"+
 		"%s\n"+
-		"Please insert the option in full or a type its corrispondent value between [0-%d]:", entity, printedOptions, len(optionList)-1)
+		"Please insert the option in full or a type its corresponding value between [0-%d]:", entity, printedOptions, len(optionList)-1)
 
 	optionSelected := q.qp.RepeatUntilValid(question, func(answer string) (bool, error) {
 		for key, option := range optionList {
@@ -198,7 +198,7 @@ func (q MultipleChoiceCpEntityQuestioner) ask(entity string, optionList []Multip
 				return true, nil
 			}
 		}
-		return false, fmt.Errorf("Please insert the option in full or a type its correspondent value between [0-%d]", len(optionList))
+		return false, fmt.Errorf("Please insert the option in full or a type its corresponding value between [0-%d]", len(optionList))
 
 	})
 
