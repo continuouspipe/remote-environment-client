@@ -123,7 +123,7 @@ func (h *DeletePodCmdHandle) Complete(argsIn []string, settings *config.Config) 
 // Validate checks that the provided exec options are specified.
 func (h *DeletePodCmdHandle) Validate() error {
 	if len(strings.Trim(h.options.environment, " ")) == 0 {
-		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentSpecifiedEmpty).String())
 	}
 	return nil
 }

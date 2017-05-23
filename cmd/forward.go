@@ -116,13 +116,13 @@ func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settings *
 // Validate checks that the provided forward options are specified.
 func (h *ForwardHandle) Validate() error {
 	if len(h.ports) == 0 {
-		return fmt.Errorf("at least 1 PORT is required for port-forward")
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "at least 1 PORT is required for port-forward").String())
 	}
 	if len(strings.Trim(h.Environment, " ")) == 0 {
-		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentSpecifiedEmpty).String())
 	}
 	if len(strings.Trim(h.Service, " ")) == 0 {
-		return fmt.Errorf("the service specified is invalid")
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.ServiceSpecifiedEmpty).String())
 	}
 	return nil
 }

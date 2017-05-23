@@ -125,6 +125,26 @@ kubectl delete pod,service baz foo
 
 # Delete pods and services with label name=myLabel.
 kubectl delete pods,services -l name=myLabel`
+const LogsCommandShortDescription = `Print the logs for a pod`
+const LogsCommandLongDescription = `Print the logs for a pod`
+const LogsCommandExampleDescription = `
+# Return snapshot logs from the pod that matches the default service
+%[1]s logs
+
+# Return snapshot logs from pod mysql with only one container
+%[1]s logs mysql
+
+# Return snapshot of previous terminated ruby container logs from pod mysql
+%[1]s logs -p mysql
+
+# Begin streaming the logs of the ruby container in pod mysql
+%[1]s logs -f mysql
+
+# Display only the most recent 20 lines of output in pod mysql
+%[1]s logs --tail=20 mysql
+
+# Show all logs from pod mysql written in the last hour
+%[1]s logs --since=1h mysql`
 
 const SuggestionTriggerBuildFailed = `Triggering the build has failed.
 Please make sure Git has permission to push to the remote repository and is set up correctly, then retry.
