@@ -10,6 +10,7 @@ import (
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	remotecplogs "github.com/continuouspipe/remote-environment-client/cplogs/remote"
 	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
@@ -39,11 +40,39 @@ func NewForwardCmd() *cobra.Command {
 		Short:   msgs.PortForwardCommandShortDescription,
 		Long:    msgs.PortForwardCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			validateConfig()
+			remoteCommand := remotecplogs.NewRemoteCommand(ForwardCmdName, os.Args)
+			cmdSession := session.NewCommandSession().Start()
 
+			//validate the configuration file
+			missingSettings, ok := config.C.Validate()
+			if ok == false {
+				reason := fmt.Sprintf(msgs.InvalidConfigSettings, missingSettings)
+				err := remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, "", *cmdSession))
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cmdSession, err)
+				cperrors.ExitWithMessage(reason)
+			}
+
+			//complete the option and validate them
 			handler.Complete(cmd, args, settings)
-			handler.Validate()
-			handler.Handle()
+			err := handler.Validate()
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cmdSession, err)
+				cperrors.ExitWithMessage(err.Error())
+			}
+
+			//call the command handler
+			suggestion, err := handler.Handle()
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cmdSession, err)
+				cperrors.ExitWithMessage(suggestion)
+			}
+
+			//send the command metrics
+			err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cmdSession))
+			if err != nil {
+				cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+				cplogs.Flush()
+			}
 		},
 		Example: portforwardExample,
 	}
@@ -69,7 +98,7 @@ type ForwardHandle struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
+func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) {
 	h.Command = cmd
 	h.ports = argsIn
 
@@ -82,8 +111,6 @@ func (h *ForwardHandle) Complete(cmd *cobra.Command, argsIn []string, settings *
 	if h.Service == "" {
 		h.Service = settings.GetStringQ(config.Service)
 	}
-
-	return nil
 }
 
 // Validate checks that the provided forward options are specified.
