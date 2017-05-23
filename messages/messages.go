@@ -1,5 +1,7 @@
 package messages
 
+const PleaseContactSupport = `Something went wrong in the cp-remote tool application logic.
+Please contact support specifying the session number '%s'.`
 const NoActivePodsFoundForSpecifiedServiceName = `No running pods were found for the specified service name '%s'.`
 const ProjectsNotFound = `No projects were found. Please ensure that you have at least one project set up in ContinuousPipe.`
 const FlowsNotFound = `No flows were found. Please ensure that the project has at least one flow.`
@@ -17,8 +19,8 @@ const RemoteProjectPathEmpty = `The remote project path is an empty string. Plea
 const FetchInProgress = `Fetch in progress.`
 const FetchCompleted = `Fetch completed.`
 const PushInProgress = `Push in progress`
+const LatencyValueTooSmall = `Please specify a latency of at least 100 milli-seconds.`
 
-//List of Command Description Messages
 const BuildCommandShortDescription = `Create/update the remote environment.`
 const BuildCommandLongDescription = `The build command will push any local Git commits to your remote Git branch. ContinuousPipe will then build the environment. You can use the ContinuousPipe console (https://ui.continuouspipe.io/) to see when the environment has finished building and to find its URL.`
 const DestroyCommandShortDescription = `Destroy the remote environment.`
@@ -56,8 +58,9 @@ Note: this will delete any files/folders in the remote environment that are not 
 const PushCommandShortDescription = `Push local changes to the remote filesystem.`
 const PushCommandLongDescription = `The push command will copy changes from the local filesystem to the remote environment.
 Note: this will delete any files/folders in the remote environment that are not present locally.`
+const WatchCommandShortDescription = `Watch local changes and synchronize with the remote environment.`
+const WatchCommandLongDescription = `The watch command will sync changes from the local filesystem to the remote environment. The default container (specified during setup) will be used but you can specify another container to sync with using the -s flag.`
 
-//List for suggestion messages that are displayed to the user in case of failure
 const SuggestionTriggerBuildFailed = `Triggering the build has failed.
 Please make sure Git has permission to push to the remote repository and is set up correctly, then retry.
 If the issue persists please contact support specifying the session number '%s'.`
@@ -134,16 +137,15 @@ const SuggestionEnvironmentListEmptyUsingQuestioner = `No environments wer found
 Please verify that the project has at least one environment in the ContinuousPipe console (https://ui.continuouspipe.io/).
 If the issue persists please contact support specifying the session number '%s'.`
 
+const SuggestionFailedToDetermineTheAbsPath = `Something went wrong when pushing the file '%s'.
+Please try pushing a different file or pushing all files.
+If the issue persists please contact support specifying the session number %s`
+
 const SuggestionWriteDefaultExclusionFileFailed = `Something went wrong when saving the default exclusion patterns for the file '%[1]s'.
 This issue is usually caused by incorrect file permissions.
 Please verify that the file '%[1]s' can be written to the local filesystem and then re-try.
 If the issue persists please contact support specifying the session number '%[2]s'.`
 
-const SuggestionFailedToDetermineTheAbsPath = `Something went wrong when pushing the file '%s'.
-Please try pushing a different file or pushing all files.
-If the issue persists please contact support specifying the session number %s`
-
-//Application logic errors (unlikely to happen)
 const SuggestionQuestionerMultiSelectError = `Something went wrong in the application multi selector logic.
 Please contact support specifying the session number '%s'.`
 
@@ -168,6 +170,11 @@ If the issue persists please contact support specifying the session number '%s'.
 const SuggestionPushFailed = `Something went wrong during the push command execution.
 This issue is usually caused by a temporary unavailability of the cluster, a network issue or because the pod was deleted or moved to a different node.
 Check the pod status with 'cp-remote pods' and re-try once the pod is running again.
+If the issue persists please contact support specifying the session number '%s'.`
+
+const SuggestionDirectoryMonitorFailed = `Something went wrong during the watch command execution.
+This issue is usually caused by a temporary unavailability of the cluster, a network issue or because the pod was deleted or moved to a different node.
+Check the pod status with 'cp-remote pods' and reconnect once the pod is running again.
 If the issue persists please contact support specifying the session number '%s'.`
 
 const GetStarted = `

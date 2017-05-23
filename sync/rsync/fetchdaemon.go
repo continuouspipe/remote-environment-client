@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -15,10 +16,12 @@ import (
 	"time"
 
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	kexec "github.com/continuouspipe/remote-environment-client/kubectlapi/exec"
 	"github.com/continuouspipe/remote-environment-client/osapi"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -85,15 +88,13 @@ func (r RsyncDaemonFetch) Fetch(filePath string) error {
 
 	err := r.remoteRsync.StartDaemonOnRandomPort()
 	if err != nil {
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "failed to start the rsync deamon").String())
 	}
 	defer r.remoteRsync.KillDaemon(pidFile)
 
 	stopChan, err := r.remoteRsync.StartPortForwardOnRandomPort()
 	if err != nil {
-		//TODO: Wrap the error making it Stateful
-
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "failed to start the port forward").String())
 	}
 	defer r.remoteRsync.StopPortForward(stopChan)
 
@@ -114,11 +115,13 @@ func (r RsyncDaemonFetch) Fetch(filePath string) error {
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "getting the current directory failed and is required for fetching").String())
 	}
+	//check if fetch excluded file exists, if it doesn't, don't return an error
 	if _, err := os.Stat(FetchExcluded); err == nil {
 		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+FetchExcluded))
 	}
+	//check if sync fetch excluded file exists, if it doesn't, don't return an error
 	if _, err := os.Stat(SyncFetchExcluded); err == nil {
 		args = append(args, fmt.Sprintf(`--exclude-from=%s`, cwd+"/"+SyncFetchExcluded))
 	}
@@ -149,7 +152,7 @@ func (r RsyncDaemonFetch) Fetch(filePath string) error {
 
 	err = osapi.CommandExecL(scmd, args...)
 	if err != nil {
-		//TODO: Wrap the error making it Stateful
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "error while executing the rsync executable in daemon mode").String())
 
 	}
 	return err
@@ -188,9 +191,11 @@ func (r *RemoteRsyncDeamon) StartDaemonOnRandomPort() error {
 		err := r.waitForDaemon(pidFile, errChan)
 		if err == nil {
 			break
+		} else {
+			return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "error happened while waiting for the rsync deamon to start").String())
 		}
 		if time.Since(startTime) > differentPortTimeout*time.Second {
-			return err
+			return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "rsync daemon start timeout").String())
 		}
 	}
 	return nil
@@ -200,13 +205,17 @@ func (r *RemoteRsyncDeamon) StartDaemonOnRandomPort() error {
 func (r RemoteRsyncDeamon) KillDaemon(pidFile string) error {
 	stop := fmt.Sprintf(killDaemon, pidFile)
 	cplogs.V(5).Infof("Executing remotely script:\n%s\n", stop)
+	cplogs.Flush()
+
 	r.kscmd.Stdin = bytes.NewBufferString(stop)
 	err := r.executor.StartProcess(r.kscmd, "sh")
 	if err != nil {
-		//TODO: Wrap the error making it Stateful
-		cplogs.V(4).Infof("error when killing rsync daemon with pid file: %s, error %s", pidFile, err.Error())
+		errMsg := fmt.Sprintf("error when killing rsync daemon with pid file: %s, error %s", pidFile, err.Error())
+		cplogs.V(4).Infof(errMsg)
+		cplogs.Flush()
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errMsg).String())
 	}
-	return err
+	return nil
 }
 
 // sets the local port number to a random one between the range specified
@@ -220,11 +229,13 @@ func (r *RemoteRsyncDeamon) StartPortForwardOnRandomPort() (*chan bool, error) {
 	for {
 		r.setRandomLocalPort()
 		stopChan, err = r.startPortForward()
-		if err == nil {
+		if err != nil {
+			return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "errors when starting port forward").String())
+		} else {
 			break
 		}
 		if time.Since(startTime) > differentPortTimeout*time.Second {
-			return nil, err
+			return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "port forward start timeout").String())
 		}
 	}
 	return stopChan, nil
@@ -233,11 +244,12 @@ func (r *RemoteRsyncDeamon) StartPortForwardOnRandomPort() (*chan bool, error) {
 // closes the channel that will then kill the goroutine that is running the port forwarding
 func (r RemoteRsyncDeamon) StopPortForward(stopChan *chan bool) {
 	if stopChan == nil {
-		//TODO: Wrap the error making it Stateful
 		cplogs.V(5).Infoln("was not possible to stop the port forwarding")
+		cplogs.Flush()
 		return
 	}
 	cplogs.V(5).Infoln("stopping port forwarding")
+	cplogs.Flush()
 	close(*stopChan)
 }
 
@@ -253,7 +265,7 @@ func (r RemoteRsyncDeamon) startDaemon(configFile string, pidFile string) *chan 
 		cplogs.V(5).Infof("Executing remotely script:\n%s\n", start)
 		err := r.executor.StartProcess(r.kscmd, "sh")
 		if err != nil {
-			errChan <- err
+			errChan <- errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "error occured when starting the rsync deamon inside the remote pod").String())
 		}
 	}()
 	return &errChan
@@ -266,9 +278,11 @@ func (r RemoteRsyncDeamon) waitForDaemon(pidFile string, errChan *chan error) er
 	for {
 		if time.Since(startTime) > commandTimeout*time.Second {
 			cplogs.V(4).Infof("rsync deamon start timeout")
-			return fmt.Errorf("Rsync deamon start timeout afer waiting %d seconds", commandTimeout)
+			cplogs.Flush()
+			return errors.New(cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf("Rsync deamon start timeout afer waiting %d seconds", commandTimeout)).String())
 		}
 		cplogs.V(5).Infof("Executing remotely script:\n%s\n", check)
+		cplogs.Flush()
 		err := r.executor.StartProcess(r.kscmd, "sh")
 		if err == nil {
 			break
@@ -283,16 +297,17 @@ func (r RemoteRsyncDeamon) waitForDaemon(pidFile string, errChan *chan error) er
 }
 
 func (r RemoteRsyncDeamon) startPortForward() (*chan bool, error) {
-
 	sLocalPort := strconv.Itoa(r.localPort)
 	sRemotePort := strconv.Itoa(r.remotePort)
 
 	killProcess := make(chan bool, 1)
 	cplogs.V(5).Infoln("starting port forward in the background")
+	cplogs.Flush()
 	go func() {
 		err := kubectlapi.Forward(r.kscmd.KubeConfigKey, r.kscmd.Environment, r.kscmd.Pod, sLocalPort+":"+sRemotePort, killProcess)
 		if err != nil {
 			cplogs.V(4).Infoln("an error occured during port forward error: %s", err.Error())
+			cplogs.Flush()
 		}
 	}()
 
@@ -300,12 +315,16 @@ func (r RemoteRsyncDeamon) startPortForward() (*chan bool, error) {
 	startTime := time.Now()
 	for {
 		if time.Since(startTime) > commandTimeout*time.Second {
-			return nil, fmt.Errorf("port forwarding timeout after %d seconds", commandTimeout)
+			return nil, errors.New(cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf("port forwarding timeout after %d seconds", commandTimeout)).String())
 		}
 		cplogs.V(5).Infof("verifying if %s is open", "127.0.0.1:"+sLocalPort)
+		cplogs.Flush()
 		conn, err := net.DialTimeout("tcp", "127.0.0.1:"+sLocalPort, 2*time.Second)
-		if err == nil {
+		if err != nil {
+			return nil, errors.New(cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf("port %s is not listening, timeout after %d seconds", sLocalPort, 2*time.Second)).String())
+		} else {
 			cplogs.V(5).Infof("%s is open", "127.0.0.1:"+sLocalPort)
+			cplogs.Flush()
 			conn.Close()
 			break
 		}

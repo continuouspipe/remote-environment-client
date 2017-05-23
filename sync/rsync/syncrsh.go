@@ -5,14 +5,17 @@ package rsync
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/osapi"
 	"github.com/continuouspipe/remote-environment-client/sync/options"
 	"github.com/continuouspipe/remote-environment-client/util/slice"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -44,6 +47,7 @@ func (o RSyncRsh) Sync(paths []string) error {
 	cplogs.V(5).Infof("sync triggered for paths %s", paths)
 	rsh := fmt.Sprintf(`%s %s --context=%s --namespace=%s exec -i %s`, config.AppName, config.KubeCtlName, o.kubeConfigKey, o.environment, o.pod)
 	cplogs.V(5).Infof("setting RSYNC_RSH to %s\n", rsh)
+	cplogs.Flush()
 	os.Setenv("RSYNC_RSH", rsh)
 	defer os.Unsetenv("RSYNC_RSH")
 
@@ -75,24 +79,28 @@ func (o RSyncRsh) Sync(paths []string) error {
 
 	paths, err = o.getRelativePathList(paths)
 	if err != nil {
-		//TODO: Wrap the error making it Stateful
-
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "getting the current directory failed and is required for syncing").String())
 	}
 
 	allPathsExists, notExistingPaths := o.allPathsExists(paths)
 	if !allPathsExists {
 		cplogs.V(5).Infof("detected not existing path/s %s. We will do a generic rsync rather that an individual one", notExistingPaths)
+		cplogs.Flush()
 	}
 
 	if len(paths) > 0 && len(paths) <= o.individualFileSyncThreshold && allPathsExists {
 		cplogs.V(5).Infof("individual file sync, files to sync %d, threshold: %d", len(paths), o.individualFileSyncThreshold)
+		cplogs.Flush()
 		err = o.syncIndividualFiles(paths, args)
+		if err != nil {
+			return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "error when syncing individual files").String())
+		}
 	} else {
 		err = o.syncAllFiles(paths, args)
+		if err != nil {
+			return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "error when syncing all files").String())
+		}
 	}
-
-	cplogs.Flush()
 	return err
 }
 
@@ -134,9 +142,9 @@ func (o RSyncRsh) syncIndividualFiles(paths []string, args []string) error {
 
 		err := o.executeRsync(lArgs, os.Stdout)
 		if err != nil {
-			//TODO: Wrap the error making it Stateful
-
-			return err
+			errMsg := fmt.Sprintf("rsync failed to execute using arguments %s", lArgs)
+			cplogs.V(4).Infof(errMsg)
+			return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errMsg).String())
 		}
 	}
 
@@ -152,8 +160,9 @@ func (o RSyncRsh) syncAllFiles(paths []string, args []string) error {
 	)
 	err := o.executeRsync(args, os.Stdout)
 	if err != nil {
-		//TODO: Wrap the error making it Stateful
-
+		errMsg := fmt.Sprintf("rsync failed to execute using arguments %s", args)
+		cplogs.V(4).Infof(errMsg)
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, errMsg).String())
 	}
 	return err
 }
@@ -171,12 +180,12 @@ func (rsh RSyncRsh) executeRsync(args []string, stdOut io.Writer) error {
 func (o RSyncRsh) getRelativePathList(paths []string) ([]string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "getting the current directory failed and is required for syncing").String())
 	}
 	for key, path := range paths {
 		relPath, err := filepath.Rel(cwd, string(filepath.Separator)+path)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, fmt.Sprintf("getting the relative path using cwd %s and path %s failed", cwd, path)).String())
 		}
 		paths[key] = relPath
 	}

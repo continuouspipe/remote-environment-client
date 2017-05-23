@@ -13,11 +13,14 @@ import (
 
 	"bytes"
 
+	"io/ioutil"
+
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
 	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	cphttp "github.com/continuouspipe/remote-environment-client/http"
 	"github.com/continuouspipe/remote-environment-client/session"
+	"github.com/continuouspipe/remote-environment-client/sync/rsync"
 	"github.com/pkg/errors"
 )
 
@@ -83,6 +86,26 @@ type RemoteCommandStatus struct {
 
 //NewRemoteCommand create a new remote command struct for the given command and arguments
 func NewRemoteCommand(cmd string, args []string) *RemoteCommand {
+
+	var ignoreFileContent string
+	var ignoreFetchFileContent string
+
+	if cmd == "watch" || cmd == "push" || cmd == "fetch" {
+		content, err := ioutil.ReadFile(rsync.SyncFetchExcluded)
+		if err != nil {
+			cplogs.V(5).Infof("We could not log the content of the file %s", rsync.SyncFetchExcluded)
+			cplogs.Flush()
+		}
+		ignoreFileContent = string(content)
+
+		content, err = ioutil.ReadFile(rsync.FetchExcluded)
+		if err != nil {
+			cplogs.V(5).Infof("We could not log the content of the file %s", rsync.FetchExcluded)
+			cplogs.Flush()
+		}
+		ignoreFetchFileContent = string(content)
+	}
+
 	return &RemoteCommand{
 		Command:     cmd,
 		Arguments:   args,
@@ -102,6 +125,8 @@ func NewRemoteCommand(cmd string, args []string) *RemoteCommand {
 			KubeDirectClusterAddr: config.C.GetStringQ(config.KubeDirectClusterAddr),
 			KubeDirectClusterUser: config.C.GetStringQ(config.KubeDirectClusterUser),
 		},
+		IgnoreFileContent:      ignoreFileContent,
+		IgnoreFetchFileContent: ignoreFetchFileContent,
 	}
 }
 
