@@ -36,7 +36,7 @@ func NewFetchCmd() *cobra.Command {
 		Example: fmt.Sprintf(msgs.FetchCommandExampleDescription, config.AppName),
 		Long:    msgs.FetchCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			remoteCommand := remotecplogs.NewRemoteCommand(ExecCmdName, args)
+			remoteCommand := remotecplogs.NewRemoteCommand(ExecCmdName, os.Args)
 			cmdSession := session.NewCommandSession().Start()
 
 			//validate the configuration file

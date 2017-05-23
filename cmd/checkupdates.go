@@ -10,6 +10,7 @@ import (
 	"github.com/continuouspipe/remote-environment-client/session"
 	"github.com/continuouspipe/remote-environment-client/update"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 const CheckUpdatesCmdName = "checkupdates"
@@ -21,7 +22,7 @@ func NewCheckUpdatesCmd() *cobra.Command {
 		Short:   "Check for latest version",
 		Long:    ``,
 		Run: func(cmd *cobra.Command, args []string) {
-			remoteCommand := remotecplogs.NewRemoteCommand(CheckUpdatesCmdName, args)
+			remoteCommand := remotecplogs.NewRemoteCommand(CheckUpdatesCmdName, os.Args)
 			cs := session.NewCommandSession().Start()
 
 			handler := &CheckUpdates{cmd}

@@ -3,14 +3,15 @@ package monitor
 
 import (
 	"fmt"
-	"github.com/continuouspipe/remote-environment-client/config"
-	"github.com/continuouspipe/remote-environment-client/cplogs"
-	"github.com/continuouspipe/remote-environment-client/pattern"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
+	"github.com/continuouspipe/remote-environment-client/pattern"
 )
 
 //CustomExclusionsFile is the default ignore file for rsync exclusions

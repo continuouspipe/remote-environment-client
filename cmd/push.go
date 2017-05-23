@@ -52,7 +52,7 @@ func NewPushCmd() *cobra.Command {
 		Example: fmt.Sprintf(msgs.PushCmdExampleDescription, config.AppName, "push"),
 		Long:    msgs.PushCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			remoteCommand := remotecplogs.NewRemoteCommand(PushCmdName, args)
+			remoteCommand := remotecplogs.NewRemoteCommand(PushCmdName, os.Args)
 			cs := session.NewCommandSession().Start()
 
 			//validate the configuration file

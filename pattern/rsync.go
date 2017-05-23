@@ -4,9 +4,10 @@ package pattern
 import (
 	"errors"
 	"fmt"
-	"github.com/continuouspipe/remote-environment-client/cplogs"
 	"path"
 	"strings"
+
+	"github.com/continuouspipe/remote-environment-client/cplogs"
 )
 
 const (
