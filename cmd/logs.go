@@ -22,6 +22,7 @@ import (
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
+//LogsCmdName is the command name identifier
 const LogsCmdName = "logs"
 
 func NewLogsCmd() *cobra.Command {

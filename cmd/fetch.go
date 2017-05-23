@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//FetchCmdName is the command name identifier
 const FetchCmdName = "fetch"
 
 func NewFetchCmd() *cobra.Command {

@@ -29,6 +29,7 @@ var (
 	deleteExample = templates.Examples(msgs.DeleteCommandExampleDescription)
 )
 
+//DeleteCmdName is the command name identifier
 const DeleteCmdName = "delete"
 
 //NewDeleteCmd returns a new command that wraps the kubectl delete command

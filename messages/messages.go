@@ -2,31 +2,60 @@ package messages
 
 const PleaseContactSupport = `Something went wrong in the cp-remote tool application logic.
 Please contact support specifying the session number '%s'.`
+
 const NoActivePodsFoundForSpecifiedServiceName = `No running pods were found for the specified service name '%s'.`
+
 const ProjectsNotFound = `No projects were found. Please ensure that you have at least one project set up in ContinuousPipe.`
+
 const FlowsNotFound = `No flows were found. Please ensure that the project has at least one flow.`
+
 const EnvironmentsNotFound = `No environments were found. Please ensure that the flow has at least one environment.`
+
 const RunningPodNotFound = `No running pods were found. Please ensure that the environment has at least one running pod.`
+
 const InteractiveModeSuggestingFlags = `The pod specified will be used this time.
 Next time, if you want to connect directly to the same pod, you can also use the flag values '%s'.`
+
 const InvalidConfigSettings = `The remote settings file is missing or the require parameters are missing (%v), please run the 'cp-remote init' command.`
+
 const EnvironmentSpecifiedEmpty = `The environment specified is empty. Please ensure that the environment specified in the configuration file is not empty or override it with the -e flag.`
+
 const ItWillDeleteGitBranchAndRemoteEnvironment = `This will delete the remote Git branch and remote environment. Do you want to proceed? %s`
+
 const YesNoOptions = `(yes/no)`
+
 const InvalidAnswerForYesNo = `Your answer needs to be either 'yes' or 'no'. Your answer was '%s'.`
+
 const ServiceSpecifiedEmpty = `The service name specified is an empty string. Please ensure that the service specified in the configuration file is not empty or override it with the -s flag.`
+
 const RemoteProjectPathEmpty = `The remote project path is an empty string. Please ensure that the remote project path specified with the --remote-project-path flag is a valid path.`
+
 const FetchInProgress = `Fetch in progress.`
+
 const FetchCompleted = `Fetch completed.`
+
 const PushInProgress = `Push in progress`
+
 const LatencyValueTooSmall = `Please specify a latency of at least 100 milli-seconds.`
 
+const CheckingConnectionForEnvironment = `Checking connection for environment %s.`
+
+const PodsFoundCount = `%d pods have been found:`
+
+const PodsNotFound = `"We could not find any pods on this environment.`
+
 const BuildCommandShortDescription = `Create/update the remote environment.`
+
 const BuildCommandLongDescription = `The build command will push any local Git commits to your remote Git branch. ContinuousPipe will then build the environment. You can use the ContinuousPipe console (https://ui.continuouspipe.io/) to see when the environment has finished building and to find its URL.`
+
 const DestroyCommandShortDescription = `Destroy the remote environment.`
+
 const DestroyCommandLongDescription = `The destroy command will delete the remote branch used for your remote environment. ContinuousPipe will then automatically delete the remote environment.`
+
 const ExecCommandShortDescription = `Execute a command on a container.`
+
 const ExecCommandLongDescription = `To execute a command on a container without first getting a bash session use the exec command. The remote command and its arguments need to follow a double dash (--).`
+
 const ExecCommandExampleDescription = `
 # execute -ls -all on the web pod
 %[1]s exec -- ls -all
@@ -38,13 +67,16 @@ const ExecCommandExampleDescription = `
 %[1]s exec --interactive -- ls -all`
 
 const FetchCommandShortDescription = `Transfers file changes from the remote environment to the local filesystem.`
+
 const FetchCommandLongDescription = `When the remote environment is rebuilt it may contain changes that you do not have on the local filesystem. For example, for a PHP project part of building the remote environment could be installing the vendors using composer. Any new or updated vendors would be on the remote environment but not on the local filesystem which would cause issues, such as autocomplete in your IDE not working correctly. The fetch command will copy changes from the remote to the local filesystem. This will resync with the default container specified during setup but you can specify another container.`
+
 const FetchCommandExampleDescription = `
 # fetch files and folders from the remote pod
 %[1]s fetch
 # fetch files and folders from the remote pod specifying the environment and pod
 %[1]s fetch -e techup-dev-user -s web
 `
+
 const PushCmdExampleDescription = `
 # push files and folders to the remote pod
 %[1]s %[2]s
@@ -52,19 +84,28 @@ const PushCmdExampleDescription = `
 # push files and folders to the remote pod specifying the environment and pod
 %[1]s %[2]s -e techup-dev-user -s web
 `
+
 const SyncCommandShortDescription = `Sync local changes to the remote filesystem (alias for push).`
+
 const SyncCommandLongDescription = `The sync command will copy changes from the local filesystem to the remote environment.
 Note: this will delete any files/folders in the remote environment that are not present locally.`
+
 const PushCommandShortDescription = `Push local changes to the remote filesystem.`
+
 const PushCommandLongDescription = `The push command will copy changes from the local filesystem to the remote environment.
 Note: this will delete any files/folders in the remote environment that are not present locally.`
+
 const WatchCommandShortDescription = `Watch local changes and synchronize with the remote environment.`
+
 const WatchCommandLongDescription = `The watch command will sync changes from the local filesystem to the remote environment. The default container (specified during setup) will be used but you can specify another container to sync with using the -s flag.`
+
 const PortForwardCommandShortDescription = `Forward a port to a container`
+
 const PortForwardCommandLongDescription = `The forward command will set up port forwarding from the local environment
 to a container on the remote environment that has a port exposed. This is useful for tasks
 such as connecting to a database using a local client. You need to specify the container and
 the port number to forward.`
+
 const PortFowardCommandExampleDescription = `
 # Listen on ports 5000 and 6000 locally, forwarding data to/from ports 5000 and 6000 in the pod
 %[1]s forward 5000 6000
@@ -80,6 +121,7 @@ const PortFowardCommandExampleDescription = `
 
 # Overriding the project-key and remote-branch
 %[1]s forward -e techup-dev-user -s mysql 5000`
+
 const DeleteCommandLongDescription = `Delete resources by filenames, stdin, resources and names, or by resources and label selector.
 
 JSON and YAML formats are accepted. Only one type of the arguments may be specified: filenames,
@@ -106,7 +148,9 @@ has released those resources and causing those pods to be evicted immediately.
 Note that the delete command does NOT do resource version checks, so if someone
 submits an update to a resource right when you submit a delete, their update
 will be lost along with the rest of the resource.`
+
 const DeleteCommandShortDescription = `Delete resources by filenames, stdin, resources and names, or by resources and label selector`
+
 const DeleteCommandExampleDescription = `
 # Delete a pod with minimal delay
 kubectl delete pod foo --now
@@ -125,8 +169,11 @@ kubectl delete pod,service baz foo
 
 # Delete pods and services with label name=myLabel.
 kubectl delete pods,services -l name=myLabel`
+
 const LogsCommandShortDescription = `Print the logs for a pod`
+
 const LogsCommandLongDescription = `Print the logs for a pod`
+
 const LogsCommandExampleDescription = `
 # Return snapshot logs from the pod that matches the default service
 %[1]s logs
@@ -145,6 +192,12 @@ const LogsCommandExampleDescription = `
 
 # Show all logs from pod mysql written in the last hour
 %[1]s logs --since=1h mysql`
+
+const CheckConnectionCommandShortDescription = `Check the connection to the remote environment`
+
+const CheckConnectionCommandLongDescription = `The checkconnection command can be used to check that the connection details
+for the Kubernetes cluster are correct and lists any pods that can be found for the environment.
+It can be used with the environment option to check another environment`
 
 const SuggestionTriggerBuildFailed = `Triggering the build has failed.
 Please make sure Git has permission to push to the remote repository and is set up correctly, then retry.
@@ -271,4 +324,5 @@ If the issue persists please contact support specifying the session number '%s'.
 const GetStarted = `
 # Get started!
 You can now run 'cp-remote watch' to automatically sync your local changes with the deployed environment. Your deployed environment can be found at this address:`
+
 const CheckDocumentation = `Please check the documentation at https://docs.continuouspipe.io/remote-development/.`

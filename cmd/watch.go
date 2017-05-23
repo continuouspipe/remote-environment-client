@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//WatchCmdName is the command name identifier
 const WatchCmdName = "watch"
 
 func NewWatchCmd() *cobra.Command {

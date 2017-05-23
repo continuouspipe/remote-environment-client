@@ -13,6 +13,7 @@ import (
 	"os"
 )
 
+//CheckUpdatesCmdName is the command name identifier
 const CheckUpdatesCmdName = "checkupdates"
 
 func NewCheckUpdatesCmd() *cobra.Command {

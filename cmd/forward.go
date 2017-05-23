@@ -28,6 +28,7 @@ var (
 	portforwardExample = fmt.Sprintf(msgs.PortFowardCommandExampleDescription, config.AppName)
 )
 
+//ForwardCmdName is the command name identifier
 const ForwardCmdName = "forward"
 
 func NewForwardCmd() *cobra.Command {

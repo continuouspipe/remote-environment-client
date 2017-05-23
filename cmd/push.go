@@ -25,7 +25,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//SyncCmdName is the command name identifier
 const SyncCmdName = "sync"
+
+//PushCmdName is the command name identifier
 const PushCmdName = "push"
 
 func NewSyncCmd() *cobra.Command {
