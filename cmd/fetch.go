@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//FetchCmdName is the command name identifier
 const FetchCmdName = "fetch"
 
 func NewFetchCmd() *cobra.Command {
@@ -36,7 +37,7 @@ func NewFetchCmd() *cobra.Command {
 		Example: fmt.Sprintf(msgs.FetchCommandExampleDescription, config.AppName),
 		Long:    msgs.FetchCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			remoteCommand := remotecplogs.NewRemoteCommand(ExecCmdName, args)
+			remoteCommand := remotecplogs.NewRemoteCommand(FetchCmdName, os.Args)
 			cmdSession := session.NewCommandSession().Start()
 
 			//validate the configuration file

@@ -3,22 +3,28 @@ package cmd
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"io"
-	"os"
+	"net/http"
 
 	"github.com/briandowns/spinner"
 	"github.com/continuouspipe/remote-environment-client/config"
 	"github.com/continuouspipe/remote-environment-client/cpapi"
 	"github.com/continuouspipe/remote-environment-client/cplogs"
+	remotecplogs "github.com/continuouspipe/remote-environment-client/cplogs/remote"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/git"
 	"github.com/continuouspipe/remote-environment-client/initialization"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/services"
+	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/continuouspipe/remote-environment-client/session"
 	"github.com/continuouspipe/remote-environment-client/util"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -31,40 +37,60 @@ const initStateCompleted = "completed"
 
 const remoteEnvironmentReadinessProbePeriodSeconds = 30
 
+//InitCmdName is the name identifier for the build command
+const InitCmdName = "init"
+
 //NewInitCmd Initialises the remote environment
 func NewInitCmd() *cobra.Command {
 	settings := config.C
 
 	command := &cobra.Command{
-		Use:     "init",
+		Use:     InitCmdName,
 		Aliases: []string{"in", "setup"},
-		Short:   "Initialises the remote environment",
+		Short:   msgs.InitCommandShortDescription,
 		Long:    ``,
 		Run: func(cmd *cobra.Command, args []string) {
+			remoteCommand := remotecplogs.NewRemoteCommand(InitCmdName, os.Args)
+			cs := session.NewCommandSession().Start()
+
 			//Mock base64 token when 5 arguments are passed in
 			if len(args) == 5 {
 				args = []string{base64.StdEncoding.EncodeToString([]byte(strings.Join(args, ",")))}
 			}
 
-			interactive, err := cmd.PersistentFlags().GetBool("interactive")
-			checkErr(err)
-			reset, err := cmd.PersistentFlags().GetBool("reset")
-			checkErr(err)
+			interactive, _ := cmd.PersistentFlags().GetBool("interactive")
+			reset, _ := cmd.PersistentFlags().GetBool("reset")
 
 			var handler InitStrategy
 
 			if interactive {
 				handler = NewInitInteractiveHandler(reset)
 			} else {
-				remoteName, err := cmd.PersistentFlags().GetString(config.RemoteName)
-				checkErr(err)
-
+				remoteName, _ := cmd.PersistentFlags().GetString(config.RemoteName)
 				handler = NewInitHandler(remoteName, reset)
 			}
 
-			checkErr(handler.Complete(args))
-			checkErr(handler.Validate())
-			checkErr(handler.Handle())
+			suggestion, err := handler.Complete(args)
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(suggestion)
+			}
+			err = handler.Validate()
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(err.Error())
+			}
+			suggestion, err = handler.Handle()
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(suggestion)
+			}
+
+			err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cs))
+			if err != nil {
+				cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+				cplogs.Flush()
+			}
 		},
 	}
 
@@ -76,16 +102,17 @@ func NewInitCmd() *cobra.Command {
 	return command
 }
 
+//InitStrategy is the interface for the init strategy struct
 type InitStrategy interface {
-	Complete(argsIn []string) error
+	Complete(argsIn []string) (suggestion string, err error)
 	Validate() error
-	Handle() error
+	Handle() (suggestion string, err error)
 	SetWriter(io.Writer)
 }
 
-//initInteractiveHandler is a interactive mode strategy where we request the user to insert the global configuration data
+//InitInteractiveHandler is a interactive mode strategy where we request the user to insert the global configuration data
 //which is the cp username and cp api-key which are mandatory to use the interactive mode on all command that support it.
-type initInteractiveHandler struct {
+type InitInteractiveHandler struct {
 	config config.ConfigProvider
 	qp     util.QuestionPrompter
 	api    cpapi.DataProvider
@@ -93,8 +120,9 @@ type initInteractiveHandler struct {
 	reset  bool
 }
 
-func NewInitInteractiveHandler(reset bool) *initInteractiveHandler {
-	p := &initInteractiveHandler{}
+//NewInitInteractiveHandler ctor for InitInteractiveHandler
+func NewInitInteractiveHandler(reset bool) *InitInteractiveHandler {
+	p := &InitInteractiveHandler{}
 	p.api = cpapi.NewCpAPI()
 	p.config = config.C
 	p.qp = util.NewQuestionPrompt()
@@ -103,32 +131,27 @@ func NewInitInteractiveHandler(reset bool) *initInteractiveHandler {
 	return p
 }
 
-func (i *initInteractiveHandler) SetWriter(writer io.Writer) {
+//SetWriter sets the default writer for the struct
+func (i *InitInteractiveHandler) SetWriter(writer io.Writer) {
 	i.writer = writer
 }
 
 //Complete verifies command line arguments and loads data from the command environment
-func (i *initInteractiveHandler) Complete(argsIn []string) error {
-	return nil
+func (i *InitInteractiveHandler) Complete(argsIn []string) (suggestion string, err error) {
+	return "", nil
 }
 
 //Validate checks that the handler has all it needs
-func (i initInteractiveHandler) Validate() error {
+func (i InitInteractiveHandler) Validate() error {
 	return nil
 }
 
 //Handle request the user the config data required for the interactive mode to work
-func (i initInteractiveHandler) Handle() error {
-	username, err := i.config.GetString(config.Username)
-	if err != nil {
-		return err
-	}
-	apiKey, err := i.config.GetString(config.ApiKey)
-	if err != nil {
-		return err
-	}
+func (i InitInteractiveHandler) Handle() (suggestion string, err error) {
+	username := i.config.GetStringQ(config.Username)
+	apiKey := i.config.GetStringQ(config.ApiKey)
 
-	var changed bool = false
+	changed := false
 
 	if username == "" || i.reset == true {
 		username = i.qp.RepeatIfEmpty("Insert your CP Username:")
@@ -145,27 +168,23 @@ func (i initInteractiveHandler) Handle() error {
 	if changed == true {
 		i.api.SetAPIKey(apiKey)
 		user, err := i.api.GetAPIUser(username)
-		if err != nil {
-			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-			return err
-		}
-		if user.Username != username {
-			return fmt.Errorf("The api key provided does not match your the cp username %s.", username)
+		if err != nil || user.Username != username {
+			return fmt.Sprintf(msgs.SuggestionGetAPIUserFailed, username, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "cannot proceed with the initialisation without a valid cp user").String())
 		}
 		err = i.config.Save(config.GlobalConfigType)
 		if err != nil {
-			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+			return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "failed to save the configuration file while initializing").String())
 		}
 	}
 
 	fmt.Fprintf(i.writer, "\n# Get started !\n")
 	fmt.Fprintf(i.writer, "You can now run commands in interactive mode such as\n%s\n", bashInteractiveFullExample)
 
-	return nil
+	return "", nil
 }
 
-//initHandler is the default initialisation mode which prepare the remote environment so that can be used with any command.
-type initHandler struct {
+//InitHandler is the default initialisation mode which prepare the remote environment so that can be used with any command.
+type InitHandler struct {
 	interactive bool
 	config      config.ConfigProvider
 	token       string
@@ -176,8 +195,9 @@ type initHandler struct {
 	writer      io.Writer
 }
 
-func NewInitHandler(remoteName string, reset bool) *initHandler {
-	p := &initHandler{}
+//NewInitHandler ctor for InitHandler
+func NewInitHandler(remoteName string, reset bool) *InitHandler {
+	p := &InitHandler{}
 	p.api = cpapi.NewCpAPI()
 	p.config = config.C
 	p.qp = util.NewQuestionPrompt()
@@ -187,14 +207,13 @@ func NewInitHandler(remoteName string, reset bool) *initHandler {
 	return p
 }
 
-func (i *initHandler) SetWriter(writer io.Writer) {
+//SetWriter sets the default writer for the struct
+func (i *InitHandler) SetWriter(writer io.Writer) {
 	i.writer = writer
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (i *initHandler) Complete(argsIn []string) error {
-	var err error
-
+func (i *InitHandler) Complete(argsIn []string) (suggestion string, err error) {
 	inputToken := ""
 	if len(argsIn) > 0 && argsIn[0] != "" {
 		inputToken = argsIn[0]
@@ -210,38 +229,33 @@ func (i *initHandler) Complete(argsIn []string) error {
 	if inputToken != "" {
 		decodedToken, err := base64.StdEncoding.DecodeString(inputToken)
 		if err != nil {
-			return fmt.Errorf("Malformed token. Please go to https://continuouspipe.io/ to obtain a valid token")
+			return msgs.SuggestionMalformedToken, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "user has provided a malformed token").String())
 		}
 		i.token = string(decodedToken)
 		i.config.Set(config.InitToken, inputToken)
 		err = i.config.Save(config.AllConfigTypes)
 		if err != nil {
-
-			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+			return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "failed to save the configuration file while initializing").String())
 		}
 	} else {
-		return fmt.Errorf("Malformed token. Please go to https://continuouspipe.io/ to obtain a valid token")
+		return msgs.SuggestionMalformedToken, errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "user has provided a malformed token").String())
 	}
 
 	if i.remoteName == "" {
-		i.remoteName, err = i.config.GetString(config.RemoteName)
-		if err != nil {
-			return err
-		}
+		i.remoteName = i.config.GetStringQ(config.RemoteName)
 	}
 
 	i.config.Set(config.RemoteName, i.remoteName)
 	err = i.config.Save(config.AllConfigTypes)
 	if err != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+		return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "failed to save the configuration file while initializing").String())
 	}
 
-	return nil
+	return "", nil
 }
 
 // Validate checks that the token provided has at least 5 values comma separated
-func (i initHandler) Validate() error {
+func (i InitHandler) Validate() error {
 	splitToken := strings.Split(string(i.token), ",")
 	if len(splitToken) != 5 {
 		cplogs.V(5).Infof("Token provided %s has %d parts, expected 4", splitToken, len(splitToken))
@@ -272,18 +286,16 @@ func (i initHandler) Validate() error {
 }
 
 //Handle Executes the initialization
-func (i initHandler) Handle() error {
-	currentStatus, err := i.config.GetString(config.InitStatus)
-	if err != nil {
-		return err
-	}
+func (i InitHandler) Handle() (suggestion string, err error) {
+	currentStatus := i.config.GetStringQ(config.InitStatus)
 
 	if currentStatus == initStateCompleted && i.reset == false {
 		answer := i.qp.RepeatIfEmpty("The configuration file is already present, do you want override it and re-initialize? (yes/no)")
 		if answer == "no" {
-			return nil
+			return "", nil
 		}
 		cplogs.V(5).Infoln("The user requested to re-initialize the remote environment")
+		cplogs.Flush()
 		//the user want to re-initialize, set the status to empty.
 		currentStatus = ""
 	}
@@ -312,33 +324,28 @@ func (i initHandler) Handle() error {
 		cplogs.V(5).Infof("Handling state %s", initState.Name())
 		cplogs.Flush()
 
-		err := initState.Handle()
+		suggestion, err := initState.Handle()
 		if err != nil {
-			return err
+			return suggestion, err
 		}
 		initState = initState.Next()
 	}
 	i.config.Set(config.InitStatus, initStateCompleted)
-	i.config.Save(config.AllConfigTypes)
+	err = i.config.Save(config.AllConfigTypes)
+	if err != nil {
+		return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), err
 
-	apiKey, err := i.config.GetString(config.ApiKey)
-	if err != nil {
-		return err
 	}
-	remoteEnvId, err := i.config.GetString(config.RemoteEnvironmentId)
-	if err != nil {
-		return err
-	}
-	flowId, err := i.config.GetString(config.FlowId)
-	if err != nil {
-		return err
-	}
+
+	apiKey := i.config.GetStringQ(config.ApiKey)
+	remoteEnvID := i.config.GetStringQ(config.RemoteEnvironmentId)
+	flowID := i.config.GetStringQ(config.FlowId)
 
 	i.api.SetAPIKey(apiKey)
 
-	remoteEnv, err := i.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	remoteEnv, err := i.api.GetRemoteEnvironmentStatus(flowID, remoteEnvID)
 	if err != nil {
-		return err
+		return fmt.Sprintf(msgs.SuggestionGetEnvironmentStatusFailed, session.CurrentSession.SessionID), err
 	}
 
 	fmt.Fprintf(i.writer, "\n\n# Get started !\n")
@@ -346,7 +353,7 @@ func (i initHandler) Handle() error {
 	cpapi.PrintPublicEndpoints(i.writer, remoteEnv.PublicEndpoints)
 	fmt.Fprintf(i.writer, "\n\nCheckout the documentation at https://docs.continuouspipe.io/remote-development/ \n")
 
-	return nil
+	return "", nil
 }
 
 type parseSaveTokenInfo struct {
@@ -363,53 +370,47 @@ func (p parseSaveTokenInfo) Name() string {
 	return initStateParseSaveToken
 }
 
-func (p parseSaveTokenInfo) Handle() error {
+func (p parseSaveTokenInfo) Handle() (suggestion string, err error) {
 	p.config.Set(config.InitStatus, p.Name())
-	err := p.config.Save(config.AllConfigTypes)
+	err = p.config.Save(config.AllConfigTypes)
 	if err != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), err
 	}
 	//we expect the token to have: api-key, remote-environment-id, project, cp-username, git-branch
 	splitToken := strings.Split(p.token, ",")
 	apiKey := splitToken[0]
-	remoteEnvId := splitToken[1]
-	flowId := splitToken[2]
+	remoteEnvID := splitToken[1]
+	flowID := splitToken[2]
 	cpUsername := splitToken[3]
 	gitBranch := splitToken[4]
 
-	cplogs.V(5).Infof("flowId: %s", flowId)
-	cplogs.V(5).Infof("remoteEnvId: %s", remoteEnvId)
+	cplogs.V(5).Infof("flowID: %s", flowID)
+	cplogs.V(5).Infof("remoteEnvID: %s", remoteEnvID)
 	cplogs.V(5).Infof("cpUsername: %s", cpUsername)
 	cplogs.V(5).Infof("gitBranch: %s", gitBranch)
 
 	//check the status of the build on CP to determine if we need to force push or not
 	p.api.SetAPIKey(apiKey)
 	cplogs.V(5).Infof("fetching remote environment info for user: %s", cpUsername)
-	_, err = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	_, err = p.api.GetRemoteEnvironmentStatus(flowID, remoteEnvID)
 	if err != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		cplogs.Flush()
-		return err
+		return fmt.Sprintf(msgs.SuggestionGetEnvironmentStatusFailed, session.CurrentSession.SessionID), err
 	}
 
 	cplogs.V(5).Infof("saving parsed token info for user: %s", cpUsername)
 	//if there are no errors when fetching the remote environment information we can store the token info
 	p.config.Set(config.Username, cpUsername)
 	p.config.Set(config.ApiKey, apiKey)
-	p.config.Set(config.FlowId, flowId)
+	p.config.Set(config.FlowId, flowID)
 	p.config.Set(config.RemoteBranch, gitBranch)
-	p.config.Set(config.RemoteEnvironmentId, remoteEnvId)
-	el := p.config.Save(config.AllConfigTypes)
-	if el != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
+	p.config.Set(config.RemoteEnvironmentId, remoteEnvID)
+	err = p.config.Save(config.AllConfigTypes)
+	if err != nil {
+		return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), err
 	}
 	cplogs.V(5).Infof("saved parsed token info for user: %s", cpUsername)
 	cplogs.Flush()
-	return nil
+	return "", nil
 }
 
 type triggerBuild struct {
@@ -444,59 +445,36 @@ func (p triggerBuild) Name() string {
 	return initStateTriggerBuild
 }
 
-func (p triggerBuild) Handle() error {
+func (p triggerBuild) Handle() (suggestion string, err error) {
 	p.config.Set(config.InitStatus, p.Name())
-	err := p.config.Save(config.AllConfigTypes)
+	err = p.config.Save(config.AllConfigTypes)
 	if err != nil {
+		return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), err
 
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
 	}
-	apiKey, err := p.config.GetString(config.ApiKey)
-	if err != nil {
-		return err
-	}
-	remoteEnvId, err := p.config.GetString(config.RemoteEnvironmentId)
-	if err != nil {
-		return err
-	}
-	flowId, err := p.config.GetString(config.FlowId)
-	if err != nil {
-		return err
-	}
-	cpUsername, err := p.config.GetString(config.Username)
-	if err != nil {
-		return err
-	}
-	remoteName, err := p.config.GetString(config.RemoteName)
-	if err != nil {
-		return err
-	}
-	gitBranch, err := p.config.GetString(config.RemoteBranch)
-	if err != nil {
-		return err
-	}
+	apiKey := p.config.GetStringQ(config.ApiKey)
+	remoteEnvID := p.config.GetStringQ(config.RemoteEnvironmentId)
+	flowID := p.config.GetStringQ(config.FlowId)
+	cpUsername := p.config.GetStringQ(config.Username)
+	remoteName := p.config.GetStringQ(config.RemoteName)
+	gitBranch := p.config.GetStringQ(config.RemoteBranch)
 
 	p.api.SetAPIKey(apiKey)
-	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowID, remoteEnvID)
 	if el != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return el
+		return fmt.Sprintf(msgs.SuggestionGetEnvironmentStatusFailed, session.CurrentSession.SessionID), err
 	}
 
-	envExists, elr := p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
+	envExists, elr := p.api.RemoteEnvironmentRunningAndExists(flowID, remoteEnvID)
 	if elr != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return elr
+		return fmt.Sprintf(msgs.SuggestionRemoteEnvironmentRunningAndExistsFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "failed to build the remote environment").String())
 	}
 
 	cplogs.V(5).Infof("current remote environment status is %s", remoteEnv.Status)
+	cplogs.Flush()
 
 	//if the environment is already running and exists ask the user if he wants to rebuild
 	if remoteEnv.Status == cpapi.RemoteEnvironmentRunning && envExists {
-
 		answer := p.qp.RepeatUntilValid("The remote environment is already running, do you want to rebuild it? (yes/no)",
 			func(answer string) (bool, error) {
 				switch answer {
@@ -508,9 +486,9 @@ func (p triggerBuild) Handle() error {
 			})
 
 		cplogs.V(5).Infof("user aswered %s", answer)
-
+		cplogs.Flush()
 		if answer == "no" {
-			return nil
+			return "", nil
 		}
 	}
 
@@ -518,28 +496,25 @@ func (p triggerBuild) Handle() error {
 	//and then trigger a build via api
 	if remoteEnv.Status != cpapi.RemoteEnvironmentTideRunning {
 		cplogs.V(5).Infof("triggering build for the remote environment, user: %s", cpUsername)
-
+		cplogs.Flush()
 		err := p.pushLocalBranchToRemote(remoteName, gitBranch)
 		if err != nil {
-
-			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-			return err
+			return fmt.Sprintf(msgs.SuggestionGitPushHasFailed, session.CurrentSession.SessionID, err.Error()), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "we could not trigger the build as git push to the remote branch has failed").String())
 		}
-		err = p.api.RemoteEnvironmentBuild(flowId, gitBranch)
+		err = p.api.RemoteEnvironmentBuild(flowID, gitBranch)
 		if err != nil {
-
-			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-			return err
+			return fmt.Sprintf(msgs.SuggestionTriggerBuildFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "the trigger build has failed as we could not build the remote environment").String())
 		}
 		fmt.Fprintf(p.writer, "\n# Environment is building...\n")
 	}
-	return nil
+	return "", nil
 }
 
 func (p triggerBuild) pushLocalBranchToRemote(remoteName string, gitBranch string) error {
 	fmt.Fprintf(p.writer, "# Building your environment by push to the branch `%s`\n", gitBranch)
 	lbn, err := p.revParse.GetLocalBranchName()
 	cplogs.V(5).Infof("local branch name value is %s", lbn)
+	cplogs.Flush()
 	if err != nil {
 		return err
 	}
@@ -583,55 +558,36 @@ func (p waitEnvironmentReady) Name() string {
 	return initStateWaitEnvironmentReady
 }
 
-func (p waitEnvironmentReady) Handle() error {
+func (p waitEnvironmentReady) Handle() (suggestion string, err error) {
 	p.config.Set(config.InitStatus, p.Name())
-	err := p.config.Save(config.AllConfigTypes)
+	err = p.config.Save(config.AllConfigTypes)
 	if err != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), err
 	}
-	apiKey, err := p.config.GetString(config.ApiKey)
-	if err != nil {
-		return err
-	}
-	remoteEnvId, err := p.config.GetString(config.RemoteEnvironmentId)
-	if err != nil {
-		return err
-	}
-	flowId, err := p.config.GetString(config.FlowId)
-	if err != nil {
-		return err
-	}
-	gitBranch, err := p.config.GetString(config.RemoteBranch)
-	if err != nil {
-		return err
-	}
+	apiKey := p.config.GetStringQ(config.ApiKey)
+	remoteEnvID := p.config.GetStringQ(config.RemoteEnvironmentId)
+	flowID := p.config.GetStringQ(config.FlowId)
+	gitBranch := p.config.GetStringQ(config.RemoteBranch)
 
 	p.api.SetAPIKey(apiKey)
 	var remoteEnv *cpapi.APIRemoteEnvironmentStatus
 
-	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowID, remoteEnvID)
 	if el != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return el
+		return fmt.Sprintf(msgs.SuggestionGetEnvironmentStatusFailed, session.CurrentSession.SessionID), err
 	}
 
-	envExists, elr := p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
+	envExists, elr := p.api.RemoteEnvironmentRunningAndExists(flowID, remoteEnvID)
 	if elr != nil {
+		return fmt.Sprintf(msgs.SuggestionRemoteEnvironmentRunningAndExistsFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "failed to build the remote environment").String())
 
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return elr
 	}
 
 	if (remoteEnv.Status == cpapi.RemoteEnvironmentTideFailed) || (remoteEnv.Status == cpapi.RemoteEnvironmentRunning && envExists == false) {
 		fmt.Fprintln(p.writer, "The build had previously failed, retrying..")
-		err := p.api.RemoteEnvironmentBuild(flowId, gitBranch)
+		err := p.api.RemoteEnvironmentBuild(flowID, gitBranch)
 		if err != nil {
-
-			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-			return err
+			return fmt.Sprintf(msgs.SuggestionTriggerBuildFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "wait for environment ready has failed as we could not build the remote environment").String())
 		}
 	}
 
@@ -647,9 +603,8 @@ WAIT_LOOP:
 	for t := range p.ticker.C {
 		cplogs.V(5).Infoln("environment readiness check at ", t)
 
-		remoteEnv, el = p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+		remoteEnv, el = p.api.GetRemoteEnvironmentStatus(flowID, remoteEnvID)
 		if el != nil {
-
 			break
 		}
 
@@ -663,19 +618,11 @@ WAIT_LOOP:
 		case cpapi.RemoteEnvironmentTideNotStarted:
 			cplogs.V(5).Infof("re-trying triggering build for the remote environment")
 			cplogs.Flush()
-			err = p.api.RemoteEnvironmentBuild(flowId, gitBranch)
-			if err != nil {
-
-				//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-			}
+			err = p.api.RemoteEnvironmentBuild(flowID, gitBranch)
 			break
 
 		case cpapi.RemoteEnvironmentTideFailed:
-			err = fmt.Errorf("remote environment id %s creation has failed. To see more information about the error go to https://ui.continuouspipe.io/", remoteEnvId)
-			if err != nil {
-
-				//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-			}
+			err = fmt.Errorf("remote environment id %s creation has failed. To see more information about the error go to https://ui.continuouspipe.io/", remoteEnvID)
 			break WAIT_LOOP
 
 		case cpapi.RemoteEnvironmentRunning:
@@ -689,9 +636,7 @@ WAIT_LOOP:
 	//if there has been an error return it
 	if err != nil {
 		s.Stop()
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.SuggestionTriggerBuildFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "wait for environment ready has failed as we could not build the remote environment").String())
 	}
 
 	//when there has been no errors reported, check if the environment actually exist, if not return an error.
@@ -700,12 +645,10 @@ WAIT_LOOP:
 
 	envCreated := false
 	for i := 0; i < attempts; i++ {
-		envCreated, elr = p.api.RemoteEnvironmentRunningAndExists(flowId, remoteEnvId)
+		envCreated, elr = p.api.RemoteEnvironmentRunningAndExists(flowID, remoteEnvID)
 		if elr != nil {
 			s.Stop()
-
-			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-			return elr
+			return fmt.Sprintf(msgs.SuggestionRemoteEnvironmentRunningAndExistsFailed, session.CurrentSession.SessionID), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "failed to build the remote environment").String())
 		}
 
 		if envCreated {
@@ -727,7 +670,7 @@ WAIT_LOOP:
 	}
 
 	s.Stop()
-	return err
+	return "", err
 }
 
 type applyEnvironmentSettings struct {
@@ -754,57 +697,41 @@ func (p applyEnvironmentSettings) Name() string {
 	return initStateApplyEnvironmentSettings
 }
 
-func (p applyEnvironmentSettings) Handle() error {
+func (p applyEnvironmentSettings) Handle() (suggestion string, err error) {
 	p.config.Set(config.InitStatus, p.Name())
-	err := p.config.Save(config.AllConfigTypes)
+	err = p.config.Save(config.AllConfigTypes)
 	if err != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), err
 	}
 
-	apiKey, err := p.config.GetString(config.ApiKey)
-	if err != nil {
-		return err
-	}
-	flowId, err := p.config.GetString(config.FlowId)
-	if err != nil {
-		return err
-	}
-	remoteEnvId, err := p.config.GetString(config.RemoteEnvironmentId)
-	if err != nil {
-		return err
-	}
+	apiKey := p.config.GetStringQ(config.ApiKey)
+	flowID := p.config.GetStringQ(config.FlowId)
+	remoteEnvID := p.config.GetStringQ(config.RemoteEnvironmentId)
 
 	p.api.SetAPIKey(apiKey)
 
-	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowId, remoteEnvId)
+	remoteEnv, el := p.api.GetRemoteEnvironmentStatus(flowID, remoteEnvID)
 	if el != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return el
+		return fmt.Sprintf(msgs.SuggestionGetEnvironmentStatusFailed, session.CurrentSession.SessionID), err
 	}
 
-	cplogs.V(5).Infof("saving remote environment info for environment name: %s, environment id: %s", remoteEnv.KubeEnvironmentName, remoteEnvId)
+	cplogs.V(5).Infof("saving remote environment info for environment name: %s, environment id: %s", remoteEnv.KubeEnvironmentName, remoteEnvID)
 	//the environment has been built, so save locally the settings received from the server
 	p.config.Set(config.ClusterIdentifier, remoteEnv.ClusterIdentifier)
 	p.config.Set(config.KubeEnvironmentName, remoteEnv.KubeEnvironmentName)
 	err = p.config.Save(config.AllConfigTypes)
 	if err != nil {
+		return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), err
 
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
 	}
 	cplogs.V(5).Infoln("saved remote environment info")
 	cplogs.Flush()
 
 	err = p.applySettingsToCubeCtlConfig()
 	if err != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.PleaseContactSupport, session.CurrentSession.SessionID), err
 	}
-	return nil
+	return "", nil
 }
 
 func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
@@ -815,9 +742,7 @@ func (p applyEnvironmentSettings) applySettingsToCubeCtlConfig() error {
 
 	err = p.kubeCtlInitializer.Init(environment)
 	if err != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "failed to save the kubectl config file").String())
 	}
 	return nil
 }
@@ -847,46 +772,38 @@ func (p applyDefaultService) Name() string {
 	return initStateApplyDefaultService
 }
 
-func (p applyDefaultService) Handle() error {
+func (p applyDefaultService) Handle() (suggestion string, err error) {
 	p.config.Set(config.InitStatus, p.Name())
-	err := p.config.Save(config.AllConfigTypes)
+	err = p.config.Save(config.AllConfigTypes)
 	if err != nil {
+		return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), err
 
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
 	}
 	address, username, apiKey, err := p.kubeCtlInitializer.GetSettings()
 	if err != nil {
-		return err
+		return fmt.Sprintf(msgs.SuggestionGetSettingsError, session.CurrentSession.SessionID), err
 	}
 
-	environment, err := p.config.GetString(config.KubeEnvironmentName)
-	if err != nil {
-		return err
-	}
+	environment := p.config.GetStringQ(config.KubeEnvironmentName)
 
 	list, err := p.ks.FindAll(username, apiKey, address, environment)
 	if err != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.SuggestionFindPodsFailed, session.CurrentSession.SessionID), err
 	}
 
 	if len(list.Items) == 0 {
 		cplogs.V(5).Infoln("No services where found.")
-		return nil
+		return "", nil
 	}
 
 	if len(list.Items) == 1 {
 		cplogs.V(5).Infoln("Only 1 service found, setting that one as default.")
 		p.config.Set(list.Items[0].GetName(), config.Service)
-		err = p.config.Save(config.AllConfigTypes)
+		err := p.config.Save(config.AllConfigTypes)
 		if err != nil {
-
-			//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-			return err
+			return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), err
 		}
-		return nil
+		return "", nil
 	}
 
 	fmt.Fprintln(p.writer, "# Last steps!")
@@ -909,17 +826,13 @@ func (p applyDefaultService) Handle() error {
 	})
 	key, err := strconv.Atoi(serviceKey)
 	if err != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.PleaseContactSupport, session.CurrentSession.SessionID), err
 	}
 	serviceName := list.Items[key].GetName()
 	p.config.Set(config.Service, serviceName)
 	err = p.config.Save(config.AllConfigTypes)
 	if err != nil {
-
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.SuggestionConfigurationSaveFailed, session.CurrentSession.SessionID), err
 	}
-	return nil
+	return "", nil
 }

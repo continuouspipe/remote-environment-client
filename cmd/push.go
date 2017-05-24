@@ -25,7 +25,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//SyncCmdName is the command name identifier
 const SyncCmdName = "sync"
+
+//PushCmdName is the command name identifier
 const PushCmdName = "push"
 
 func NewSyncCmd() *cobra.Command {
@@ -52,7 +55,7 @@ func NewPushCmd() *cobra.Command {
 		Example: fmt.Sprintf(msgs.PushCmdExampleDescription, config.AppName, "push"),
 		Long:    msgs.PushCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			remoteCommand := remotecplogs.NewRemoteCommand(PushCmdName, args)
+			remoteCommand := remotecplogs.NewRemoteCommand(PushCmdName, os.Args)
 			cs := session.NewCommandSession().Start()
 
 			//validate the configuration file

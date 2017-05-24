@@ -2,14 +2,20 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
+	remotecplogs "github.com/continuouspipe/remote-environment-client/cplogs/remote"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi/pods"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/continuouspipe/remote-environment-client/session"
 	"github.com/fatih/color"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/kubernetes/pkg/kubectl"
 )
@@ -23,31 +29,57 @@ func NewListPodsCmd() *cobra.Command {
 	return ck
 }
 
+//CheckConnectionCmdName is the command name identifier
+const CheckConnectionCmdName = "checkconnection"
+
 //NewCheckConnectionCmd return a new cobra command that on run executes the CheckConnectionHandle
 func NewCheckConnectionCmd() *cobra.Command {
 	settings := config.C
 	handler := &CheckConnectionHandle{}
 	handler.kubeCtlInit = kubectlapi.NewKubeCtlInit()
 	command := &cobra.Command{
-		Use:     "checkconnection",
+		Use:     CheckConnectionCmdName,
 		Aliases: []string{"ck"},
-		Short:   "Check the connection to the remote environment",
-		Long: `The checkconnection command can be used to check that the connection details
-for the Kubernetes cluster are correct and lists any pods that can be found for the environment.
-It can be used with the environment option to check another environment`,
+		Short:   msgs.CheckConnectionCommandShortDescription,
+		Long:    msgs.CheckConnectionCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			validateConfig()
+			remoteCommand := remotecplogs.NewRemoteCommand(CheckConnectionCmdName, os.Args)
+			cs := session.NewCommandSession().Start()
+
+			//validate the configuration file
+			missingSettings, ok := config.C.Validate()
+			if ok == false {
+				reason := fmt.Sprintf(msgs.InvalidConfigSettings, missingSettings)
+				err := remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, "", *cs))
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(reason)
+			}
+
 			podsFinder := pods.NewKubePodsFind()
-			checkErr(handler.Complete(cmd, args, settings))
-			checkErr(handler.Validate())
-			checkErr(handler.Handle(args, podsFinder))
+			handler.Complete(cmd, args, settings)
+			err := handler.Validate()
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(err.Error())
+			}
+
+			//call the command handler
+			suggestion, err := handler.Handle(args, podsFinder)
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(suggestion)
+			}
+
+			//send the command metrics
+			err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cs))
+			if err != nil {
+				cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+				cplogs.Flush()
+			}
 		},
 	}
 
-	environment, err := settings.GetString(config.KubeEnvironmentName)
-	checkErr(err)
-	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "e", environment, "The full remote environment name")
-
+	command.PersistentFlags().StringVarP(&handler.Environment, config.KubeEnvironmentName, "e", settings.GetStringQ(config.KubeEnvironmentName), "The full remote environment name")
 	return command
 }
 
@@ -59,37 +91,33 @@ type CheckConnectionHandle struct {
 }
 
 //Complete verifies command line arguments and loads data from the command environment
-func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, setting *config.Config) error {
+func (h *CheckConnectionHandle) Complete(cmd *cobra.Command, argsIn []string, setting *config.Config) {
 	h.Command = cmd
-	var err error
 	if h.Environment == "" {
-		h.Environment, err = setting.GetString(config.KubeEnvironmentName)
-		checkErr(err)
+		h.Environment = setting.GetStringQ(config.KubeEnvironmentName)
 	}
-	return nil
 }
 
 //Validate checks that the provided checkconnection options are specified.
 func (h *CheckConnectionHandle) Validate() error {
 	if len(strings.Trim(h.Environment, " ")) == 0 {
-		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentSpecifiedEmpty).String())
 	}
 	return nil
 }
 
 //Handle finds the pods and prints them
-func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) error {
+func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) (suggestion string, err error) {
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
-		return nil
+		return fmt.Sprintf(msgs.SuggestionGetSettingsError, session.CurrentSession.SessionID), err
 	}
 
-	fmt.Println("checking connection for environment " + h.Environment)
+	fmt.Println(fmt.Sprintf(msgs.CheckingConnectionForEnvironment, h.Environment))
 
 	podsList, err := podsFinder.FindAll(user, apiKey, addr, h.Environment)
 	if err != nil {
-		//TODO: Wrap the error with a high level explanation and suggestion, see messages.go
-		return err
+		return fmt.Sprintf(msgs.SuggestionFindPodsFailed, session.CurrentSession.SessionID), err
 	}
 
 	if len(podsList.Items) > 0 {
@@ -99,11 +127,11 @@ func (h *CheckConnectionHandle) Handle(args []string, podsFinder pods.Finder) er
 			WithNamespace: true,
 		})
 		printer.EnsurePrintWithKind(podsList.Kind)
-		color.Green("%d pods have been found:", len(podsList.Items))
+		color.Green(msgs.PodsFoundCount, len(podsList.Items))
 		printer.PrintObj(podsList, os.Stdout)
 	} else {
-		color.Red("We could not find any pods on this environment")
+		color.Red(msgs.PodsNotFound)
 	}
 
-	return nil
+	return "", nil
 }

@@ -3,69 +3,34 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/continuouspipe/remote-environment-client/config"
+	"github.com/continuouspipe/remote-environment-client/cplogs"
+	remotecplogs "github.com/continuouspipe/remote-environment-client/cplogs/remote"
+	cperrors "github.com/continuouspipe/remote-environment-client/errors"
 	"github.com/continuouspipe/remote-environment-client/kubectlapi"
 	msgs "github.com/continuouspipe/remote-environment-client/messages"
+	"github.com/continuouspipe/remote-environment-client/session"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	kubectlcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kubectlcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
 var (
-	deleteLong = templates.LongDesc(`
-		Delete resources by filenames, stdin, resources and names, or by resources and label selector.
-
-		JSON and YAML formats are accepted. Only one type of the arguments may be specified: filenames,
-		resources and names, or resources and label selector.
-
-		Some resources, such as pods, support graceful deletion. These resources define a default period
-		before they are forcibly terminated (the grace period) but you may override that value with
-		the --grace-period flag, or pass --now to set a grace-period of 1. Because these resources often
-		represent entities in the cluster, deletion may not be acknowledged immediately. If the node
-		hosting a pod is down or cannot reach the API server, termination may take significantly longer
-		than the grace period. To force delete a resource,	you must pass a grace	period of 0 and specify
-		the --force flag.
-
-		IMPORTANT: Force deleting pods does not wait for confirmation that the pod's processes have been
-		terminated, which can leave those processes running until the node detects the deletion and
-		completes graceful deletion. If your processes use shared storage or talk to a remote API and
-		depend on the name of the pod to identify themselves, force deleting those pods may result in
-		multiple processes running on different machines using the same identification which may lead
-		to data corruption or inconsistency. Only force delete pods when you are sure the pod is
-		terminated, or if your application can tolerate multiple copies of the same pod running at once.
-		Also, if you force delete pods the scheduler may place new pods on those nodes before the node
-		has released those resources and causing those pods to be evicted immediately.
-
-		Note that the delete command does NOT do resource version checks, so if someone
-		submits an update to a resource right when you submit a delete, their update
-		will be lost along with the rest of the resource.`)
-
-	deleteExample = templates.Examples(`
-		# Delete a pod with minimal delay
-		kubectl delete pod foo --now
-
-		# Force delete a pod on a dead node
-		kubectl delete pod foo --grace-period=0 --force
-
-		# Delete a pod with UID 1234-56-7890-234234-456456.
-		kubectl delete pod 1234-56-7890-234234-456456
-
-		# Delete all pods
-		kubectl delete pods --all
-
-		# Delete pods and services with same names "baz" and "foo"
-		kubectl delete pod,service baz foo
-
-		# Delete pods and services with label name=myLabel.
-		kubectl delete pods,services -l name=myLabel
-		`)
+	deleteLong    = templates.LongDesc(msgs.DeleteCommandLongDescription)
+	deleteExample = templates.Examples(msgs.DeleteCommandExampleDescription)
 )
+
+//DeleteCmdName is the command name identifier
+const DeleteCmdName = "delete"
 
 //NewDeleteCmd returns a new command that wraps the kubectl delete command
 //it finds the target pod and pass the arguments to the wrapped command
@@ -77,16 +42,40 @@ func NewDeleteCmd() *cobra.Command {
 	handler.writer = os.Stdout
 
 	command := &cobra.Command{
-		Use:     "delete ([-f FILENAME] | TYPE [(NAME | -l label | --all)])",
-		Short:   "Delete resources by filenames, stdin, resources and names, or by resources and label selector",
+		Use:     fmt.Sprintf("%s ([-f FILENAME] | TYPE [(NAME | -l label | --all)])", DeleteCmdName),
+		Short:   msgs.DeleteCommandShortDescription,
 		Long:    deleteLong,
 		Example: deleteExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			validateConfig()
+			remoteCommand := remotecplogs.NewRemoteCommand(DeleteCmdName, os.Args)
+			cs := session.NewCommandSession().Start()
 
-			checkErr(handler.Complete(cmd, args, settings))
-			checkErr(handler.Validate())
-			checkErr(handler.Handle(args))
+			//validate the configuration file
+			missingSettings, ok := config.C.Validate()
+			if ok == false {
+				reason := fmt.Sprintf(msgs.InvalidConfigSettings, missingSettings)
+				err := remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.Ended(http.StatusBadRequest, reason, "", *cs))
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(reason)
+			}
+
+			handler.Complete(args, settings)
+			err := handler.Validate()
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(err.Error())
+			}
+
+			suggestion, err := handler.Handle(args)
+			if err != nil {
+				remotecplogs.EndSessionAndSendErrorCause(remoteCommand, cs, err)
+				cperrors.ExitWithMessage(suggestion)
+			}
+			err = remotecplogs.NewRemoteCommandSender().Send(*remoteCommand.EndedOk(*cs))
+			if err != nil {
+				cplogs.V(4).Infof(remotecplogs.ErrorFailedToSendDataToLoggingAPI)
+				cplogs.Flush()
+			}
 		},
 	}
 
@@ -125,29 +114,26 @@ type deletePodCmdOptions struct {
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (h *DeletePodCmdHandle) Complete(cmd *cobra.Command, argsIn []string, settings *config.Config) error {
-	var err error
+func (h *DeletePodCmdHandle) Complete(argsIn []string, settings *config.Config) {
 	if h.options.environment == "" {
-		h.options.environment, err = settings.GetString(config.KubeEnvironmentName)
-		checkErr(err)
+		h.options.environment = settings.GetStringQ(config.KubeEnvironmentName)
 	}
 	h.argsIn = argsIn
-	return nil
 }
 
 // Validate checks that the provided exec options are specified.
 func (h *DeletePodCmdHandle) Validate() error {
 	if len(strings.Trim(h.options.environment, " ")) == 0 {
-		return fmt.Errorf(msgs.EnvironmentSpecifiedEmpty)
+		return errors.New(cperrors.NewStatefulErrorMessage(http.StatusBadRequest, msgs.EnvironmentSpecifiedEmpty).String())
 	}
 	return nil
 }
 
 // Handle set the flags in the kubeclt logs handle command and executes it
-func (h *DeletePodCmdHandle) Handle(args []string) error {
+func (h *DeletePodCmdHandle) Handle(args []string) (suggestion string, err error) {
 	addr, user, apiKey, err := h.kubeCtlInit.GetSettings()
 	if err != nil {
-		return nil
+		return fmt.Sprintf(msgs.SuggestionGetSettingsError, session.CurrentSession.SessionID), err
 	}
 
 	clientConfig := kubectlapi.GetNonInteractiveDeferredLoadingClientConfig(user, apiKey, addr, h.options.environment)
@@ -162,9 +148,14 @@ func (h *DeletePodCmdHandle) Handle(args []string) error {
 	kubeCmdDelete.Flags().Set("selector", h.options.selector)
 	kubeCmdDelete.Flags().Set("timeout", h.options.timeout.String())
 
-	//TODO: Run doesn't return the error, extract the content of NewCmdDelete().Run() and call directly k8s.io/kubernetes/pkg/kubectl/cmd/delete.go::RunDelete()
+	err = kubectlcmdutil.ValidateOutputArgs(kubeCmdDelete)
+	if err != nil {
+		return err.Error(), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusBadRequest, "kubernetes did not validate the arguments provided").String())
+	}
+	err = kubectlcmd.RunDelete(kubectlcmdutil.NewFactory(clientConfig), os.Stdout, kubeCmdDelete, args, &resource.FilenameOptions{})
+	if err != nil {
+		return err.Error(), errors.Wrap(err, cperrors.NewStatefulErrorMessage(http.StatusInternalServerError, "kubernetes failed to delete resource").String())
+	}
 
-	//TODO: Print native kubectl response using CheckErr() in "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	kubeCmdDelete.Run(kubeCmdDelete, h.argsIn)
-	return nil
+	return "", nil
 }

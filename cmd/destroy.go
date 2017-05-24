@@ -34,7 +34,7 @@ func NewDestroyCmd() *cobra.Command {
 		Short: msgs.DestroyCommandShortDescription,
 		Long:  msgs.DestroyCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			remoteCommand := remotecplogs.NewRemoteCommand(DestroyCmdName, args)
+			remoteCommand := remotecplogs.NewRemoteCommand(DestroyCmdName, os.Args)
 			cs := session.NewCommandSession().Start()
 
 			suggestion, err := handler.Handle()
