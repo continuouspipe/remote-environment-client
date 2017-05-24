@@ -43,7 +43,7 @@ func NewWatchCmd() *cobra.Command {
 		Short:   msgs.WatchCommandShortDescription,
 		Long:    msgs.WatchCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			remoteCommand := remotecplogs.NewRemoteCommand(WatchCmdName, args)
+			remoteCommand := remotecplogs.NewRemoteCommand(WatchCmdName, os.Args)
 			cs := session.NewCommandSession().Start()
 
 			//validate the configuration file

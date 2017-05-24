@@ -107,6 +107,9 @@ such as connecting to a database using a local client. You need to specify the c
 the port number to forward.`
 
 const PortFowardCommandExampleDescription = `
+# Listen on the same port locally and remotely
+%[1]s forward 8080
+
 # Listen on ports 5000 and 6000 locally, forwarding data to/from ports 5000 and 6000 in the pod
 %[1]s forward 5000 6000
 
@@ -199,6 +202,8 @@ const CheckConnectionCommandLongDescription = `The checkconnection command can b
 for the Kubernetes cluster are correct and lists any pods that can be found for the environment.
 It can be used with the environment option to check another environment`
 
+const InitCommandShortDescription = `Initialises the remote environment`
+
 const SuggestionTriggerBuildFailed = `Triggering the build has failed.
 Please make sure Git has permission to push to the remote repository and is set up correctly, then retry.
 If the issue persists please contact support specifying the session number '%s'.`
@@ -215,6 +220,10 @@ const SuggestionGetEnvironmentStatusFailed = `Something went wrong when fetching
 This issue is usually caused by a temporary unavailability of the ContinuousPipe API or a network issue. Please try again after few minutes.
 If the issue persists please contact support specifying the session number '%s'.`
 
+const SuggestionRemoteEnvironmentRunningAndExistsFailed = `Something went wrong when checking that the environment was running.
+This issue is usually caused by a temporary unavailability of the ContinuousPipe API or a network issue. Please try again after few minutes.
+If the issue persists please contact support specifying the session number '%s'.`
+
 const SuggestionRemoteEnvironmentDestroyFailed = `Something went wrong when destroying the remote environment.
 This issue is usually caused by a temporary unavailability of the ContinuousPipe API or a network issue. Please try deleting the remote environment manually in the ContinuousPipe console (https://ui.continuouspipe.io/).
 If the issue persists please contact support specifying the session number '%s'.`
@@ -226,6 +235,12 @@ If the issue persists please contact support specifying the session number '%s'.
 Git Error Details: %s`
 
 const SuggestionGitDeleteHasFailed = `Something went wrong when we tried to delete the remote branch using Git.
+This issue is usually caused by Git configuration and permission issues. Please try manually pushing some changes to the Git repository to ensure that you have the correct permissions.
+If the issue persists please contact support specifying the session number '%s'.
+
+Git Error Details: %s`
+
+const SuggestionGitPushHasFailed = `Something went wrong when we tried to push to the remote branch using Git.
 This issue is usually caused by Git configuration and permission issues. Please try manually pushing some changes to the Git repository to ensure that you have the correct permissions.
 If the issue persists please contact support specifying the session number '%s'.
 
@@ -319,6 +334,15 @@ If the issue persists please contact support specifying the session number '%s'.
 const SuggestionDirectoryMonitorFailed = `Something went wrong during the watch command execution.
 This issue is usually caused by a temporary unavailability of the cluster, a network issue or because the pod was deleted or moved to a different node.
 Check the pod status with 'cp-remote pods' and reconnect once the pod is running again.
+If the issue persists please contact support specifying the session number '%s'.`
+
+const SuggestionMalformedToken = `You have provided a malformed token.
+Please go to https://continuouspipe.io/ to obtain a valid token.
+If the issue persists please contact support specifying the session number '%s'.`
+
+const SuggestionGetAPIUserFailed = `Something went wrong when fetching the list of environments.
+This is usually caused by an invalid cp username. You have provided the user %s.
+Please ensure the cp user is valid and match the api-key provided.
 If the issue persists please contact support specifying the session number '%s'.`
 
 const GetStarted = `

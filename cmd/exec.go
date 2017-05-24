@@ -82,17 +82,17 @@ func RunExec(handler *execHandle, interactive bool, flowID string, args []string
 		//make sure config has an api key and a cp user set
 		initInteractiveH := NewInitInteractiveHandler(false)
 		initInteractiveH.SetWriter(ioutil.Discard)
-		err := initInteractiveH.Complete(args)
+		suggestion, err := initInteractiveH.Complete(args)
 		if err != nil {
-			return "", err
+			return suggestion, err
 		}
 		err = initInteractiveH.Validate()
 		if err != nil {
-			return "", err
-		}
-		err = initInteractiveH.Handle()
-		if err != nil {
 			return err.Error(), err
+		}
+		suggestion, err = initInteractiveH.Handle()
+		if err != nil {
+			return suggestion, err
 		}
 
 		if flowID == "" && handler.environment == "" && handler.service == "" {

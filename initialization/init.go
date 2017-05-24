@@ -1,7 +1,7 @@
 package initialization
 
 type InitState interface {
-	Handle() error
+	Handle() (suggestion string, err error)
 	Next() InitState
 	Name() string
 }

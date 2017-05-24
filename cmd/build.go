@@ -34,7 +34,7 @@ func NewBuildCmd() *cobra.Command {
 		Short:   msgs.BuildCommandShortDescription,
 		Long:    msgs.BuildCommandLongDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			remoteCommand := remotecplogs.NewRemoteCommand(BuildCmdName, args)
+			remoteCommand := remotecplogs.NewRemoteCommand(BuildCmdName, os.Args)
 			cs := session.NewCommandSession().Start()
 
 			//validate the configuration file
@@ -73,13 +73,13 @@ type BuildHandle struct {
 
 //Handle performs the 2 init stages that trigger that build and wait for the environment to be ready
 func (h *BuildHandle) Handle() (suggestion string, err error) {
-	err = h.triggerBuild.Handle()
+	suggestion, err = h.triggerBuild.Handle()
 	if err != nil {
-		return fmt.Sprintf(msgs.SuggestionTriggerBuildFailed, session.CurrentSession.SessionID), err
+		return suggestion, err
 	}
-	err = h.waitForEnvironmentReady.Handle()
+	suggestion, err = h.waitForEnvironmentReady.Handle()
 	if err != nil {
-		return fmt.Sprintf(msgs.SuggestionWaitForEnvironmentReadyFailed, session.CurrentSession.SessionID), err
+		return suggestion, err
 	}
 
 	h.config.Set(config.InitStatus, initStateCompleted)
