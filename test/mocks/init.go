@@ -16,9 +16,9 @@ func NewMockInitState() *MockInitState {
 }
 
 //Handle records the arguments called and return the mocked arguments
-func (h *MockInitState) Handle() error {
+func (h *MockInitState) Handle() (suggestion string, err error) {
 	args := h.Called()
-	return args.Error(0)
+	return args.String(0), args.Error(1)
 }
 
 //Next records the arguments called and return the mocked arguments

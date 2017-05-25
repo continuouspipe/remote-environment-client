@@ -40,8 +40,8 @@ func TestRemoteBranchNotPresent(t *testing.T) {
 		On("GetStringQ", config.RemoteEnvironmentId).Return("987654321", nil).
 		On("GetStringQ", config.FlowId).Return("837d92hd-19su1d91", nil)
 
-	triggerBuild.On("Handle").Return(nil)
-	waitForEnvironmentReadyState.On("Handle").Return(nil)
+	triggerBuild.On("Handle").Return("", nil)
+	waitForEnvironmentReadyState.On("Handle").Return("", nil)
 
 	//call the code we are testing
 	buildHandle := BuildHandle{}
