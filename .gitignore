@@ -6,3 +6,6 @@ cp-remote-go
 .idea
 cp-remote-logs
 /.cp-remote-settings.yml
+
+#ignore dependencies
+/vendor
