@@ -88,11 +88,11 @@ clean:
 	rm -f update/cktime
 
 update-dep:
-	glide up --strip-vendor
+	dep ensure -update
 
 # installs the dependencies in the glide.lock file
 install-dep:
-	glide install --strip-vendor
+	dep ensure -vendor-only
 
 # install the dependencies for creating a new installation package
 install-package-dep:
